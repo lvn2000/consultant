@@ -13,9 +13,13 @@ import { RuntimeConfig as UserRuntimeConfig, PublicRuntimeConfig as UserPublicRu
    nitro: {
       envPrefix: string,
    },
+
+   icon: {
+      serverKnownCssClasses: Array<any>,
+   },
   }
   interface SharedPublicRuntimeConfig {
-
+   apiBase: string,
   }
 declare module '@nuxt/schema' {
   interface RuntimeConfig extends UserRuntimeConfig {}

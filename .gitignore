@@ -59,3 +59,11 @@ backup-*.json.enc
 
 # Docker
 docker-compose.override.yml
+
+# Nuxt build output
+.nuxt/
+dist/
+# Node modules
+node_modules/
+# Log files
+*.log

@@ -26,7 +26,7 @@ npm run test
 
 ## Access
 
-- Development: http://localhost:3001
+- Development: http://localhost:3002
 - Backend API: http://localhost:8080/api
 
 ## Stack
