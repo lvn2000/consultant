@@ -1,0 +1,208 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Master (Write)
+  postgres-master:
+    image: postgres:16-alpine
+    container_name: consultant-db-master
+    environment:
+      POSTGRES_DB: consultant
+      POSTGRES_USER: consultant_user
+      POSTGRES_PASSWORD: consultant_pass
+      POSTGRES_INITDB_ARGS: "-E UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-master-data:/var/lib/postgresql/data
+      - ./data/src/main/resources/db/migration:/docker-entrypoint-initdb.d
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+    networks:
+      - consultant-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U consultant_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: consultant-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+      --appendonly yes
+    networks:
+      - consultant-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Application (3 instances для load balancing)
+  app-1:
+    build: .
+    container_name: consultant-app-1
+    environment:
+      # Database
+      DB_HOST: postgres-master
+      DB_PORT: 5432
+      DB_NAME: consultant
+      DB_USER: consultant_user
+      DB_PASSWORD: consultant_pass
+      DB_ENCRYPTION_KEY: ${DB_ENCRYPTION_KEY:-dev-encryption-key-change-in-prod}
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Server
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+      # Security
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production-minimum-64-characters-long}
+      JWT_ISSUER: consultant-api
+      JWT_ACCESS_TTL_MINUTES: 15
+      JWT_REFRESH_TTL_DAYS: 7
+      SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret}
+      MAX_LOGIN_ATTEMPTS: 5
+      ACCOUNT_LOCK_DURATION_MINUTES: 15
+      FORCE_HTTPS: "false"
+      SECURE_COOKIES: "false"
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres-master:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - consultant-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  app-2:
+    build: .
+    container_name: consultant-app-2
+    environment:
+      # Database
+      DB_HOST: postgres-master
+      DB_PORT: 5432
+      DB_NAME: consultant
+      DB_USER: consultant_user
+      DB_PASSWORD: consultant_pass
+      DB_ENCRYPTION_KEY: ${DB_ENCRYPTION_KEY:-dev-encryption-key-change-in-prod}
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Server
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+      # Security
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production-minimum-64-characters-long}
+      JWT_ISSUER: consultant-api
+      JWT_ACCESS_TTL_MINUTES: 15
+      JWT_REFRESH_TTL_DAYS: 7
+      SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret}
+      MAX_LOGIN_ATTEMPTS: 5
+      ACCOUNT_LOCK_DURATION_MINUTES: 15
+      FORCE_HTTPS: "false"
+      SECURE_COOKIES: "false"
+    ports:
+      - "8082:8080"
+    depends_on:
+      postgres-master:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - consultant-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  app-3:
+    build: .
+    container_name: consultant-app-3
+    environment:
+      # Database
+      DB_HOST: postgres-master
+      DB_PORT: 5432
+      DB_NAME: consultant
+      DB_USER: consultant_user
+      DB_PASSWORD: consultant_pass
+      DB_ENCRYPTION_KEY: ${DB_ENCRYPTION_KEY:-dev-encryption-key-change-in-prod}
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Server
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+      # Security
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production-minimum-64-characters-long}
+      JWT_ISSUER: consultant-api
+      JWT_ACCESS_TTL_MINUTES: 15
+      JWT_REFRESH_TTL_DAYS: 7
+      SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret}
+      MAX_LOGIN_ATTEMPTS: 5
+      ACCOUNT_LOCK_DURATION_MINUTES: 15
+      FORCE_HTTPS: "false"
+      SECURE_COOKIES: "false"
+    ports:
+      - "8083:8080"
+    depends_on:
+      postgres-master:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - consultant-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  # Nginx Load Balancer
+  nginx:
+    image: nginx:alpine
+    container_name: consultant-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app-1
+      - app-2
+      - app-3
+    networks:
+      - consultant-network
+
+volumes:
+  postgres-master-data:
+  redis-data:
+
+networks:
+  consultant-network:
+    driver: bridge

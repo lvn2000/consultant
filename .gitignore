@@ -1,0 +1,58 @@
+*.class
+*.log
+*.jar
+*.war
+*.zip
+*.tar.gz
+*.nar
+*.ear
+*.rar
+
+# sbt specific
+.cache
+.history
+.lib/
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+# Scala-IDE specific
+.scala_dependencies
+.worksheet
+.idea
+*.iml
+
+# Metals
+.metals/
+.bloop/
+metals.sbt
+.bsp/
+
+# VS Code
+.vscode/
+
+# Mac
+.DS_Store
+
+# Environment variables (NEVER commit!)
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+.env.development
+
+# Infisical
+.infisical.json
+.infisical-cache/
+
+# Secrets backup
+backup-*.json
+backup-*.json.enc
+*-secrets.json
+
+# Docker
+docker-compose.override.yml
