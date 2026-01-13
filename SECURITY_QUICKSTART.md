@@ -1,45 +1,45 @@
 # Security Quick Start
 
-## 🔐 Что добавлено
+## 🔐 What's Added
 
-### 1. Аутентификация
+### 1. Authentication
 
-- **JWT токены** (Access + Refresh)
-- **Password hashing** (PBKDF2 с 210k итераций)
-- **Account lockout** (5 попыток, блокировка 15 мин)
+- **JWT tokens** (Access + Refresh)
+- **Password hashing** (PBKDF2 with 210k iterations)
+- **Account lockout** (5 attempts, 15 min lockout)
 
-### 2. Авторизация
+### 2. Authorization
 
-- **RBAC**: Client, Specialist, Admin роли
-- **Permissions**: Детальные права доступа
-- **Middleware**: Защита endpoint'ов
+- **RBAC**: Client, Specialist, Admin roles
+- **Permissions**: Granular access rights
+- **Middleware**: Endpoint protection
 
-### 3. Защита данных
+### 3. Data Protection
 
-- **DB encryption** (pgcrypto для PII)
-- **Password requirements** (8+ символов, спецсимволы)
-- **Audit logging** (все действия безопасности)
+- **DB encryption** (pgcrypto for PII)
+- **Password requirements** (8+ chars, special symbols)
+- **Audit logging** (all security actions)
 
 ### 4. API Endpoints
 
 #### Public
 
 ```bash
-POST /auth/register  # Регистрация
-POST /auth/login     # Вход
-POST /auth/refresh   # Обновление токена
+POST /auth/register  # Registration
+POST /auth/login     # Login
+POST /auth/refresh   # Token refresh
 ```
 
-#### Protected (требуется JWT)
+#### Protected (JWT required)
 
 ```bash
-POST /auth/logout    # Выход
-GET  /api/users      # С Bearer token
+POST /auth/logout    # Logout
+GET  /api/users      # With Bearer token
 ```
 
-## 🚀 Использование
+## 🚀 Usage
 
-### 1. Регистрация
+### 1. Registration
 
 ```bash
 curl -X POST http://localhost/auth/register \
@@ -52,7 +52,7 @@ curl -X POST http://localhost/auth/register \
   }'
 ```
 
-**Ответ:**
+**Response:**
 
 ```json
 {
@@ -65,7 +65,7 @@ curl -X POST http://localhost/auth/register \
 }
 ```
 
-### 2. Вход
+### 2. Login
 
 ```bash
 curl -X POST http://localhost/auth/login \
@@ -76,14 +76,14 @@ curl -X POST http://localhost/auth/login \
   }'
 ```
 
-### 3. Защищенный запрос
+### 3. Protected Request
 
 ```bash
 curl -X GET http://localhost/api/users \
   -H "Authorization: Bearer eyJhbGc..."
 ```
 
-### 4. Обновление токена (каждые 15 минут)
+### 4. Token Refresh (every 15 minutes)
 
 ```bash
 curl -X POST http://localhost/auth/refresh \
@@ -93,23 +93,23 @@ curl -X POST http://localhost/auth/refresh \
   }'
 ```
 
-## 🔧 Настройка
+## 🔧 Setup
 
 ### 1. Environment Variables
 
-Скопируйте `.env.security.example` в `.env`:
+Copy `.env.security.example` to `.env`:
 
 ```bash
 cp .env.security.example .env
 ```
 
-### 2. Сгенерируйте JWT Secret
+### 2. Generate JWT Secret
 
 ```bash
 # Linux/Mac
 openssl rand -base64 64
 
-# Или в Scala
+# Or in Scala
 scala> import java.security.SecureRandom
 scala> import java.util.Base64
 scala> val random = new SecureRandom()
@@ -118,14 +118,14 @@ scala> random.nextBytes(bytes)
 scala> Base64.getEncoder.encodeToString(bytes)
 ```
 
-### 3. БД Migration
+### 3. DB Migration
 
 ```bash
-# Применить V002__security_tables.sql
+# Apply V002__security_tables.sql
 docker-compose exec postgres-master psql -U consultant_user -d consultant -f /docker-entrypoint-initdb.d/V002__security_tables.sql
 ```
 
-### 4. HTTPS в Production
+### 4. HTTPS in Production
 
 ```nginx
 server {
@@ -145,35 +145,35 @@ server {
 
 ## 🛡️ Security Features
 
-✅ **JWT Authentication** - Stateless токены  
-✅ **Password Hashing** - PBKDF2 210k итераций  
-✅ **Account Lockout** - Защита от brute force  
-✅ **Audit Logging** - Все события безопасности  
-✅ **DB Encryption** - pgcrypto для PII  
+✅ **JWT Authentication** - Stateless tokens  
+✅ **Password Hashing** - PBKDF2 210k iterations  
+✅ **Account Lockout** - Brute force protection  
+✅ **Audit Logging** - All security events  
+✅ **DB Encryption** - pgcrypto for PII  
 ✅ **RBAC** - Role-Based Access Control  
-✅ **Rate Limiting** - nginx защита от DDoS  
-✅ **HTTPS/TLS** - Шифрование в транспорте  
-✅ **CORS** - Cross-Origin защита  
-✅ **Security Headers** - XSS, Clickjacking защита  
+✅ **Rate Limiting** - nginx DDoS protection  
+✅ **HTTPS/TLS** - Encryption in transit  
+✅ **CORS** - Cross-Origin protection  
+✅ **Security Headers** - XSS, Clickjacking protection  
 
-## 📊 Таблицы БД
+## 📊 DB Tables
 
-- `credentials` - Хешированные пароли + роли
-- `refresh_tokens` - Refresh токены для продления
-- `security_audit_log` - Аудит всех действий
-- `user_sessions` - Активные сессии (Redis)
+- `credentials` - Hashed passwords + roles
+- `refresh_tokens` - Refresh tokens for renewal
+- `security_audit_log` - Audit of all actions
+- `user_sessions` - Active sessions (Redis)
 
 ## 🔒 Production Checklist
 
-- [ ] Сгенерировать сильный JWT_SECRET (64+ символов)
-- [ ] Настроить HTTPS с валидным сертификатом
-- [ ] Включить HSTS заголовки
-- [ ] Настроить CORS для вашего фронтенда
-- [ ] Включить rate limiting
-- [ ] Настроить AWS Secrets Manager для секретов
-- [ ] Включить DB encryption at rest (RDS)
-- [ ] Настроить CloudWatch алерты на подозрительную активность
-- [ ] Регулярные security audits
-- [ ] Backups с шифрованием
+- [ ] Generate strong JWT_SECRET (64+ chars)
+- [ ] Configure HTTPS with valid certificate
+- [ ] Enable HSTS headers
+- [ ] Configure CORS for your frontend
+- [ ] Enable rate limiting
+- [ ] Configure AWS Secrets Manager for secrets
+- [ ] Enable DB encryption at rest (RDS)
+- [ ] Configure CloudWatch alerts for suspicious activity
+- [ ] Regular security audits
+- [ ] Encrypted backups
 
-Детали в [SECURITY.md](./SECURITY.md) 🔐
+Details in [SECURITY.md](./SECURITY.md) 🔐
