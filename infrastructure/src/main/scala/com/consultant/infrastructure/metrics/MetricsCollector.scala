@@ -4,7 +4,7 @@ import cats.effect.{ IO, Ref }
 import cats.syntax.all.*
 import scala.concurrent.duration.*
 
-/** Сбор метрик для мониторинга производительности */
+/** Metrics collection for performance monitoring */
 class MetricsCollector:
 
   case class RequestMetrics(

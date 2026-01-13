@@ -6,7 +6,7 @@ import sttp.tapir.json.circe.*
 import sttp.tapir.generic.auto.*
 import io.circe.Codec
 
-/** Health check эндпоинт для Kubernetes/Docker */
+/** Health check endpoint for Kubernetes/Docker */
 class HealthRoutes:
 
   case class HealthStatus(
@@ -18,7 +18,7 @@ class HealthRoutes:
   private val baseEndpoint = endpoint
     .in("health")
 
-  // GET /health - проверка работоспособности
+  // GET /health - health check
   val healthEndpoint = baseEndpoint.get
     .out(jsonBody[HealthStatus])
     .description("Health check endpoint")

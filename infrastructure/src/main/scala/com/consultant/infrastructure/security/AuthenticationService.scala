@@ -39,7 +39,7 @@ object AuthenticationService:
     user: User
   )
 
-/** Сервис аутентификации и авторизации */
+/** Authentication and authorization service */
 class AuthenticationService(
   userRepository: UserRepository,
   credentialsRepository: CredentialsRepository,
@@ -52,22 +52,22 @@ class AuthenticationService(
   private val maxFailedAttempts = 5
   private val lockDuration      = 15.minutes
 
-  /** Регистрация нового пользователя */
+  /** Register new user */
   def register(request: AuthenticationService.RegistrationRequest): IO[Either[String, User]] =
     (for
-      // Проверяем сложность пароля
+      // Check password complexity
       _ <- passwordService.validatePasswordStrength(request.password).flatMap {
         case Left(error) => IO.raiseError(new RuntimeException(error))
         case Right(_)    => IO.unit
       }
 
-      // Проверяем, не существует ли уже пользователь
+      // Check if user already exists
       existing <- userRepository.findByEmail(request.email)
       _ <- existing match
         case Some(_) => IO.raiseError(new RuntimeException("User already exists"))
         case None    => IO.unit
 
-      // Создаем пользователя
+      // Create user
       userId = UUID.randomUUID()
       createRequest: CreateUserRequest = CreateUserRequest(
         email = request.email,
@@ -77,11 +77,11 @@ class AuthenticationService(
       )
       createdUser <- userRepository.create(createRequest)
 
-      // Хешируем пароль
+      // Hash password
       salt <- passwordService.generateSalt()
       hash <- passwordService.hashPassword(request.password, salt)
 
-      // Сохраняем credentials
+      // Save credentials
       credentials = Credentials(
         email = request.email,
         passwordHash = hash,
@@ -95,16 +95,16 @@ class AuthenticationService(
       case Left(error) => Left(error.getMessage)
     }
 
-  /** Аутентификация пользователя */
+  /** User authentication */
   def login(request: AuthenticationService.LoginRequest): IO[Either[String, AuthenticationService.LoginResponse]] =
     (for
-      // Получаем credentials
+      // Get credentials
       credentials <- credentialsRepository.findByEmail(request.email).flatMap {
         case Some(creds) => IO.pure(creds)
         case None        => IO.raiseError(new RuntimeException("Invalid credentials"))
       }
 
-      // Проверяем, не заблокирован ли аккаунт
+      // Check if account is locked
       _ <-
         if credentials.isLocked then
           auditLog(
@@ -118,17 +118,17 @@ class AuthenticationService(
             .flatMap(_ => IO.raiseError(new RuntimeException("Account is locked. Try again later.")))
         else IO.unit
 
-      // Проверяем активность аккаунта
+      // Check account activity
       _ <-
         if !credentials.isActive then IO.raiseError(new RuntimeException("Account is inactive"))
         else IO.unit
 
-      // Верифицируем пароль
+      // Verify password
       validPassword <- passwordService.verifyPassword(request.password, credentials.passwordHash, credentials.salt)
 
       _ <-
         if !validPassword then
-          // Неверный пароль - увеличиваем счетчик
+          // Incorrect password - increment counter
           credentialsRepository.incrementFailedAttempts(request.email) *>
             (if credentials.failedLoginAttempts + 1 >= maxFailedAttempts then
                credentialsRepository.lockAccount(request.email, Instant.now().plusSeconds(lockDuration.toSeconds))
@@ -144,27 +144,27 @@ class AuthenticationService(
               .flatMap(_ => IO.raiseError(new RuntimeException("Invalid credentials")))
         else IO.unit
 
-      // Успешная аутентификация
+      // Successful authentication
       _ <- credentialsRepository.resetFailedAttempts(request.email)
 
-      // Получаем пользователя
+      // Get user
       user <- userRepository.findById(credentials.userId).flatMap {
         case Some(u) => IO.pure(u)
         case None    => IO.raiseError(new RuntimeException("User not found"))
       }
 
-      // Генерируем токены
+      // Generate tokens
       accessToken  <- jwtService.generateAccessToken(credentials.userId, credentials.role, request.email)
       refreshToken <- jwtService.generateRefreshToken(credentials.userId)
 
-      // Сохраняем refresh token
+      // Save refresh token
       _ <- refreshTokenRepository.create(refreshToken)
 
-      // Обновляем время последнего логина
+      // Update last login time
       updatedCreds = credentials.copy(lastLogin = Some(Instant.now()))
       _ <- credentialsRepository.update(updatedCreds)
 
-      // Логируем успешный вход
+      // Log successful login
       _ <- auditLog(credentials.userId, "LOGIN_SUCCESS", request.ipAddress, request.userAgent, success = true, None)
 
       response = AuthenticationService.LoginResponse(
@@ -178,23 +178,23 @@ class AuthenticationService(
       case Left(error)     => Left(error.getMessage)
     }
 
-  /** Обновление access token через refresh token */
+  /** Refresh access token via refresh token */
   def refreshAccessToken(refreshTokenStr: String): IO[Either[String, AuthenticationService.LoginResponse]] =
     (for
-      // Находим refresh token
+      // Find refresh token
       refreshToken <- refreshTokenRepository.findByToken(refreshTokenStr).flatMap {
         case Some(token) => IO.pure(token)
         case None        => IO.raiseError(new RuntimeException("Invalid refresh token"))
       }
 
-      // Проверяем expiration
+      // Check expiration
       _ <-
         if refreshToken.isExpired then
           refreshTokenRepository.delete(refreshTokenStr) *>
             IO.raiseError(new RuntimeException("Refresh token expired"))
         else IO.unit
 
-      // Получаем credentials и пользователя
+      // Get credentials and user
       credentials <- credentialsRepository.findByUserId(refreshToken.userId).flatMap {
         case Some(c) => IO.pure(c)
         case None    => IO.raiseError(new RuntimeException("User not found"))
@@ -205,12 +205,12 @@ class AuthenticationService(
         case None    => IO.raiseError(new RuntimeException("User not found"))
       }
 
-      // Генерируем новый access token
+      // Generate new access token
       accessToken <- jwtService.generateAccessToken(credentials.userId, credentials.role, credentials.email)
 
       response = AuthenticationService.LoginResponse(
         accessToken = accessToken.token,
-        refreshToken = refreshTokenStr, // Используем тот же refresh token
+        refreshToken = refreshTokenStr, // Reuse the same refresh token
         expiresAt = accessToken.expiresAt,
         user = user
       )
@@ -219,25 +219,25 @@ class AuthenticationService(
       case Left(error)     => Left(error.getMessage)
     }
 
-  /** Logout - инвалидация токенов */
+  /** Logout - invalidate tokens */
   def logout(refreshTokenStr: String, userId: UUID, ipAddress: String, userAgent: String): IO[Boolean] =
     refreshTokenRepository.delete(refreshTokenStr) *>
       auditLog(userId, "LOGOUT", ipAddress, userAgent, success = true, None)
         .as(true)
 
-  /** Logout со всех устройств */
+  /** Logout from all devices */
   def logoutAll(userId: UUID, ipAddress: String, userAgent: String): IO[Int] =
     refreshTokenRepository.deleteByUserId(userId) <*
       auditLog(userId, "LOGOUT_ALL", ipAddress, userAgent, success = true, None)
 
-  /** Валидация токена */
+  /** Token validation */
   def validateToken(token: String): IO[Either[String, AuthToken]] =
     jwtService.validateToken(token)
 
-  /** Проверка прав доступа */
+  /** Check access permissions */
   def hasPermission(role: UserRole, permission: Permission): Boolean =
     (role, permission) match
-      case (UserRole.Admin, _) => true // Админ имеет все права
+      case (UserRole.Admin, _) => true // Admin has all permissions
       case (
             UserRole.Specialist,
             Permission.ReadSpecialist | Permission.WriteSpecialist | Permission.ManageConsultations
@@ -246,7 +246,7 @@ class AuthenticationService(
       case (UserRole.Client, Permission.ReadUser | Permission.ManageConsultations) => true
       case _                                                                       => false
 
-  /** Аудит лог */
+  /** Audit log */
   private def auditLog(
     userId: UUID,
     action: String,

@@ -8,10 +8,10 @@ import com.consultant.api.dto.ErrorResponse
 import com.consultant.infrastructure.metrics.MetricsCollector
 import io.circe.Codec
 
-/** Эндпоинт для мониторинга метрик системы */
+/** Endpoint for system metrics monitoring */
 class MetricsRoutes(metricsCollector: MetricsCollector):
 
-  // DTOs для метрик
+  // DTOs for metrics
   case class RequestMetricsDto(
     totalRequests: Long,
     successfulRequests: Long,
@@ -38,7 +38,7 @@ class MetricsRoutes(metricsCollector: MetricsCollector):
     .in("metrics")
     .errorOut(statusCode(sttp.model.StatusCode.InternalServerError))
 
-  // GET /metrics - получить все метрики
+  // GET /metrics - get all metrics
   val getMetricsEndpoint = baseEndpoint.get
     .out(jsonBody[SystemMetricsDto])
     .description("Get system metrics")

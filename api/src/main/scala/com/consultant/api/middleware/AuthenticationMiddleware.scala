@@ -9,10 +9,10 @@ import com.consultant.infrastructure.security.JwtTokenService
 import org.http4s.headers.Authorization
 import org.http4s.Credentials
 
-/** Middleware для аутентификации запросов */
+/** Middleware for request authentication */
 class AuthenticationMiddleware(jwtService: JwtTokenService):
 
-  /** Извлекает и валидирует JWT токен из заголовка */
+  /** Extracts and validates JWT token from header */
   private val authUser: Kleisli[IO, Request[IO], Either[String, AuthToken]] =
     Kleisli { request =>
       val tokenEither = request.headers.get[Authorization].map {
@@ -29,7 +29,7 @@ class AuthenticationMiddleware(jwtService: JwtTokenService):
           IO.pure(Left("No authorization token provided"))
     }
 
-  /** Обработчик ошибок аутентификации */
+  /** Authentication error handler */
   private val onFailure: AuthedRoutes[String, IO] =
     Kleisli { req =>
       OptionT.liftF(
@@ -40,11 +40,11 @@ class AuthenticationMiddleware(jwtService: JwtTokenService):
       )
     }
 
-  /** Middleware для защищенных endpoint'ов */
+  /** Middleware for protected endpoints */
   val middleware: AuthMiddleware[IO, AuthToken] =
     AuthMiddleware(authUser, onFailure)
 
-  /** Middleware с проверкой роли */
+  /** Middleware with role checking */
   def requireRole(allowedRoles: UserRole*): Kleisli[IO, Request[IO], Either[String, AuthToken]] =
     authUser.flatMapF { tokenResult =>
       tokenResult match
@@ -56,14 +56,14 @@ class AuthenticationMiddleware(jwtService: JwtTokenService):
           IO.pure(Left(error))
     }
 
-  /** Проверка роли Admin */
+  /** Check for Admin role */
   val requireAdmin: Kleisli[IO, Request[IO], Either[String, AuthToken]] =
     requireRole(UserRole.Admin)
 
-  /** Проверка роли Specialist */
+  /** Check for Specialist role */
   val requireSpecialist: Kleisli[IO, Request[IO], Either[String, AuthToken]] =
     requireRole(UserRole.Specialist, UserRole.Admin)
 
-  /** Проверка роли Client или выше */
+  /** Check for Client role or higher */
   val requireClient: Kleisli[IO, Request[IO], Either[String, AuthToken]] =
     requireRole(UserRole.Client, UserRole.Specialist, UserRole.Admin)

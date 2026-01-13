@@ -4,7 +4,7 @@ import cats.effect.{ IO, Ref }
 import cats.syntax.all.*
 import scala.concurrent.duration.*
 
-/** Circuit Breaker pattern для защиты от каскадных сбоев */
+/** Circuit Breaker pattern for protection from cascading failures */
 class CircuitBreakerService(
   maxFailures: Int = 5,
   resetTimeout: FiniteDuration = 30.seconds,
@@ -12,9 +12,9 @@ class CircuitBreakerService(
 ):
 
   enum State:
-    case Closed   // Нормальная работа
-    case Open     // Блокировка вызовов
-    case HalfOpen // Пробный режим
+    case Closed   // Normal operation
+    case Open     // Block calls
+    case HalfOpen // Test mode
 
   case class CircuitState(
     state: State,
@@ -32,7 +32,7 @@ class CircuitBreakerService(
       currentState <- stateRef.get
       result <- currentState.state match
         case State.Open =>
-          // Проверяем, не пора ли перейти в HalfOpen
+          // Check if it's time to transition to HalfOpen
           currentState.lastFailureTime match
             case Some(time) if System.currentTimeMillis() - time >= resetTimeout.toMillis =>
               stateRef.set(CircuitState(State.HalfOpen, 0, None, 0)) *>
