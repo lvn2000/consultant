@@ -1,19 +1,19 @@
-# Масштабирование системы Consultant
+# Scaling the Consultant System
 
-## Архитектурный подход
+## Architectural Approach
 
-Система спроектирована для **горизонтального масштабирования** (horizontal scaling) с использованием stateless инстансов приложения.
+The system is designed for **horizontal scaling** using stateless application instances.
 
-## Реализованные компоненты масштабирования
+## Implemented Scaling Components
 
-### 1. **Кеширование - Redis**
+### 1. **Caching - Redis**
 
-- **RedisCacheService** - реализация CacheService через Redis
-- Уменьшает нагрузку на БД
-- LRU eviction политика
-- TTL для автоочистки
+- **RedisCacheService** - CacheService implementation via Redis
+- Reduces database load
+- LRU eviction policy
+- TTL for automatic cleanup
 
-**Применение:**
+**Usage:**
 
 ```scala
 cacheService.get(s"specialist:$id").flatMap {
@@ -27,88 +27,88 @@ cacheService.get(s"specialist:$id").flatMap {
 
 ### 2. **Circuit Breaker**
 
-- **CircuitBreakerService** - защита от каскадных сбоев
-- 3 состояния: Closed → Open → HalfOpen
-- Автоматическое восстановление
+- **CircuitBreakerService** - protection against cascading failures
+- 3 states: Closed → Open → HalfOpen
+- Automatic recovery
 
-**Применение:**
+**Usage:**
 
 ```scala
 val circuitBreaker = new CircuitBreakerService(maxFailures = 5, resetTimeout = 30.seconds)
 circuitBreaker.protect(externalApiCall)
 ```
 
-### 3. **Метрики и мониторинг**
+### 3. **Metrics and Monitoring**
 
-- **MetricsCollector** - сбор метрик производительности
+- **MetricsCollector** - performance metrics collection
 - Request metrics: total, success rate, avg response time
 - Service metrics: active connections, cache hit rate
-- Endpoints: `/metrics` для Prometheus
+- Endpoints: `/metrics` for Prometheus
 
 ### 4. **Database Connection Pooling**
 
-- **DatabasePoolConfig** - HikariCP оптимизация
-- Настройки для master (write) и read replica
+- **DatabasePoolConfig** - HikariCP optimization
+- Settings for master (write) and read replica
 - Connection leak detection
 - Optimal pool sizing
 
-### 5. **Контейнеризация**
+### 5. **Containerization**
 
 - **Dockerfile** - multi-stage build
-- Оптимизированный JVM для контейнеров
+- JVM optimized for containers
 - Health checks
-- Non-root пользователь для безопасности
+- Non-root user for security
 
-### 6. **Локальный кластер - Docker Compose**
+### 6. **Local Cluster - Docker Compose**
 
-- 3 инстанса приложения
+- 3 application instances
 - PostgreSQL master
 - Redis cache
 - Nginx load balancer (least connections)
-- Rate limiting и кеширование на уровне nginx
+- Rate limiting and caching at nginx level
 
 ### 7. **Kubernetes/AWS ECS**
 
-- **deployment.yaml** - production-ready конфигурация
+- **deployment.yaml** - production-ready configuration
 - Horizontal Pod Autoscaler (3-10 pods)
-- Anti-affinity для распределения по нодам
-- Rolling updates без downtime
+- Anti-affinity for node distribution
+- Rolling updates with zero downtime
 - Liveness/Readiness probes
 
-## Стратегия масштабирования
+## Scaling Strategy
 
-### Tier 1: До 1000 RPS
+### Tier 1: Up to 1,000 RPS
 
 ```
-- 3 инстанса приложения
+- 3 application instances
 - 1 PostgreSQL master
 - 1 Redis instance
 - Local load balancer (nginx)
 ```
 
-### Tier 2: До 10,000 RPS
+### Tier 2: Up to 10,000 RPS
 
 ```
-- 5-10 инстансов приложения (HPA)
+- 5-10 application instances (HPA)
 - PostgreSQL master + 2 read replicas
 - Redis Cluster (3 masters, 3 replicas)
 - AWS ALB/NLB
 - CloudFront CDN
 ```
 
-### Tier 3: До 100,000+ RPS
+### Tier 3: Up to 100,000+ RPS
 
 ```
-- Auto-scaling до 50+ pods
+- Auto-scaling up to 50+ pods
 - PostgreSQL sharding + pooling (PgBouncer)
-- Redis Cluster с партиционированием
-- Асинхронная обработка через SQS
+- Redis Cluster with partitioning
+- Async processing via SQS
 - ElastiCache Redis
 - RDS Multi-AZ + Read Replicas
 - Global load balancing
 ```
 
-## AWS Deployment архитектура
+## AWS Deployment Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -145,36 +145,36 @@ circuitBreaker.protect(externalApiCall)
 └──────────────┘
       │
 ┌─────▼────────┐
-│ S3           │ (Файлы/документы)
+│ S3           │ (Files/documents)
 └──────────────┘
 ```
 
-## Запуск локального кластера
+## Running Local Cluster
 
 ### Docker Compose
 
 ```bash
-# Сборка образа
+# Build image
 docker build -t consultant-api:latest .
 
-# Запуск кластера
+# Start cluster
 docker-compose up -d
 
-# Проверка
+# Verify
 curl http://localhost/health
 curl http://localhost/api/users
 
-# Просмотр логов
+# View logs
 docker-compose logs -f app-1
 
-# Масштабирование
+# Scale
 docker-compose up -d --scale app=5
 ```
 
 ### Kubernetes
 
 ```bash
-# Создание секретов
+# Create secrets
 kubectl create secret generic db-credentials \
   --from-literal=host=<RDS_ENDPOINT> \
   --from-literal=username=consultant_user \
@@ -183,47 +183,47 @@ kubectl create secret generic db-credentials \
 # Deploy
 kubectl apply -f kubernetes/deployment.yaml
 
-# Проверка автомасштабирования
+# Check autoscaling
 kubectl get hpa
 kubectl top pods
 ```
 
-## Мониторинг и алерты
+## Monitoring and Alerts
 
-### Метрики для отслеживания
+### Metrics to Track
 
-1. **Request rate** - запросов в секунду
-2. **Error rate** - процент ошибок
-3. **Response time (p50, p95, p99)** - латентность
-4. **Database connection pool** - активные/idle подключения
-5. **Cache hit rate** - эффективность кеша
-6. **JVM heap usage** - использование памяти
-7. **CPU/Memory utilization** - нагрузка на ресурсы
+1. **Request rate** - requests per second
+2. **Error rate** - percentage of errors
+3. **Response time (p50, p95, p99)** - latency
+4. **Database connection pool** - active/idle connections
+5. **Cache hit rate** - cache effectiveness
+6. **JVM heap usage** - memory utilization
+7. **CPU/Memory utilization** - resource load
 
-### Endpoints для мониторинга
+### Monitoring Endpoints
 
 - `/health` - health check
 - `/metrics` - Prometheus metrics
-- CloudWatch для AWS
+- CloudWatch for AWS
 - Grafana dashboards
 
 ## Best Practices
 
-1. ✅ **Stateless приложение** - сессии в Redis, не в памяти
-2. ✅ **Connection pooling** - эффективное использование БД подключений
-3. ✅ **Caching** - Redis для hot data
-4. ✅ **Circuit breakers** - защита от перегрузки
-5. ✅ **Rate limiting** - защита от DDoS
-6. ✅ **Async processing** - SQS для тяжелых операций
-7. ✅ **Graceful shutdown** - корректное завершение запросов
-8. ✅ **Health checks** - автоматическое обнаружение проблем
-9. ✅ **Horizontal scaling** - добавление инстансов, не увеличение размера
+1. ✅ **Stateless application** - sessions in Redis, not in memory
+2. ✅ **Connection pooling** - efficient DB connection usage
+3. ✅ **Caching** - Redis for hot data
+4. ✅ **Circuit breakers** - overload protection
+5. ✅ **Rate limiting** - DDoS protection
+6. ✅ **Async processing** - SQS for heavy operations
+7. ✅ **Graceful shutdown** - proper request completion
+8. ✅ **Health checks** - automatic problem detection
+9. ✅ **Horizontal scaling** - add instances, don't increase size
 
-## Дальнейшие улучшения
+## Future Improvements
 
-- [ ] Database sharding для очень больших объемов
+- [ ] Database sharding for very large volumes
 - [ ] CQRS (Command Query Responsibility Segregation)
-- [ ] Event sourcing для audit trail
-- [ ] GraphQL federation для микросервисов
-- [ ] Service mesh (Istio) для advanced networking
+- [ ] Event sourcing for audit trail
+- [ ] GraphQL federation for microservices
+- [ ] Service mesh (Istio) for advanced networking
 - [ ] Distributed tracing (Jaeger/Zipkin)

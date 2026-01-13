@@ -1,79 +1,79 @@
-# Компоненты масштабирования - Quick Start
+# Scaling Components - Quick Start
 
-## 🎯 Что добавлено
+## 🎯 What's Added
 
-### 1. Redis Кеш (RedisCacheService)
+### 1. Redis Cache (RedisCacheService)
 
-**Файл:** `infrastructure/cache/RedisCacheService.scala`
-**Цель:** Снижение нагрузки на БД через кеширование hot data
+**File:** `infrastructure/cache/RedisCacheService.scala`
+**Purpose:** Reduce DB load through hot data caching
 
 ### 2. Circuit Breaker (CircuitBreakerService)
 
-**Файл:** `infrastructure/resilience/CircuitBreakerService.scala`
-**Цель:** Защита от каскадных сбоев при перегрузке внешних сервисов
+**File:** `infrastructure/resilience/CircuitBreakerService.scala`
+**Purpose:** Protection against cascading failures during external service overload
 
-### 3. Метрики (MetricsCollector)
+### 3. Metrics (MetricsCollector)
 
-**Файл:** `infrastructure/metrics/MetricsCollector.scala`
-**Цель:** Мониторинг производительности (RPS, latency, cache hit rate)
+**File:** `infrastructure/metrics/MetricsCollector.scala`
+**Purpose:** Performance monitoring (RPS, latency, cache hit rate)
 
 ### 4. Database Pool Config
 
-**Файл:** `data/config/DatabasePoolConfig.scala`
-**Цель:** Оптимизация HikariCP для высоких нагрузок + read replicas
+**File:** `data/config/DatabasePoolConfig.scala`
+**Purpose:** HikariCP optimization for high loads + read replicas
 
 ### 5. Docker + Kubernetes
 
-**Файлы:** `Dockerfile`, `docker-compose.yml`, `kubernetes/deployment.yaml`
-**Цель:** Контейнеризация + оркестрация для horizontal scaling
+**Files:** `Dockerfile`, `docker-compose.yml`, `kubernetes/deployment.yaml`
+**Purpose:** Containerization + orchestration for horizontal scaling
 
 ### 6. Load Balancing
 
-**Файл:** `nginx.conf`
-**Цель:** Nginx с least connections, rate limiting, кешированием
+**File:** `nginx.conf`
+**Purpose:** Nginx with least connections, rate limiting, caching
 
 ### 7. Health & Metrics API
 
-**Файлы:** `api/routes/HealthRoutes.scala`, `api/routes/MetricsRoutes.scala`
-**Цель:** Endpoints для Kubernetes health checks и Prometheus
+**Files:** `api/routes/HealthRoutes.scala`, `api/routes/MetricsRoutes.scala`
+**Purpose:** Endpoints for Kubernetes health checks and Prometheus
 
-## 🚀 Быстрый запуск локального кластера
+## 🚀 Quick Start Local Cluster
 
 ```bash
-# 1. Собрать образ
+# 1. Build image
 docker build -t consultant-api:latest .
 
-# 2. Запустить кластер (3 инстанса + PostgreSQL + Redis + nginx)
+# 2. Start cluster (3 instances + PostgreSQL + Redis + nginx)
 docker-compose up -d
 
-# 3. Проверить
+# 3. Verify
 curl http://localhost/health
 curl http://localhost/metrics
 
-# 4. Тестовый запрос
+# 4. Test request
 curl http://localhost/api/users
 
-# 5. Просмотр логов
+# 5. View logs
 docker-compose logs -f app-1
 
-# 6. Масштабирование до 5 инстансов
+# 6. Scale to 5 instances
 docker-compose up -d --scale app-1=2 --scale app-2=2 --scale app-3=1
 
-# 7. Остановка
+# 7. Stop
 docker-compose down
 ```
 
-## 📊 Стратегия масштабирования
+## 📊 Scaling Strategy
 
-| Нагрузка | Конфигурация |
-|----------|--------------|
-| **< 1K RPS** | 3 инстанса, 1 DB, 1 Redis, Local LB |
+| Load | Configuration |
+|------|---------------|
+| **< 1K RPS** | 3 instances, 1 DB, 1 Redis, Local LB |
 | **< 10K RPS** | 5-10 pods (HPA), Read Replicas, Redis Cluster, AWS ALB |
 | **< 100K RPS** | 50+ pods, DB Sharding, ElastiCache, CloudFront CDN |
 
-## 🔧 Следующие шаги
+## 🔧 Next Steps
 
-1. **Добавить Redis в AppConfig:**
+1. **Add Redis to AppConfig:**
 
 ```scala
 case class RedisConfig(
@@ -82,7 +82,7 @@ case class RedisConfig(
 )
 ```
 
-1. **Интегрировать в Server.scala:**
+1. **Integrate in Server.scala:**
 
 ```scala
 redis <- Redis[IO].utf8("redis://localhost:6379").toResource
@@ -90,23 +90,23 @@ cacheService = new RedisCacheService(redis)
 cachedSpecialistService = new CachedSpecialistService(specialistRepo, cacheService)
 ```
 
-1. **Добавить метрики middleware:**
+1. **Add metrics middleware:**
 
 ```scala
 metricsCollector = new MetricsCollector()
 wrappedRoutes = routes.map(r => metricsCollector.recordRequest(r))
 ```
 
-1. **Deploy в AWS:**
-   - ECS/EKS для приложения
+1. **Deploy to AWS:**
+   - ECS/EKS for application
    - RDS PostgreSQL (Multi-AZ + Read Replicas)
    - ElastiCache Redis
-   - ALB для load balancing
+   - ALB for load balancing
 
-## 📈 Мониторинг
+## 📈 Monitoring
 
 - **Health:** `GET /health` - Kubernetes liveness/readiness
 - **Metrics:** `GET /metrics` - Prometheus endpoint
-- **Swagger:** `GET /docs` - API документация
+- **Swagger:** `GET /docs` - API documentation
 
-Подробности в [SCALING.md](./SCALING.md)
+Details in [SCALING.md](./SCALING.md)
