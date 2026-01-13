@@ -61,7 +61,7 @@ backup-*.json.enc
 docker-compose.override.yml
 
 # Nuxt build output
-.nuxt/
+# .nuxt/
 dist/
 # Node modules
 node_modules/
