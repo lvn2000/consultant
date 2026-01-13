@@ -96,3 +96,66 @@ Then you MAY skip confirmation, but:
 🔒 **DEFAULT BEHAVIOR:** Always ask for confirmation before `git commit` or `git push`
 ⚠️ **EXCEPTION:** Only when user explicitly requests to bypass with "force" keyword
 📝 **ALWAYS:** Show user what will happen before doing it
+
+---
+
+## Code and Documentation Language Policy
+
+### 📝 MANDATORY: All Code and Documentation Must Be in English
+
+**CRITICAL RULES:**
+
+1. **All code comments MUST be in English**
+   - Class and method documentation comments (docstrings)
+   - Inline comments
+   - TODO/FIXME/NOTE comments
+   - Code annotations
+
+2. **All documentation files MUST be in English**
+   - README files (*.md)
+   - Technical documentation
+   - API documentation
+   - Setup guides and quickstart guides
+   - Security and architecture documentation
+
+3. **Variable and function names MUST use English words**
+   - Use clear, descriptive English names
+   - Follow standard naming conventions
+   - No transliteration from other languages
+
+4. **When creating or modifying code:**
+   - Always write comments in English
+   - If you find non-English comments, translate them to English
+   - Ensure consistency across the entire codebase
+
+5. **When creating or modifying documentation:**
+   - Write all content in English
+   - Use proper grammar and clear technical language
+   - Follow documentation best practices
+
+### Why This Policy Exists:
+
+- **International collaboration**: English enables developers worldwide to contribute
+- **Code maintainability**: Consistent language makes code easier to understand and maintain
+- **Professional standards**: English is the de facto standard for software development
+- **Tool compatibility**: Most development tools and IDE features work best with English
+
+### Examples of CORRECT behavior:
+
+✅ `// Check if user is authenticated`
+✅ `/** Validates JWT token and returns user data */`
+✅ `const isValid = validatePassword(password);`
+
+### Examples of INCORRECT behavior (DO NOT DO THIS):
+
+❌ `// Проверяем, авторизован ли пользователь`
+❌ `/** Валидирует JWT токен и возвращает данные пользователя */`
+❌ `const провалид = validatePassword(пароль);`
+
+### Enforcement:
+
+- When generating new code: Always use English for all comments and names
+- When modifying existing code: If you encounter non-English text, translate it to English
+- When reviewing code: Flag any non-English content for translation
+
+🌍 **REMEMBER:** English-only policy applies to ALL project files, including Scala, configuration, and documentation files.
