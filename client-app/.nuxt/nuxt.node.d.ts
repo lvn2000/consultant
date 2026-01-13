@@ -1,3 +1,6 @@
+/// <reference types="@nuxtjs/tailwindcss" />
+/// <reference types="@pinia/nuxt" />
+/// <reference types="@nuxt/icon" />
 /// <reference types="@nuxt/devtools" />
 /// <reference types="@nuxt/telemetry" />
 /// <reference path="types/modules.d.ts" />
@@ -6,7 +9,7 @@
 /// <reference types="nuxt" />
 /// <reference types="../node_modules/@nuxt/vite-builder/dist/index.mjs" />
 /// <reference types="/home/lvn/prg/scala/Consultant/backend/client-app/node_modules/@nuxt/nitro-server/dist/index.mjs" />
-/// <reference path="types/middleware.d.ts" />
+/// <reference path="types/nitro-middleware.d.ts" />
 /// <reference path="schema/nuxt.schema.d.ts" />
 
 export {}
