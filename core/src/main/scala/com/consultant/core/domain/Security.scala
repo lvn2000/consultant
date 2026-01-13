@@ -5,13 +5,13 @@ import java.time.Instant
 
 object security:
 
-  // Роли пользователей
+  // User roles
   enum UserRole:
-    case Client     // Обычный клиент
-    case Specialist // Специалист
-    case Admin      // Администратор
+    case Client     // Regular client
+    case Specialist // Specialist
+    case Admin      // Administrator
 
-  // Права доступа
+  // Access permissions
   enum Permission:
     case ReadUser
     case WriteUser
@@ -22,7 +22,7 @@ object security:
     case ManageCategories
     case AdminAccess
 
-  // Токен аутентификации
+  // Authentication token
   case class AuthToken(
     token: String,
     userId: UUID,
@@ -31,7 +31,7 @@ object security:
   ):
     def isExpired: Boolean = Instant.now().isAfter(expiresAt)
 
-  // Refresh token для продления сессии
+  // Refresh token for session renewal
   case class RefreshToken(
     token: String,
     userId: UUID,
@@ -40,7 +40,7 @@ object security:
   ):
     def isExpired: Boolean = Instant.now().isAfter(expiresAt)
 
-  // Учетные данные
+  // Credentials
   case class Credentials(
     email: String,
     passwordHash: String, // BCrypt/Argon2 hash
@@ -55,7 +55,7 @@ object security:
     def isLocked: Boolean =
       lockedUntil.exists(until => Instant.now().isBefore(until))
 
-  // Аудит безопасности
+  // Security audit
   case class SecurityAuditLog(
     id: UUID,
     userId: UUID,
@@ -67,7 +67,7 @@ object security:
     details: Option[String] = None
   )
 
-  // Сессия пользователя
+  // User session
   case class UserSession(
     sessionId: String,
     userId: UUID,

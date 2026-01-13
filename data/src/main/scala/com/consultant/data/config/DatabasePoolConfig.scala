@@ -4,16 +4,16 @@ import cats.effect.{ IO, Resource }
 import doobie.hikari.HikariTransactor
 import doobie.util.ExecutionContexts
 
-/** Оптимизированная конфигурация пула подключений для высоких нагрузок */
+/** Optimized connection pool configuration for high loads */
 object DatabasePoolConfig:
 
   case class PoolSettings(
-    maximumPoolSize: Int = 20,           // Максимум подключений
-    minimumIdle: Int = 5,                // Минимум idle подключений
-    connectionTimeout: Long = 30000,     // 30 секунд на установку соединения
-    idleTimeout: Long = 600000,          // 10 минут idle
-    maxLifetime: Long = 1800000,         // 30 минут максимальная жизнь подключения
-    leakDetectionThreshold: Long = 60000 // 1 минута для детекции утечек
+    maximumPoolSize: Int = 20,           // Maximum connections
+    minimumIdle: Int = 5,                // Minimum idle connections
+    connectionTimeout: Long = 30000,     // 30 seconds for connection establishment
+    idleTimeout: Long = 600000,          // 10 minutes idle
+    maxLifetime: Long = 1800000,         // 30 minutes maximum connection lifetime
+    leakDetectionThreshold: Long = 60000 // 1 minute for leak detection
   )
 
   def createTransactor(
@@ -24,10 +24,10 @@ object DatabasePoolConfig:
     poolSettings: PoolSettings = PoolSettings()
   ): Resource[IO, HikariTransactor[IO]] =
     for
-      // Execution context для блокирующих операций БД
+      // Execution context for blocking DB operations
       connectEC <- ExecutionContexts.fixedThreadPool[IO](poolSettings.maximumPoolSize)
 
-      // Создаем HikariCP transactor с оптимизированными настройками
+      // Create HikariCP transactor with optimized settings
       xa <- HikariTransactor.newHikariTransactor[IO](
         driverClassName = driver,
         url = url,
@@ -36,7 +36,7 @@ object DatabasePoolConfig:
         connectEC = connectEC
       )
 
-      // Настраиваем HikariCP пул
+      // Configure HikariCP pool
       _ <- Resource.eval(
         xa.configure { ds =>
           IO {
@@ -47,7 +47,7 @@ object DatabasePoolConfig:
             ds.setMaxLifetime(poolSettings.maxLifetime)
             ds.setLeakDetectionThreshold(poolSettings.leakDetectionThreshold)
 
-            // Дополнительные оптимизации
+            // Additional optimizations
             ds.setConnectionTestQuery("SELECT 1")
             ds.setAutoCommit(false)
             ds.setPoolName("consultant-pool")
@@ -56,7 +56,7 @@ object DatabasePoolConfig:
       )
     yield xa
 
-  /** Конфигурация для Read Replica (только чтение) */
+  /** Configuration for Read Replica (read-only) */
   def createReadReplicaTransactor(
     driver: String,
     url: String,
@@ -64,7 +64,7 @@ object DatabasePoolConfig:
     password: String
   ): Resource[IO, HikariTransactor[IO]] =
     val readPoolSettings = PoolSettings(
-      maximumPoolSize = 30, // Больше подключений для чтения
+      maximumPoolSize = 30, // More connections for reading
       minimumIdle = 10,
       connectionTimeout = 20000
     )

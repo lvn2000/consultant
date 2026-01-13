@@ -7,11 +7,11 @@ import javax.crypto.spec.PBEKeySpec
 import java.security.SecureRandom
 import java.util.Base64
 
-/** Хеширование паролей с использованием PBKDF2 */
+/** Password hashing using PBKDF2 */
 class PasswordHashingService:
 
   private val algorithm  = "PBKDF2WithHmacSHA512"
-  private val iterations = 210000 // OWASP рекомендация для 2024+
+  private val iterations = 210000 // OWASP recommendation for 2024+
   private val keyLength  = 512
   private val saltLength = 32
 
@@ -19,7 +19,7 @@ class PasswordHashingService:
   private val encoder      = Base64.getEncoder
   private val decoder      = Base64.getDecoder
 
-  /** Генерирует криптографически стойкую соль */
+  /** Generates cryptographically strong salt */
   def generateSalt(): IO[String] =
     IO {
       val salt = new Array[Byte](saltLength)
@@ -27,7 +27,7 @@ class PasswordHashingService:
       encoder.encodeToString(salt)
     }
 
-  /** Хеширует пароль с солью */
+  /** Hashes password with salt */
   def hashPassword(password: String, salt: String): IO[String] =
     IO {
       val saltBytes = decoder.decode(salt)
@@ -37,13 +37,13 @@ class PasswordHashingService:
       encoder.encodeToString(hash)
     }
 
-  /** Верифицирует пароль */
+  /** Verifies password */
   def verifyPassword(password: String, hash: String, salt: String): IO[Boolean] =
     hashPassword(password, salt).map(_ == hash).handleErrorWith { error =>
       IO.println(s"Password verification error: ${error.getMessage}") *> IO.pure(false)
     }
 
-  /** Проверяет сложность пароля */
+  /** Validates password complexity */
   def validatePasswordStrength(password: String): IO[Either[String, Unit]] =
     IO {
       if password.length < 8 then Left("Password must be at least 8 characters long")
@@ -55,7 +55,7 @@ class PasswordHashingService:
       else Right(())
     }
 
-  /** Генерирует безопасный случайный токен */
+  /** Generates secure random token */
   def generateSecureToken(length: Int = 32): IO[String] =
     IO {
       val bytes = new Array[Byte](length)

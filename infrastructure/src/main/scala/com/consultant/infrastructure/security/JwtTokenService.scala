@@ -11,7 +11,7 @@ import java.time.Instant
 import scala.concurrent.duration.*
 import java.util.UUID
 
-/** JWT Token Service для аутентификации */
+/** JWT Token Service for authentication */
 class JwtTokenService(
   secretKey: String,
   issuer: String = "consultant-api",
@@ -28,7 +28,7 @@ class JwtTokenService(
   ) derives Encoder.AsObject,
         Decoder
 
-  /** Генерирует access token (JWT) */
+  /** Generates access token (JWT) */
   def generateAccessToken(userId: UUID, role: UserRole, email: String): IO[AuthToken] =
     IO {
       val now       = Instant.now()
@@ -57,16 +57,16 @@ class JwtTokenService(
       )
     }
 
-  /** Валидирует и декодирует JWT token */
+  /** Validates and decodes JWT token */
   def validateToken(token: String): IO[Either[String, AuthToken]] =
     IO {
       JwtCirce.decode(token, secretKey, Seq(algorithm)).toEither match
         case Right(claim) =>
-          // Проверяем expiration
+          // Check expiration
           val now = Instant.now().getEpochSecond
           if claim.expiration.exists(_ < now) then Left("Token expired")
           else
-            // Декодируем claims
+            // Decode claims
             decode[TokenClaims](claim.content) match
               case Right(claims) =>
                 Right(
@@ -84,7 +84,7 @@ class JwtTokenService(
           Left(s"Invalid token: ${error.getMessage}")
     }
 
-  /** Генерирует refresh token */
+  /** Generates refresh token */
   def generateRefreshToken(userId: UUID): IO[RefreshToken] =
     IO {
       val token     = UUID.randomUUID().toString
@@ -97,7 +97,7 @@ class JwtTokenService(
       )
     }
 
-  /** Извлекает userId из токена без полной валидации (для логирования) */
+  /** Extracts userId from token without full validation (for logging) */
   def extractUserId(token: String): IO[Option[UUID]] =
     IO {
       JwtCirce.decode(token, secretKey, Seq(algorithm)).toOption.flatMap { claim =>

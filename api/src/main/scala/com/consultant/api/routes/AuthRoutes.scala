@@ -11,7 +11,7 @@ import io.circe.Codec
 import java.time.Instant
 import java.util.UUID
 
-/** Эндпоинты аутентификации и авторизации */
+/** Authentication and authorization endpoints */
 class AuthRoutes(authService: AuthenticationService):
 
   // DTOs
@@ -56,7 +56,7 @@ class AuthRoutes(authService: AuthenticationService):
       )
     )
 
-  // POST /auth/register - Регистрация
+  // POST /auth/register - Registration
   val registerEndpoint = baseEndpoint.post
     .in("register")
     .in(jsonBody[RegisterDto])
@@ -79,7 +79,7 @@ class AuthRoutes(authService: AuthenticationService):
 
     authService.register(request).flatMap {
       case Right(user) =>
-        // После регистрации автоматически логиним
+        // Auto login after registration
         val loginRequest = AuthenticationService.LoginRequest(
           email = dto.email,
           password = dto.password,
@@ -109,7 +109,7 @@ class AuthRoutes(authService: AuthenticationService):
     }
   }
 
-  // POST /auth/login - Вход
+  // POST /auth/login - Login
   val loginEndpoint = baseEndpoint.post
     .in("login")
     .in(jsonBody[LoginDto])
@@ -142,7 +142,7 @@ class AuthRoutes(authService: AuthenticationService):
     }
   }
 
-  // POST /auth/refresh - Обновление токена
+  // POST /auth/refresh - Token refresh
   val refreshEndpoint = baseEndpoint.post
     .in("refresh")
     .in(jsonBody[RefreshTokenDto])
@@ -168,7 +168,7 @@ class AuthRoutes(authService: AuthenticationService):
     }
   }
 
-  // POST /auth/logout - Выход
+  // POST /auth/logout - Logout
   val logoutEndpoint = baseEndpoint.post
     .in("logout")
     .in(jsonBody[LogoutDto])
