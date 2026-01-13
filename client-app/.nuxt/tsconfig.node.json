@@ -59,7 +59,7 @@
     "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitOverride": true,
-    "module": "preserve",
+    "module": "ESNext",
     "noEmit": true,
     "types": [],
     "moduleResolution": "Bundler",
