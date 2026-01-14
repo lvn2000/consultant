@@ -3,7 +3,7 @@ import sbt.Keys._
 
 ThisBuild / organization := "com.consultant"
 ThisBuild / version      := "0.1.0-SNAPSHOT"
-ThisBuild / scalaVersion := "3.3.1"
+ThisBuild / scalaVersion := "3.4.2"
 
 lazy val catsVersion       = "2.10.0"
 lazy val catsEffectVersion = "3.5.4"
