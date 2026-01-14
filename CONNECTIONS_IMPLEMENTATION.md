@@ -9,6 +9,7 @@ Successfully implemented a one-to-many relationship between Specialists and Conn
 **File:** [data/src/main/resources/db/migration/V003__connection_types_tables.sql](data/src/main/resources/db/migration/V003__connection_types_tables.sql)
 
 Creates two new tables:
+
 - `connection_types`: Stores predefined connection service types (Viber, WhatsApp, Slack, etc.)
   - Fields: id (UUID), name, description, created_at, updated_at
   - Includes default 6 connection types inserted
@@ -21,6 +22,7 @@ Creates two new tables:
 **File:** [core/src/main/scala/com/consultant/core/domain/Connection.scala](core/src/main/scala/com/consultant/core/domain/Connection.scala)
 
 Defines:
+
 - `ConnectionType`: Represents a communication service type
 - `SpecialistConnection`: Represents a specialist's contact on a specific service
 - `CreateConnectionRequest`: DTO for creating new connections
@@ -28,12 +30,14 @@ Defines:
 ### 3. Repository Ports
 **File:** [core/src/main/scala/com/consultant/core/ports/RepositoryPorts.scala](core/src/main/scala/com/consultant/core/ports/RepositoryPorts.scala)
 
+
 Added two trait abstractions:
 - `ConnectionRepository`: CRUD operations for specialist connections
   - create, findById, findBySpecialist, findBySpecialistAndType, update, delete, deleteBySpecialist
   
 - `ConnectionTypeRepository`: Read operations for connection types
   - findById, listAll, findByName
+
 
 ### 4. Repository Implementations
 **Files:**
@@ -45,6 +49,7 @@ Added two trait abstractions:
 
 ### 5. Service Layer
 **File:** [core/src/main/scala/com/consultant/core/service/ConnectionService.scala](core/src/main/scala/com/consultant/core/service/ConnectionService.scala)
+
 
 Provides business logic:
 - `addConnection()`: Add a connection for a specialist (validates uniqueness)
@@ -58,6 +63,7 @@ Provides business logic:
 ### 6. API DTOs
 **File:** [api/src/main/scala/com/consultant/api/dto/ConnectionDto.scala](api/src/main/scala/com/consultant/api/dto/ConnectionDto.scala)
 
+
 Defines transfer objects:
 - `ConnectionTypeDto`: API representation of connection type
 - `CreateConnectionDto`: Request to add a connection
@@ -66,6 +72,7 @@ Defines transfer objects:
 
 ### 7. API Routes
 **File:** [api/src/main/scala/com/consultant/api/routes/ConnectionRoutes.scala](api/src/main/scala/com/consultant/api/routes/ConnectionRoutes.scala)
+
 
 Implements endpoints:
 - `GET /api/connection-types` - List all connection types
@@ -80,6 +87,7 @@ Implements endpoints:
 **File:** [api/src/main/scala/com/consultant/api/DtoMappers.scala](api/src/main/scala/com/consultant/api/DtoMappers.scala)
 
 Added conversion functions:
+
 - `toConnectionTypeDto()`: Convert domain to DTO
 - `toSpecialistConnectionDto()`: Convert domain to DTO
 - `toCreateConnectionRequest()`: Convert DTO to domain request
@@ -88,21 +96,26 @@ Added conversion functions:
 
 ### 1. Type System
 **File:** [core/src/main/scala/com/consultant/core/domain/User.scala](core/src/main/scala/com/consultant/core/domain/User.scala)
+
 - Added type alias: `type ConnectionTypeId = UUID`
 
 ### 2. Specialist Domain Model
+
 **File:** [core/src/main/scala/com/consultant/core/domain/Specialist.scala](core/src/main/scala/com/consultant/core/domain/Specialist.scala)
 - Added field: `connections: List[SpecialistConnection]`
 
 ### 3. Specialist DTO
+
 **File:** [api/src/main/scala/com/consultant/api/dto/SpecialistDto.scala](api/src/main/scala/com/consultant/api/dto/SpecialistDto.scala)
 - Added field: `connections: List[SpecialistConnectionDto]`
+
 
 ### 4. Specialist Repository Implementation
 **File:** [data/src/main/scala/com/consultant/data/repository/PostgresSpecialistRepository.scala](data/src/main/scala/com/consultant/data/repository/PostgresSpecialistRepository.scala)
 - Updated constructor to accept `ConnectionRepository` dependency
 - Updated all methods to load connections when fetching specialists
 - Updated deletion to cascade delete connections
+
 
 ### 5. Server Configuration
 **File:** [api/src/main/scala/com/consultant/api/Server.scala](api/src/main/scala/com/consultant/api/Server.scala)
@@ -137,6 +150,7 @@ CREATE TABLE IF NOT EXISTS specialist_connections (
     UNIQUE (specialist_id, connection_type_id)
 );
 ```
+
 
 ## Default Connection Types
 - Viber
@@ -175,12 +189,14 @@ PUT /api/specialists/{specialistId}/connections/{connectionId}
 DELETE /api/specialists/{specialistId}/connections/{connectionId}
 ```
 
-## Testing Status
 ✅ Project compiles successfully with all new components
 ✅ Type system properly integrated
 ✅ Database migration file ready for Flyway
 ✅ All services and repositories properly initialized
 ✅ API endpoints registered and documented
+
+## Next Steps (Optional)
+ed and documented
 
 ## Next Steps (Optional)
 1. Add integration tests for ConnectionService
