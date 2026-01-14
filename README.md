@@ -113,6 +113,49 @@ sbt api/reRun
 
 Server will start on `http://localhost:8080`
 
+## Initial Test Data
+
+The system includes default test credentials for development and testing purposes. These are created automatically during the first database migration.
+
+### ⚠️ CRITICAL - SECURITY WARNING
+
+**You MUST change these credentials immediately after deploying to production!**
+
+### Test Accounts
+
+| Account | Email | Password | Role | Phone |
+|---------|-------|----------|------|-------|
+| **User** | user@example.com | user | Client | +1234567890 |
+| **Specialist** | spec@example.com | spec | Specialist | +9876543210 |
+
+### Test Specialist Details
+
+- **Hourly Rate:** $50.00
+- **Experience:** 5 years
+- **Status:** Available
+- **Connection:** WhatsApp (+9876543210)
+
+### Default UUIDs for Testing
+
+```
+Test User ID:       11111111-1111-1111-1111-111111111111
+Test Specialist ID: 22222222-2222-2222-2222-222222222222
+```
+
+### How to Remove Test Data
+
+For production or when ready to remove test accounts:
+
+```sql
+DELETE FROM specialist_connections WHERE specialist_id = '22222222-2222-2222-2222-222222222222'::uuid;
+DELETE FROM specialist_categories WHERE specialist_id = '22222222-2222-2222-2222-222222222222'::uuid;
+DELETE FROM specialists WHERE id = '22222222-2222-2222-2222-222222222222'::uuid;
+DELETE FROM credentials WHERE email IN ('user@example.com', 'spec@example.com');
+DELETE FROM users WHERE id IN ('11111111-1111-1111-1111-111111111111'::uuid, '22222222-2222-2222-2222-222222222222'::uuid);
+```
+
+For more details, see [TEST_CREDENTIALS.md](TEST_CREDENTIALS.md)
+
 ## API Endpoints
 
 ### Users
@@ -140,6 +183,16 @@ Server will start on `http://localhost:8080`
 - `POST /api/categories` - Create category
 - `GET /api/categories/:id` - Get category
 - `GET /api/categories` - List all categories
+
+### Connections
+
+- `GET /api/connection-types` - List available connection types (Viber, WhatsApp, Slack, etc.)
+- `GET /api/connection-types/:id` - Get specific connection type
+- `POST /api/specialists/:specialistId/connections` - Add connection for specialist
+- `GET /api/specialists/:specialistId/connections` - Get specialist's connections
+- `GET /api/specialists/:specialistId/connections/:connectionId` - Get specific connection
+- `PUT /api/specialists/:specialistId/connections/:connectionId` - Update connection
+- `DELETE /api/specialists/:specialistId/connections/:connectionId` - Remove connection
 
 ### Documentation
 
