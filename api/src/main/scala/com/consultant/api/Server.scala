@@ -16,44 +16,49 @@ import com.consultant.infrastructure.local.MockNotificationService
 object Server extends IOApp:
 
   def run(args: List[String]): IO[ExitCode] =
-    resources.use { case (config, userService, specialistService, consultationService, categoryService) =>
-      val userRoutes         = UserRoutes(userService)
-      val specialistRoutes   = SpecialistRoutes(specialistService)
-      val consultationRoutes = ConsultationRoutes(consultationService)
-      val categoryRoutes     = CategoryRoutes(categoryService)
+    resources.use {
+      case (config, userService, specialistService, consultationService, categoryService, connectionService) =>
+        val userRoutes         = UserRoutes(userService)
+        val specialistRoutes   = SpecialistRoutes(specialistService)
+        val consultationRoutes = ConsultationRoutes(consultationService)
+        val categoryRoutes     = CategoryRoutes(categoryService)
+        val connectionRoutes   = ConnectionRoutes(connectionService)
 
-      // Swagger documentation
-      val allEndpoints = userRoutes.endpoints ++ specialistRoutes.endpoints ++
-        consultationRoutes.endpoints ++ categoryRoutes.endpoints
+        // Swagger documentation
+        val allEndpoints = userRoutes.endpoints ++ specialistRoutes.endpoints ++
+          consultationRoutes.endpoints ++ categoryRoutes.endpoints ++ connectionRoutes.endpoints
 
-      val docEndpoints = SwaggerInterpreter()
-        .fromServerEndpoints(allEndpoints, "Consultant API", "1.0.0")
-      val swaggerRoutes = Http4sServerInterpreter[IO]().toRoutes(docEndpoints)
+        val docEndpoints = SwaggerInterpreter()
+          .fromServerEndpoints(allEndpoints, "Consultant API", "1.0.0")
+        val swaggerRoutes = Http4sServerInterpreter[IO]().toRoutes(docEndpoints)
 
-      val routes = Router(
-        "/"     -> userRoutes.routes,
-        "/"     -> specialistRoutes.routes,
-        "/"     -> consultationRoutes.routes,
-        "/"     -> categoryRoutes.routes,
-        "/docs" -> swaggerRoutes
-      ).orNotFound
+        val routes = Router(
+          "/"     -> userRoutes.routes,
+          "/"     -> specialistRoutes.routes,
+          "/"     -> consultationRoutes.routes,
+          "/"     -> categoryRoutes.routes,
+          "/"     -> connectionRoutes.routes,
+          "/docs" -> swaggerRoutes
+        ).orNotFound
 
-      EmberServerBuilder
-        .default[IO]
-        .withHost(Host.fromString(config.server.host).getOrElse(ipv4"0.0.0.0"))
-        .withPort(Port.fromInt(config.server.port).getOrElse(port"8080"))
-        .withHttpApp(routes)
-        .build
-        .use { _ =>
-          IO.println(s"Server started on http://${config.server.host}:${config.server.port}") >>
-            IO.println(s"Swagger UI: http://${config.server.host}:${config.server.port}/docs") >>
-            IO.never
-        }
-        .as(ExitCode.Success)
+        EmberServerBuilder
+          .default[IO]
+          .withHost(Host.fromString(config.server.host).getOrElse(ipv4"0.0.0.0"))
+          .withPort(Port.fromInt(config.server.port).getOrElse(port"8080"))
+          .withHttpApp(routes)
+          .build
+          .use { _ =>
+            IO.println(s"Server started on http://${config.server.host}:${config.server.port}") >>
+              IO.println(s"Swagger UI: http://${config.server.host}:${config.server.port}/docs") >>
+              IO.never
+          }
+          .as(ExitCode.Success)
     }
 
-  private def resources
-    : Resource[IO, (AppConfig, UserService, SpecialistService, ConsultationService, CategoryService)] =
+  private def resources: Resource[
+    IO,
+    (AppConfig, UserService, SpecialistService, ConsultationService, CategoryService, ConnectionService)
+  ] =
     for
       config <- Resource.eval(AppConfig.load)
       dbConfig = DbConfig(
@@ -65,10 +70,12 @@ object Server extends IOApp:
       xa <- DatabaseConfig.makeTransactor[IO](dbConfig)
 
       // Repositories
-      userRepo         = PostgresUserRepository(xa)
-      specialistRepo   = PostgresSpecialistRepository(xa)
-      categoryRepo     = PostgresCategoryRepository(xa)
-      consultationRepo = PostgresConsultationRepository(xa)
+      userRepo           = PostgresUserRepository(xa)
+      connectionTypeRepo = PostgresConnectionTypeRepository(xa)
+      connectionRepo     = PostgresConnectionRepository(xa)
+      specialistRepo     = PostgresSpecialistRepository(xa, connectionRepo)
+      categoryRepo       = PostgresCategoryRepository(xa)
+      consultationRepo   = PostgresConsultationRepository(xa)
 
       // Infrastructure services
       notificationService = MockNotificationService()
@@ -82,5 +89,6 @@ object Server extends IOApp:
         userRepo,
         notificationService
       )
-      categoryService = CategoryService(categoryRepo)
-    yield (config, userService, specialistService, consultationService, categoryService)
+      categoryService   = CategoryService(categoryRepo)
+      connectionService = ConnectionService(connectionRepo, connectionTypeRepo, specialistRepo)
+    yield (config, userService, specialistService, consultationService, categoryService, connectionService)

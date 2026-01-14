@@ -17,6 +17,7 @@ case class Specialist(
   rating: Option[BigDecimal],
   totalConsultations: Int,
   isAvailable: Boolean,
+  connections: List[SpecialistConnection],
   createdAt: Instant,
   updatedAt: Instant
 )

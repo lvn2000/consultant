@@ -26,6 +26,7 @@ object DtoMappers:
       specialist.rating,
       specialist.totalConsultations,
       specialist.isAvailable,
+      specialist.connections.map(toSpecialistConnectionDto),
       specialist.createdAt,
       specialist.updatedAt
     )
@@ -83,6 +84,33 @@ object DtoMappers:
       dto.description,
       dto.scheduledAt,
       dto.duration
+    )
+
+  // Connection mappers
+  def toConnectionTypeDto(connType: ConnectionType): ConnectionTypeDto =
+    ConnectionTypeDto(
+      connType.id,
+      connType.name,
+      connType.description,
+      connType.createdAt,
+      connType.updatedAt
+    )
+
+  def toSpecialistConnectionDto(connection: SpecialistConnection): SpecialistConnectionDto =
+    SpecialistConnectionDto(
+      connection.id,
+      connection.specialistId,
+      connection.connectionTypeId,
+      connection.connectionValue,
+      connection.isVerified,
+      connection.createdAt,
+      connection.updatedAt
+    )
+
+  def toCreateConnectionRequest(dto: CreateConnectionDto): CreateConnectionRequest =
+    CreateConnectionRequest(
+      dto.connectionTypeId,
+      dto.connectionValue
     )
 
   // Error mapper

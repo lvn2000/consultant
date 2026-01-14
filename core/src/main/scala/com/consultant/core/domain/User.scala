@@ -6,10 +6,11 @@ import com.consultant.core.domain.security.UserRole
 
 object types:
   // Common types
-  type UserId         = UUID
-  type SpecialistId   = UUID
-  type CategoryId     = UUID
-  type ConsultationId = UUID
+  type UserId           = UUID
+  type SpecialistId     = UUID
+  type CategoryId       = UUID
+  type ConsultationId   = UUID
+  type ConnectionTypeId = UUID
 
 export types.*
 
