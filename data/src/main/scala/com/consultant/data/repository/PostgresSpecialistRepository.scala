@@ -7,10 +7,12 @@ import doobie.implicits.*
 import doobie.postgres.implicits.*
 import com.consultant.core.domain.*
 import com.consultant.core.ports.SpecialistRepository
+import com.consultant.core.ports.ConnectionRepository
 import java.util.UUID
 import java.time.Instant
 
-class PostgresSpecialistRepository(xa: Transactor[IO]) extends SpecialistRepository:
+class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: ConnectionRepository)
+    extends SpecialistRepository:
 
   override def create(request: CreateSpecialistRequest): IO[Specialist] =
     val id  = UUID.randomUUID()
@@ -27,6 +29,7 @@ class PostgresSpecialistRepository(xa: Transactor[IO]) extends SpecialistReposit
       None,
       0,
       true,
+      List(), // empty connections for new specialist
       now,
       now
     )
@@ -60,11 +63,27 @@ class PostgresSpecialistRepository(xa: Transactor[IO]) extends SpecialistReposit
 
       result <- specialistOpt match
         case Some((id, email, name, phone, bio, rate, exp, rating, total, available, created, updated)) =>
-          getSpecialistCategories(id).map { categories =>
-            Some(
-              Specialist(id, email, name, phone, bio, categories, rate, exp, rating, total, available, created, updated)
+          for
+            categories  <- getSpecialistCategories(id)
+            connections <- connectionRepo.findBySpecialist(id)
+          yield Some(
+            Specialist(
+              id,
+              email,
+              name,
+              phone,
+              bio,
+              categories,
+              rate,
+              exp,
+              rating,
+              total,
+              available,
+              connections,
+              created,
+              updated
             )
-          }
+          )
         case None => IO.pure(None)
     yield result
 
@@ -113,9 +132,25 @@ class PostgresSpecialistRepository(xa: Transactor[IO]) extends SpecialistReposit
       .flatMap { specialists =>
         specialists.traverse {
           case (id, email, name, phone, bio, rate, exp, rating, total, available, created, updated) =>
-            getSpecialistCategories(id).map { categories =>
-              Specialist(id, email, name, phone, bio, categories, rate, exp, rating, total, available, created, updated)
-            }
+            for
+              categories  <- getSpecialistCategories(id)
+              connections <- connectionRepo.findBySpecialist(id)
+            yield Specialist(
+              id,
+              email,
+              name,
+              phone,
+              bio,
+              categories,
+              rate,
+              exp,
+              rating,
+              total,
+              available,
+              connections,
+              created,
+              updated
+            )
         }
       }
 
@@ -138,6 +173,7 @@ class PostgresSpecialistRepository(xa: Transactor[IO]) extends SpecialistReposit
 
   override def delete(id: SpecialistId): IO[Unit] =
     deleteSpecialistCategories(id) *>
+      connectionRepo.deleteBySpecialist(id) *>
       sql"DELETE FROM specialists WHERE id = $id".update.run.transact(xa).void
 
   override def updateRating(id: SpecialistId, rating: BigDecimal, consultationCount: Int): IO[Unit] =

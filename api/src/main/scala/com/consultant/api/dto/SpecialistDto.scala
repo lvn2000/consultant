@@ -28,6 +28,7 @@ case class SpecialistDto(
   rating: Option[BigDecimal],
   totalConsultations: Int,
   isAvailable: Boolean,
+  connections: List[SpecialistConnectionDto],
   createdAt: Instant,
   updatedAt: Instant
 ) derives Codec.AsObject

@@ -2,6 +2,7 @@ package com.consultant.core.ports
 
 import cats.effect.IO
 import com.consultant.core.domain.*
+import java.util.UUID
 
 // Repository ports (abstractions for data access)
 // Implementations will be in 'data' module for PostgreSQL
@@ -40,3 +41,19 @@ trait ConsultationRepository:
   def update(consultation: Consultation): IO[Consultation]
   def updateStatus(id: ConsultationId, status: ConsultationStatus): IO[Unit]
   def addReview(id: ConsultationId, rating: Int, review: String): IO[Unit]
+trait ConnectionRepository:
+  def create(specialistId: SpecialistId, request: CreateConnectionRequest): IO[SpecialistConnection]
+  def findById(id: UUID): IO[Option[SpecialistConnection]]
+  def findBySpecialist(specialistId: SpecialistId): IO[List[SpecialistConnection]]
+  def findBySpecialistAndType(
+    specialistId: SpecialistId,
+    connectionTypeId: ConnectionTypeId
+  ): IO[Option[SpecialistConnection]]
+  def update(connection: SpecialistConnection): IO[SpecialistConnection]
+  def delete(id: UUID): IO[Unit]
+  def deleteBySpecialist(specialistId: SpecialistId): IO[Unit]
+
+trait ConnectionTypeRepository:
+  def findById(id: ConnectionTypeId): IO[Option[ConnectionType]]
+  def listAll(): IO[List[ConnectionType]]
+  def findByName(name: String): IO[Option[ConnectionType]]
