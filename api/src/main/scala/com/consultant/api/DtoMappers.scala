@@ -7,10 +7,10 @@ object DtoMappers:
 
   // User mappers
   def toUserDto(user: User): UserDto =
-    UserDto(user.id, user.email, user.name, user.phone, user.role, user.createdAt, user.updatedAt)
+    UserDto(user.id, user.login, user.email, user.name, user.phone, user.role, user.createdAt, user.updatedAt)
 
   def toCreateUserRequest(dto: CreateUserDto): CreateUserRequest =
-    CreateUserRequest(dto.email, dto.name, dto.phone, dto.role)
+    CreateUserRequest(dto.login, dto.email, dto.name, dto.phone, dto.role)
 
   // Specialist mappers
   def toSpecialistDto(specialist: Specialist): SpecialistDto =
@@ -126,3 +126,4 @@ object DtoMappers:
       case DomainError.InvalidPrice(price)        => ErrorResponse("VALIDATION_ERROR", s"Invalid price: $price")
       case DomainError.SpecialistNotAvailable(id) => ErrorResponse("UNAVAILABLE", s"Specialist not available: $id")
       case DomainError.ValidationError(msg)       => ErrorResponse("VALIDATION_ERROR", msg)
+      case DomainError.InvalidCredentials         => ErrorResponse("UNAUTHORIZED", "Invalid credentials")

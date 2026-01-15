@@ -1,3 +1,35 @@
+--
+-- WARNING: The following default admin user (login: admin, password: admin) is for initial setup only.
+--          You MUST change the password or remove this user after installation for security reasons!
+--
+
+-- Insert default admin user (login: admin, password: admin)
+INSERT INTO users (id, login, email, name, phone, created_at, updated_at)
+VALUES (
+    '99999999-9999-9999-9999-999999999999'::uuid,
+    'admin',
+    'admin@admin.com',
+    'Administrator',
+    NULL,
+    NOW(),
+    NOW()
+)
+ON CONFLICT DO NOTHING;
+
+-- Insert credentials for default admin
+-- Password hash for 'admin' (bcrypt: $2a$10$7EqJtq98hPqEX7fNZaFWoOhi5g1bY6LZix/2yW0b1p/0t6kQ6F7Ui)
+INSERT INTO credentials (email, password_hash, salt, user_id, role, is_active, created_at, updated_at)
+VALUES (
+    'admin@admin.com',
+    '$2a$10$7EqJtq98hPqEX7fNZaFWoOhi5g1bY6LZix/2yW0b1p/0t6kQ6F7Ui',  -- bcrypt hash of 'admin'
+    'random_salt_admin',
+    '99999999-9999-9999-9999-999999999999'::uuid,
+    'Admin',
+    true,
+    NOW(),
+    NOW()
+)
+ON CONFLICT (email) DO NOTHING;
 -- Initial test data migration
 -- Creates test user and specialist accounts
 

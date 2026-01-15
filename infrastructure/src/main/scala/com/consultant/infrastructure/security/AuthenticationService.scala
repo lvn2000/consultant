@@ -70,6 +70,7 @@ class AuthenticationService(
       // Create user
       userId = UUID.randomUUID()
       createRequest: CreateUserRequest = CreateUserRequest(
+        login = request.email,
         email = request.email,
         name = request.name,
         phone = request.phone,

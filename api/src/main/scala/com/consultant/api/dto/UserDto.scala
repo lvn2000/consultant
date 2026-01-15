@@ -9,14 +9,31 @@ import com.consultant.api.codec.SecurityCodecs.given
 
 // User DTOs
 case class CreateUserDto(
+  login: String,
   email: String,
   name: String,
   phone: Option[String],
   role: UserRole
 ) derives Codec.AsObject
 
+case class LoginDto(
+  login: String,
+  password: String
+)
+
+object LoginDto:
+  given Codec[LoginDto] = Codec.AsObject.derived
+
+case class LoginResponseDto(
+  userId: String,
+  login: String,
+  email: String,
+  role: String
+) derives Codec.AsObject
+
 case class UserDto(
   id: UUID,
+  login: String,
   email: String,
   name: String,
   phone: Option[String],

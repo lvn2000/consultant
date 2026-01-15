@@ -13,7 +13,7 @@ import org.http4s.HttpRoutes
 
 class CategoryRoutes(categoryService: CategoryService):
 
-  private val baseEndpoint = endpoint.in("api" / "categories")
+  private val baseEndpoint = endpoint
 
   // Create category
   val createCategoryEndpoint = baseEndpoint.post
@@ -42,6 +42,7 @@ class CategoryRoutes(categoryService: CategoryService):
   }
 
   // List all categories
+  // List categories
   val listCategoriesEndpoint = baseEndpoint.get
     .out(jsonBody[List[CategoryDto]])
 

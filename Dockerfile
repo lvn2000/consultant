@@ -42,10 +42,10 @@ ENV JAVA_OPTS="-XX:+UseContainerSupport \
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -f http://localhost:8090/health || exit 1
 
 # Порт приложения
-EXPOSE 8080
+EXPOSE 8090
 
 # Запускаем от непривилегированного пользователя
 USER consultant

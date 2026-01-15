@@ -81,7 +81,7 @@ curl -o docker-compose.infisical.yml https://raw.githubusercontent.com/Infisical
 
 docker-compose -f docker-compose.infisical.yml up -d
 
-# Available at http://localhost:8080
+# Available at http://localhost:8090
 ```
 
 ### 2. Install Infisical CLI
