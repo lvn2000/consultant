@@ -42,7 +42,7 @@ object AppConfig:
   def load: IO[AppConfig] =
     (
       env("SERVER_HOST").as[String].default("0.0.0.0"),
-      env("SERVER_PORT").as[Int].default(8080),
+      env("SERVER_PORT").as[Int].default(8090),
       env("DB_DRIVER").as[String].default("org.postgresql.Driver"),
       env("DB_URL").as[String].default("jdbc:postgresql://localhost:5432/consultant"),
       env("DB_USER").as[String].default("postgres"),

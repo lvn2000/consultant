@@ -10,10 +10,11 @@ import com.consultant.api.DtoMappers.*
 import java.util.UUID
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 import org.http4s.HttpRoutes
+import com.consultant.api.codec.SecurityCodecs.given
 
 class UserRoutes(userService: UserService):
 
-  private val baseEndpoint = endpoint.in("api" / "users")
+  private val baseEndpoint = endpoint
 
   // Create user
   val createUserEndpoint = baseEndpoint.post
@@ -47,12 +48,34 @@ class UserRoutes(userService: UserService):
     .in(query[Option[Int]]("limit").default(Some(20)))
     .out(jsonBody[List[UserDto]])
 
+  // Login user
+  val loginEndpoint = endpoint.post
+    .in(jsonBody[LoginDto].schema(Schema.derived[LoginDto]))
+    .out(jsonBody[LoginResponseDto])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val login = loginEndpoint.serverLogic { dto =>
+    userService.login(dto.login, dto.password).map {
+      case Right(user) => Right(LoginResponseDto(user.id.toString, user.login, user.email, user.role.toString))
+      case Left(error) => Left(toErrorResponse(error))
+    }
+  }
+
   val listUsers = listUsersEndpoint.serverLogic { case (offset, limit) =>
     userService
       .listUsers(offset.getOrElse(0), limit.getOrElse(20))
       .map(users => Right(users.map(toUserDto)))
   }
 
-  val endpoints = List(createUser, getUser, listUsers)
+  // Test endpoint to verify API is working
+  val testEndpoint = baseEndpoint.get
+    .in("test-api")
+    .out(stringBody)
+
+  val test = testEndpoint.serverLogic { _ =>
+    IO.pure(Right("API is working!"))
+  }
+
+  val endpoints = List(test, createUser, listUsers, getUser)
 
   val routes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(endpoints)

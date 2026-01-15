@@ -23,7 +23,7 @@ spec:
         - name: api
           image: consultant-api:latest
           ports:
-            - containerPort: 8080
+            - containerPort: 8090
               name: http
           env:
             - name: DB_HOST
@@ -52,7 +52,7 @@ spec:
             - name: SERVER_HOST
               value: "0.0.0.0"
             - name: SERVER_PORT
-              value: "8080"
+              value: "8090"
             - name: JAVA_OPTS
               value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC"
 
@@ -67,7 +67,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: 8080
+              port: 8090
             initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 3
@@ -76,7 +76,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /health
-              port: 8080
+              port: 8090
             initialDelaySeconds: 30
             periodSeconds: 5
             timeoutSeconds: 3
@@ -112,7 +112,7 @@ spec:
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 8080
+      targetPort: 8090
   sessionAffinity: None
 
 ---

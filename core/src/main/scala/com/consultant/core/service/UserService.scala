@@ -6,6 +6,7 @@ import com.consultant.core.domain.*
 import com.consultant.core.ports.*
 import java.util.UUID
 import java.time.Instant
+import org.mindrot.jbcrypt.BCrypt
 
 class UserService(userRepo: UserRepository):
 
@@ -30,6 +31,12 @@ class UserService(userRepo: UserRepository):
 
   def listUsers(offset: Int, limit: Int): IO[List[User]] =
     userRepo.list(offset, limit)
+
+  def login(login: String, password: String): IO[Either[DomainError, User]] =
+    userRepo.login(login, password).map {
+      case Some(user) => Right(user)
+      case None       => Left(DomainError.InvalidCredentials)
+    }
 
   private def isValidEmail(email: String): Boolean =
     email.matches("""^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$""")

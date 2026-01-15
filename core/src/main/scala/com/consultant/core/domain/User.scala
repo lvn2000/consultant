@@ -17,6 +17,7 @@ export types.*
 // User (Client) domain model
 case class User(
   id: UserId,
+  login: String,
   email: String,
   name: String,
   phone: Option[String],
@@ -26,6 +27,7 @@ case class User(
 )
 
 case class CreateUserRequest(
+  login: String,
   email: String,
   name: String,
   phone: Option[String],

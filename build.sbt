@@ -1,3 +1,5 @@
+// Default main class for sbt run
+Compile / mainClass := Some("com.consultant.api.Server")
 import sbt._
 import sbt.Keys._
 
@@ -18,6 +20,7 @@ lazy val cirisVersion      = "3.5.0"
 lazy val redis4catsVersion = "1.5.2"
 lazy val jwtVersion        = "10.0.0"
 lazy val bcryptVersion     = "1.78.1"
+lazy val jbcryptVersion    = "0.4"
 
 lazy val commonSettings = Seq(
   scalacOptions ++= Seq(
@@ -48,7 +51,9 @@ lazy val core = (project in file("core"))
     name := "core",
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-core"   % catsVersion,
-      "org.typelevel" %% "cats-effect" % catsEffectVersion
+      "org.typelevel" %% "cats-effect" % catsEffectVersion,
+      // jBCrypt for password hashing
+      "org.mindrot" % "jbcrypt" % jbcryptVersion
     )
   )
 
@@ -94,7 +99,9 @@ lazy val infrastructure = (project in file("infrastructure"))
       // JWT for authentication
       "com.github.jwt-scala" %% "jwt-circe" % jwtVersion,
       // BCrypt for password hashing (through BouncyCastle)
-      "org.bouncycastle" % "bcprov-jdk18on" % bcryptVersion
+      "org.bouncycastle" % "bcprov-jdk18on" % bcryptVersion,
+      // jBCrypt for password checking
+      "org.mindrot" % "jbcrypt" % jbcryptVersion
     )
   )
   .dependsOn(core)
@@ -103,6 +110,7 @@ lazy val api = (project in file("api"))
   .settings(commonSettings)
   .settings(
     name := "api",
+    Compile / run / fork := true,
     libraryDependencies ++= Seq(
       "org.http4s"                  %% "http4s-ember-server"     % http4sVersion,
       "org.http4s"                  %% "http4s-ember-client"     % http4sVersion,

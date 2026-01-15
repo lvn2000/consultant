@@ -70,7 +70,7 @@ set_if_not_exists "SESSION_SECRET" "$(generate_secret 32)" "development"
 set_if_not_exists "ACCOUNT_LOCK_DURATION_MINUTES" "15" "development"
 set_if_not_exists "MAX_LOGIN_ATTEMPTS" "5" "development"
 
-set_if_not_exists "CORS_ALLOWED_ORIGINS" "http://localhost:3000,http://localhost:8080" "development"
+set_if_not_exists "CORS_ALLOWED_ORIGINS" "http://localhost:3000,http://localhost:8090" "development"
 set_if_not_exists "FORCE_HTTPS" "false" "development"
 set_if_not_exists "SECURE_COOKIES" "false" "development"
 

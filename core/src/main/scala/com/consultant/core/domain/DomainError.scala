@@ -14,3 +14,4 @@ enum DomainError:
   case InvalidPrice(price: BigDecimal)
   case SpecialistNotAvailable(id: SpecialistId)
   case ValidationError(message: String)
+  case InvalidCredentials

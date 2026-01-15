@@ -4,6 +4,7 @@ import cats.effect.{ ExitCode, IO, IOApp, Resource }
 import com.comcast.ip4s.*
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Router
+import org.http4s.server.middleware.CORS
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 import com.consultant.data.config.{ DatabaseConfig, DbConfig }
@@ -33,23 +34,28 @@ object Server extends IOApp:
         val swaggerRoutes = Http4sServerInterpreter[IO]().toRoutes(docEndpoints)
 
         val routes = Router(
-          "/"     -> userRoutes.routes,
-          "/"     -> specialistRoutes.routes,
-          "/"     -> consultationRoutes.routes,
-          "/"     -> categoryRoutes.routes,
-          "/"     -> connectionRoutes.routes,
-          "/docs" -> swaggerRoutes
+          "/api/users"            -> userRoutes.routes,
+          "/api/specialists"      -> specialistRoutes.routes,
+          "/api/consultations"    -> consultationRoutes.routes,
+          "/api/categories"       -> categoryRoutes.routes,
+          "/api/connection-types" -> connectionRoutes.routes,
+          "/api/login"            -> Http4sServerInterpreter[IO]().toRoutes(List(userRoutes.login))
         ).orNotFound
+
+        val corsRoutes = CORS.policy.withAllowOriginAll.withAllowCredentials(false).apply(routes)
 
         EmberServerBuilder
           .default[IO]
           .withHost(Host.fromString(config.server.host).getOrElse(ipv4"0.0.0.0"))
-          .withPort(Port.fromInt(config.server.port).getOrElse(port"8080"))
-          .withHttpApp(routes)
+          .withPort(Port.fromInt(config.server.port).getOrElse(port"8090"))
+          .withHttpApp(corsRoutes)
           .build
           .use { _ =>
             IO.println(s"Server started on http://${config.server.host}:${config.server.port}") >>
               IO.println(s"Swagger UI: http://${config.server.host}:${config.server.port}/docs") >>
+              IO.println(s"Swagger endpoints count: ${allEndpoints.size}") >>
+              IO.println("Swagger endpoints:") >>
+              IO.println(allEndpoints.map(_.endpoint.show).mkString("\n---\n")) >>
               IO.never
           }
           .as(ExitCode.Success)

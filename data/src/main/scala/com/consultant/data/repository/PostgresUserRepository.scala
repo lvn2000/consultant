@@ -9,6 +9,7 @@ import com.consultant.core.domain.security.UserRole
 import com.consultant.core.ports.UserRepository
 import java.util.UUID
 import java.time.Instant
+import org.mindrot.jbcrypt.BCrypt
 
 class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
 
@@ -19,11 +20,11 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
   override def create(request: CreateUserRequest): IO[User] =
     val id   = UUID.randomUUID()
     val now  = Instant.now()
-    val user = User(id, request.email, request.name, request.phone, request.role, now, now)
+    val user = User(id, request.login, request.email, request.name, request.phone, request.role, now, now)
 
     sql"""
-      INSERT INTO users (id, email, name, phone, role, created_at, updated_at)
-      VALUES (${user.id}, ${user.email}, ${user.name}, ${user.phone}, ${user.role}, ${user.createdAt}, ${user.updatedAt})
+      INSERT INTO users (id, login, email, name, phone, role, created_at, updated_at)
+      VALUES (${user.id}, ${user.login}, ${user.email}, ${user.name}, ${user.phone}, ${user.role}, ${user.createdAt}, ${user.updatedAt})
     """.update.run
       .transact(xa)
       .map(_ => user)
@@ -68,3 +69,14 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
       ORDER BY created_at DESC
       LIMIT $limit OFFSET $offset
     """.query[User].to[List].transact(xa)
+
+  override def login(login: String, password: String): IO[Option[User]] =
+    sql"""
+      SELECT u.id, u.login, u.email, u.name, u.phone, u.role, u.created_at, u.updated_at, c.password_hash
+      FROM users u
+      JOIN credentials c ON u.id = c.user_id
+      WHERE u.login = $login AND c.is_active = true
+    """.query[(User, String)].option.transact(xa).map {
+      case Some((user, hash)) if BCrypt.checkpw(password, hash) => Some(user)
+      case _                                                    => None
+    }

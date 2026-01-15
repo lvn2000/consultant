@@ -13,11 +13,10 @@ import org.http4s.HttpRoutes
 
 class ConnectionRoutes(connectionService: ConnectionService):
 
-  private val baseEndpoint = endpoint.in("api" / "specialists")
+  private val baseEndpoint = endpoint
 
   // List connection types
   val listConnectionTypesEndpoint = endpoint.get
-    .in("api" / "connection-types")
     .out(jsonBody[List[ConnectionTypeDto]])
 
   val listConnectionTypes = listConnectionTypesEndpoint.serverLogic { _ =>
@@ -28,7 +27,7 @@ class ConnectionRoutes(connectionService: ConnectionService):
 
   // Get connection type by ID
   val getConnectionTypeEndpoint = endpoint.get
-    .in("api" / "connection-types" / path[UUID]("connectionTypeId"))
+    .in(path[UUID]("connectionTypeId"))
     .out(jsonBody[ConnectionTypeDto])
     .errorOut(jsonBody[ErrorResponse])
 
@@ -40,7 +39,9 @@ class ConnectionRoutes(connectionService: ConnectionService):
   }
 
   // Add connection for specialist
-  val addConnectionEndpoint = baseEndpoint.post
+  val addConnectionEndpoint = baseEndpoint
+    .in("specialists")
+    .post
     .in(path[UUID]("specialistId"))
     .in("connections")
     .in(jsonBody[CreateConnectionDto])
@@ -55,7 +56,9 @@ class ConnectionRoutes(connectionService: ConnectionService):
   }
 
   // Get specialist's connections
-  val getSpecialistConnectionsEndpoint = baseEndpoint.get
+  val getSpecialistConnectionsEndpoint = baseEndpoint
+    .in("specialists")
+    .get
     .in(path[UUID]("specialistId"))
     .in("connections")
     .out(jsonBody[List[SpecialistConnectionDto]])
@@ -67,7 +70,9 @@ class ConnectionRoutes(connectionService: ConnectionService):
   }
 
   // Get a specific connection
-  val getConnectionEndpoint = baseEndpoint.get
+  val getConnectionEndpoint = baseEndpoint
+    .in("specialists")
+    .get
     .in(path[UUID]("specialistId"))
     .in("connections" / path[UUID]("connectionId"))
     .out(jsonBody[SpecialistConnectionDto])
@@ -81,7 +86,9 @@ class ConnectionRoutes(connectionService: ConnectionService):
   }
 
   // Update a connection
-  val updateConnectionEndpoint = baseEndpoint.put
+  val updateConnectionEndpoint = baseEndpoint
+    .in("specialists")
+    .put
     .in(path[UUID]("specialistId"))
     .in("connections" / path[UUID]("connectionId"))
     .in(jsonBody[UpdateConnectionDto])
@@ -96,7 +103,9 @@ class ConnectionRoutes(connectionService: ConnectionService):
   }
 
   // Delete a connection
-  val deleteConnectionEndpoint = baseEndpoint.delete
+  val deleteConnectionEndpoint = baseEndpoint
+    .in("specialists")
+    .delete
     .in(path[UUID]("specialistId"))
     .in("connections" / path[UUID]("connectionId"))
     .errorOut(jsonBody[ErrorResponse])

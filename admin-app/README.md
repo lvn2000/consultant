@@ -30,7 +30,7 @@ npm run preview
 Create `.env` file:
 
 ```env
-NUXT_PUBLIC_API_BASE=http://localhost:8080/api
+NUXT_PUBLIC_API_BASE=http://localhost:8090/api
 ```
 
 ## Tech Stack

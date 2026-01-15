@@ -13,7 +13,7 @@ import org.http4s.HttpRoutes
 
 class SpecialistRoutes(specialistService: SpecialistService):
 
-  private val baseEndpoint = endpoint.in("api" / "specialists")
+  private val baseEndpoint = endpoint
 
   // Create specialist
   val createSpecialistEndpoint = baseEndpoint.post

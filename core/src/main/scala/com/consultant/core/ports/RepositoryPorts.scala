@@ -15,6 +15,7 @@ trait UserRepository:
   def update(user: User): IO[User]
   def delete(id: UserId): IO[Unit]
   def list(offset: Int, limit: Int): IO[List[User]]
+  def login(email: String, password: String): IO[Option[User]]
 
 trait SpecialistRepository:
   def create(request: CreateSpecialistRequest): IO[Specialist]

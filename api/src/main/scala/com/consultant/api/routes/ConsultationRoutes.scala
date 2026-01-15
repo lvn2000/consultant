@@ -14,7 +14,7 @@ import org.http4s.HttpRoutes
 
 class ConsultationRoutes(consultationService: ConsultationService):
 
-  private val baseEndpoint = endpoint.in("api" / "consultations")
+  private val baseEndpoint = endpoint
 
   // Create consultation
   val createConsultationEndpoint = baseEndpoint.post
