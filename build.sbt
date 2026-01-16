@@ -68,10 +68,16 @@ lazy val data = (project in file("data"))
       "io.circe"     %% "circe-core"       % circeVersion,
       "io.circe"     %% "circe-generic"    % circeVersion,
       "io.circe"     %% "circe-parser"     % circeVersion,
-      "org.tpolecat" %% "doobie-scalatest" % doobieVersion % Test
-    )
+      "org.tpolecat" %% "doobie-scalatest" % doobieVersion % Test,
+      "org.flywaydb" % "flyway-core" % "9.22.3"
+    ),
+    flywayUrl := sys.env.getOrElse("DB_URL", "jdbc:postgresql://localhost:5432/consultant_db"),
+    flywayUser := sys.env.getOrElse("DB_USER", "consultant"),
+    flywayPassword := sys.env.getOrElse("DB_PASSWORD", "bW1g55n9"),
+    flywayLocations := Seq("filesystem:data/src/main/resources/db/migration")
   )
   .dependsOn(core)
+  .enablePlugins(FlywayPlugin)
 
 lazy val infrastructure = (project in file("infrastructure"))
   .settings(commonSettings)
@@ -111,6 +117,11 @@ lazy val api = (project in file("api"))
   .settings(
     name := "api",
     Compile / run / fork := true,
+    Compile / run / envVars := Map(
+      "DB_URL" -> "jdbc:postgresql://localhost:5432/consultant_db",
+      "DB_USER" -> "consultant",
+      "DB_PASSWORD" -> "bW1g55n9"
+    ),
     libraryDependencies ++= Seq(
       "org.http4s"                  %% "http4s-ember-server"     % http4sVersion,
       "org.http4s"                  %% "http4s-ember-client"     % http4sVersion,

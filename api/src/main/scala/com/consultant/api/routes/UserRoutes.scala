@@ -18,6 +18,7 @@ class UserRoutes(userService: UserService):
 
   // Create user
   val createUserEndpoint = baseEndpoint.post
+    .in("register")
     .in(jsonBody[CreateUserDto])
     .out(jsonBody[UserDto])
     .errorOut(jsonBody[ErrorResponse])
@@ -49,8 +50,9 @@ class UserRoutes(userService: UserService):
     .out(jsonBody[List[UserDto]])
 
   // Login user
-  val loginEndpoint = endpoint.post
-    .in(jsonBody[LoginDto].schema(Schema.derived[LoginDto]))
+  val loginEndpoint = baseEndpoint.post
+    .in("login")
+    .in(jsonBody[LoginDto])
     .out(jsonBody[LoginResponseDto])
     .errorOut(jsonBody[ErrorResponse])
 
@@ -76,6 +78,6 @@ class UserRoutes(userService: UserService):
     IO.pure(Right("API is working!"))
   }
 
-  val endpoints = List(test, createUser, listUsers, getUser)
+  val endpoints = List(test, createUser, listUsers, getUser, login)
 
   val routes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(endpoints)

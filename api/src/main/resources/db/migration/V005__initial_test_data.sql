@@ -34,12 +34,13 @@ ON CONFLICT (email) DO NOTHING;
 -- Creates test user and specialist accounts
 
 -- Insert test user (email: user@example.com, password: user)
-INSERT INTO users (id, email, name, phone, created_at, updated_at)
+INSERT INTO users (id, email, name, phone, login, created_at, updated_at)
 VALUES (
     '11111111-1111-1111-1111-111111111111'::uuid,
     'user@example.com',
     'Test User',
     '+1234567890',
+    'user',
     NOW(),
     NOW()
 )
@@ -62,12 +63,13 @@ VALUES (
 ON CONFLICT (email) DO NOTHING;
 
 -- Insert test specialist (email: spec@example.com, password: spec)
-INSERT INTO users (id, email, name, phone, created_at, updated_at)
+INSERT INTO users (id, email, name, phone, login, created_at, updated_at)
 VALUES (
     '22222222-2222-2222-2222-222222222222'::uuid,
     'spec@example.com',
     'Test Specialist',
     '+9876543210',
+    'spec',
     NOW(),
     NOW()
 )
