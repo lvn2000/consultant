@@ -67,3 +67,8 @@ dist/
 node_modules/
 # Log files
 *.log
+
+# Local helper scripts and temp files
+test_login.sh
+*.pid
+.tmp/
