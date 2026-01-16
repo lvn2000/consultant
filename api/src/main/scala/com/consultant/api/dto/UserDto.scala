@@ -6,6 +6,7 @@ import io.circe.{ Decoder, Encoder }
 import io.circe.Codec
 import com.consultant.core.domain.security.UserRole
 import com.consultant.api.codec.SecurityCodecs.given
+import sttp.tapir.Schema
 
 // User DTOs
 case class CreateUserDto(
@@ -19,7 +20,7 @@ case class CreateUserDto(
 case class LoginDto(
   login: String,
   password: String
-)
+) derives Codec.AsObject
 
 object LoginDto:
   given Codec[LoginDto] = Codec.AsObject.derived

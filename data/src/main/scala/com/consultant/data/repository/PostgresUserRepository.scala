@@ -72,7 +72,7 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
 
   override def login(login: String, password: String): IO[Option[User]] =
     sql"""
-      SELECT u.id, u.login, u.email, u.name, u.phone, u.role, u.created_at, u.updated_at, c.password_hash
+      SELECT u.id, u.login, u.email, u.name, u.phone, c.role, u.created_at, u.updated_at, c.password_hash
       FROM users u
       JOIN credentials c ON u.id = c.user_id
       WHERE u.login = $login AND c.is_active = true

@@ -13,6 +13,7 @@ import com.consultant.core.service.*
 import com.consultant.api.routes.*
 import com.consultant.infrastructure.config.AppConfig
 import com.consultant.infrastructure.local.MockNotificationService
+import org.flywaydb.core.Flyway
 
 object Server extends IOApp:
 
@@ -38,8 +39,7 @@ object Server extends IOApp:
           "/api/specialists"      -> specialistRoutes.routes,
           "/api/consultations"    -> consultationRoutes.routes,
           "/api/categories"       -> categoryRoutes.routes,
-          "/api/connection-types" -> connectionRoutes.routes,
-          "/api/login"            -> Http4sServerInterpreter[IO]().toRoutes(List(userRoutes.login))
+          "/api/connection-types" -> connectionRoutes.routes
         ).orNotFound
 
         val corsRoutes = CORS.policy.withAllowOriginAll.withAllowCredentials(false).apply(routes)
@@ -73,6 +73,15 @@ object Server extends IOApp:
         config.database.user,
         config.database.password
       )
+      // Run Flyway migrations before creating transactor
+      _ <- Resource.eval(IO {
+        val flyway = Flyway
+          .configure()
+          .dataSource(dbConfig.url, dbConfig.user, dbConfig.password)
+          .locations("classpath:db/migration")
+          .load()
+        flyway.migrate()
+      })
       xa <- DatabaseConfig.makeTransactor[IO](dbConfig)
 
       // Repositories
