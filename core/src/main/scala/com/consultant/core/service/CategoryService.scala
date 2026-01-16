@@ -25,3 +25,9 @@ class CategoryService(categoryRepo: CategoryRepository):
 
   def updateCategory(category: Category): IO[Either[DomainError, Category]] =
     categoryRepo.update(category).map(Right(_))
+
+  def deleteCategory(id: CategoryId): IO[Either[DomainError, Unit]] =
+    categoryRepo.findById(id).flatMap {
+      case Some(_) => categoryRepo.delete(id).as(Right(()))
+      case None    => IO.pure(Left(DomainError.CategoryNotFound(id)))
+    }

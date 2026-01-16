@@ -20,17 +20,27 @@ class ConsultationService(
       specialistOpt <- specialistRepo.findById(request.specialistId)
       result <- (userOpt, specialistOpt) match
         case (Some(user), Some(specialist)) =>
-          if !specialist.isAvailable then IO.pure(Left(DomainError.SpecialistNotAvailable(specialist.id)))
-          else
-            val price = calculatePrice(specialist.hourlyRate, request.duration)
-            for
-              consultation <- consultationRepo.create(request, price)
-              _ <- notificationService.sendEmail(
-                user.email,
-                "Consultation Request Created",
-                s"Your consultation with ${specialist.name} has been requested."
+          specialist.categoryRates.find(_.categoryId == request.categoryId) match
+            case None =>
+              IO.pure(
+                Left(
+                  DomainError.ValidationError(
+                    s"Specialist is not available for category: ${request.categoryId}"
+                  )
+                )
               )
-            yield Right(consultation)
+            case Some(categoryRate) if !specialist.isAvailable =>
+              IO.pure(Left(DomainError.SpecialistNotAvailable(specialist.id)))
+            case Some(categoryRate) =>
+              val price = calculatePrice(categoryRate.hourlyRate, request.duration)
+              for
+                consultation <- consultationRepo.create(request, price)
+                _ <- notificationService.sendEmail(
+                  user.email,
+                  "Consultation Request Created",
+                  s"Your consultation with ${specialist.name} has been requested."
+                )
+              yield Right(consultation)
         case (None, _) => IO.pure(Left(DomainError.UserNotFound(request.userId)))
         case (_, None) => IO.pure(Left(DomainError.SpecialistNotFound(request.specialistId)))
     yield result
@@ -61,8 +71,16 @@ class ConsultationService(
             specialist <- specialistRepo.findById(consultation.specialistId)
             _ <- specialist match
               case Some(s) =>
-                val newRating = calculateNewRating(s.rating, s.totalConsultations, rating)
-                specialistRepo.updateRating(s.id, newRating, s.totalConsultations + 1)
+                s.categoryRates.find(_.categoryId == consultation.categoryId) match
+                  case Some(rate) =>
+                    val newRating = calculateNewRating(rate.rating, rate.totalConsultations, rating)
+                    specialistRepo.updateCategoryRating(
+                      s.id,
+                      consultation.categoryId,
+                      newRating,
+                      rate.totalConsultations + 1
+                    )
+                  case None => IO.unit
               case None => IO.unit
           yield Right(())
         case None => IO.pure(Left(DomainError.ConsultationNotFound(id)))

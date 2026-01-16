@@ -35,6 +35,18 @@ class SpecialistService(
   def updateSpecialist(specialist: Specialist): IO[Either[DomainError, Specialist]] =
     specialistRepo.update(specialist).map(Right(_))
 
+  def deleteSpecialist(id: SpecialistId): IO[Either[DomainError, Unit]] =
+    specialistRepo.findById(id).flatMap {
+      case Some(_) => specialistRepo.delete(id).as(Right(()))
+      case None    => IO.pure(Left(DomainError.SpecialistNotFound(id)))
+    }
+
   private def validateAndCreate(request: CreateSpecialistRequest): IO[Either[DomainError, Specialist]] =
-    if request.hourlyRate <= 0 then IO.pure(Left(DomainError.InvalidPrice(request.hourlyRate)))
+    if request.categoryRates.isEmpty then
+      IO.pure(Left(DomainError.ValidationError("At least one category rate is required")))
+    else if request.categoryRates.exists(_.hourlyRate <= 0) then
+      val invalidRate = request.categoryRates.find(_.hourlyRate <= 0).map(_.hourlyRate).getOrElse(BigDecimal(0))
+      IO.pure(Left(DomainError.InvalidPrice(invalidRate)))
+    else if request.categoryRates.exists(_.experienceYears < 0) then
+      IO.pure(Left(DomainError.ValidationError("Experience years must be non-negative")))
     else specialistRepo.create(request).map(Right(_))

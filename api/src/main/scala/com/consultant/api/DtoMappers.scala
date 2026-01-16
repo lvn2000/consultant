@@ -20,11 +20,7 @@ object DtoMappers:
       specialist.name,
       specialist.phone,
       specialist.bio,
-      specialist.categories,
-      specialist.hourlyRate,
-      specialist.experienceYears,
-      specialist.rating,
-      specialist.totalConsultations,
+      specialist.categoryRates.map(toSpecialistCategoryRateDto),
       specialist.isAvailable,
       specialist.connections.map(toSpecialistConnectionDto),
       specialist.createdAt,
@@ -37,9 +33,26 @@ object DtoMappers:
       dto.name,
       dto.phone,
       dto.bio,
-      dto.categories,
+      dto.categoryRates.map(toSpecialistCategoryRate),
+      dto.isAvailable
+    )
+
+  def toSpecialistCategoryRateDto(rate: SpecialistCategoryRate): SpecialistCategoryRateDto =
+    SpecialistCategoryRateDto(
+      rate.categoryId,
+      rate.hourlyRate,
+      rate.experienceYears,
+      rate.rating,
+      Some(rate.totalConsultations)
+    )
+
+  def toSpecialistCategoryRate(dto: SpecialistCategoryRateDto): SpecialistCategoryRate =
+    SpecialistCategoryRate(
+      dto.categoryId,
       dto.hourlyRate,
-      dto.experienceYears
+      dto.experienceYears,
+      dto.rating,
+      dto.totalConsultations.getOrElse(0)
     )
 
   def toSpecialistSearchCriteria(dto: SpecialistSearchDto): SpecialistSearchCriteria =

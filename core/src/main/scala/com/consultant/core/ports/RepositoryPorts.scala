@@ -24,7 +24,12 @@ trait SpecialistRepository:
   def search(criteria: SpecialistSearchCriteria, offset: Int, limit: Int): IO[List[Specialist]]
   def update(specialist: Specialist): IO[Specialist]
   def delete(id: SpecialistId): IO[Unit]
-  def updateRating(id: SpecialistId, rating: BigDecimal, consultationCount: Int): IO[Unit]
+  def updateCategoryRating(
+    specialistId: SpecialistId,
+    categoryId: CategoryId,
+    rating: BigDecimal,
+    consultationCount: Int
+  ): IO[Unit]
 
 trait CategoryRepository:
   def create(request: CreateCategoryRequest): IO[Category]

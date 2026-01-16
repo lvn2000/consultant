@@ -23,12 +23,8 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
       request.name,
       request.phone,
       request.bio,
-      request.categories,
-      request.hourlyRate,
-      request.experienceYears,
-      None,
-      0,
-      true,
+      request.categoryRates,
+      request.isAvailable,
       List(), // empty connections for new specialist
       now,
       now
@@ -36,36 +32,31 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
 
     sql"""
       INSERT INTO specialists (
-        id, email, name, phone, bio, hourly_rate, experience_years,
-        is_available, created_at, updated_at
+        id, email, name, phone, bio, is_available, created_at, updated_at
       )
       VALUES (
         ${specialist.id}, ${specialist.email}, ${specialist.name}, ${specialist.phone},
-        ${specialist.bio}, ${specialist.hourlyRate}, ${specialist.experienceYears},
-        ${specialist.isAvailable}, ${specialist.createdAt}, ${specialist.updatedAt}
+        ${specialist.bio}, ${specialist.isAvailable}, ${specialist.createdAt}, ${specialist.updatedAt}
       )
     """.update.run.transact(xa) *>
-      insertSpecialistCategories(specialist.id, request.categories).as(specialist)
+      insertSpecialistCategoryRates(specialist.id, request.categoryRates).as(specialist)
 
   override def findById(id: SpecialistId): IO[Option[Specialist]] =
     for
       specialistOpt <- sql"""
-        SELECT id, email, name, phone, bio, hourly_rate, experience_years,
-               rating, total_consultations, is_available, created_at, updated_at
+        SELECT id, email, name, phone, bio, is_available, created_at, updated_at
         FROM specialists
         WHERE id = $id
       """
-        .query[
-          (UUID, String, String, String, String, BigDecimal, Int, Option[BigDecimal], Int, Boolean, Instant, Instant)
-        ]
+        .query[(UUID, String, String, String, String, Boolean, Instant, Instant)]
         .option
         .transact(xa)
 
       result <- specialistOpt match
-        case Some((id, email, name, phone, bio, rate, exp, rating, total, available, created, updated)) =>
+        case Some((id, email, name, phone, bio, available, created, updated)) =>
           for
-            categories  <- getSpecialistCategories(id)
-            connections <- connectionRepo.findBySpecialist(id)
+            categoryRates <- getSpecialistCategoryRates(id)
+            connections   <- connectionRepo.findBySpecialist(id)
           yield Some(
             Specialist(
               id,
@@ -73,11 +64,7 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
               name,
               phone,
               bio,
-              categories,
-              rate,
-              exp,
-              rating,
-              total,
+              categoryRates,
               available,
               connections,
               created,
@@ -104,53 +91,51 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
     limit: Int
   ): IO[List[Specialist]] =
     val categoryFilter = criteria.categoryId.map(cid =>
-      fr"EXISTS (SELECT 1 FROM specialist_categories WHERE specialist_id = s.id AND category_id = $cid)"
+      fr"EXISTS (SELECT 1 FROM specialist_category_rates WHERE specialist_id = s.id AND category_id = $cid)"
     )
-    val ratingFilter     = criteria.minRating.map(r => fr"s.rating >= $r")
-    val rateFilter       = criteria.maxHourlyRate.map(r => fr"s.hourly_rate <= $r")
-    val experienceFilter = criteria.minExperience.map(e => fr"s.experience_years >= $e")
-    val availableFilter  = criteria.isAvailable.map(a => fr"s.is_available = $a")
+    val ratingFilter = criteria.minRating.map(r =>
+      fr"EXISTS (SELECT 1 FROM specialist_category_rates scr WHERE scr.specialist_id = s.id AND scr.rating >= $r)"
+    )
+    val rateFilter = criteria.maxHourlyRate.map(r =>
+      fr"EXISTS (SELECT 1 FROM specialist_category_rates scr WHERE scr.specialist_id = s.id AND scr.hourly_rate <= $r)"
+    )
+    val experienceFilter = criteria.minExperience.map(e =>
+      fr"EXISTS (SELECT 1 FROM specialist_category_rates scr WHERE scr.specialist_id = s.id AND scr.experience_years >= $e)"
+    )
+    val availableFilter = criteria.isAvailable.map(a => fr"s.is_available = $a")
 
     val filters     = List(categoryFilter, ratingFilter, rateFilter, experienceFilter, availableFilter).flatten
     val whereClause = if filters.isEmpty then Fragment.empty else fr"WHERE" ++ filters.reduce(_ ++ fr"AND" ++ _)
 
     val query = fr"""
-      SELECT id, email, name, phone, bio, hourly_rate, experience_years,
-             rating, total_consultations, is_available, created_at, updated_at
+      SELECT id, email, name, phone, bio, is_available, created_at, updated_at
       FROM specialists s
     """ ++ whereClause ++ fr"""
-      ORDER BY rating DESC NULLS LAST, total_consultations DESC
+      ORDER BY created_at DESC
       LIMIT $limit OFFSET $offset
     """
 
     query
-      .query[
-        (UUID, String, String, String, String, BigDecimal, Int, Option[BigDecimal], Int, Boolean, Instant, Instant)
-      ]
+      .query[(UUID, String, String, String, String, Boolean, Instant, Instant)]
       .to[List]
       .transact(xa)
       .flatMap { specialists =>
-        specialists.traverse {
-          case (id, email, name, phone, bio, rate, exp, rating, total, available, created, updated) =>
-            for
-              categories  <- getSpecialistCategories(id)
-              connections <- connectionRepo.findBySpecialist(id)
-            yield Specialist(
-              id,
-              email,
-              name,
-              phone,
-              bio,
-              categories,
-              rate,
-              exp,
-              rating,
-              total,
-              available,
-              connections,
-              created,
-              updated
-            )
+        specialists.traverse { case (id, email, name, phone, bio, available, created, updated) =>
+          for
+            categoryRates <- getSpecialistCategoryRates(id)
+            connections   <- connectionRepo.findBySpecialist(id)
+          yield Specialist(
+            id,
+            email,
+            name,
+            phone,
+            bio,
+            categoryRates,
+            available,
+            connections,
+            created,
+            updated
+          )
         }
       }
 
@@ -162,39 +147,52 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
           name = ${updated.name},
           phone = ${updated.phone},
           bio = ${updated.bio},
-          hourly_rate = ${updated.hourlyRate},
-          experience_years = ${updated.experienceYears},
           is_available = ${updated.isAvailable},
           updated_at = ${updated.updatedAt}
       WHERE id = ${updated.id}
     """.update.run.transact(xa) *>
-      deleteSpecialistCategories(updated.id) *>
-      insertSpecialistCategories(updated.id, updated.categories).as(updated)
+      deleteSpecialistCategoryRates(updated.id) *>
+      insertSpecialistCategoryRates(updated.id, updated.categoryRates).as(updated)
 
   override def delete(id: SpecialistId): IO[Unit] =
-    deleteSpecialistCategories(id) *>
+    deleteSpecialistCategoryRates(id) *>
       connectionRepo.deleteBySpecialist(id) *>
       sql"DELETE FROM specialists WHERE id = $id".update.run.transact(xa).void
 
-  override def updateRating(id: SpecialistId, rating: BigDecimal, consultationCount: Int): IO[Unit] =
+  override def updateCategoryRating(
+    specialistId: SpecialistId,
+    categoryId: CategoryId,
+    rating: BigDecimal,
+    consultationCount: Int
+  ): IO[Unit] =
     sql"""
-      UPDATE specialists
+      UPDATE specialist_category_rates
       SET rating = $rating, total_consultations = $consultationCount
-      WHERE id = $id
+      WHERE specialist_id = $specialistId AND category_id = $categoryId
     """.update.run.transact(xa).void
 
-  private def insertSpecialistCategories(specialistId: UUID, categories: List[UUID]): IO[Unit] =
-    categories.traverse_ { categoryId =>
+  private def insertSpecialistCategoryRates(
+    specialistId: UUID,
+    categoryRates: List[SpecialistCategoryRate]
+  ): IO[Unit] =
+    categoryRates.traverse_ { rate =>
       sql"""
-        INSERT INTO specialist_categories (specialist_id, category_id)
-        VALUES ($specialistId, $categoryId)
+        INSERT INTO specialist_category_rates (
+          specialist_id, category_id, hourly_rate, experience_years, rating, total_consultations
+        )
+        VALUES (
+          $specialistId, ${rate.categoryId}, ${rate.hourlyRate},
+          ${rate.experienceYears}, ${rate.rating}, ${rate.totalConsultations}
+        )
       """.update.run.transact(xa)
     }
 
-  private def deleteSpecialistCategories(specialistId: UUID): IO[Unit] =
-    sql"DELETE FROM specialist_categories WHERE specialist_id = $specialistId".update.run.transact(xa).void
+  private def deleteSpecialistCategoryRates(specialistId: UUID): IO[Unit] =
+    sql"DELETE FROM specialist_category_rates WHERE specialist_id = $specialistId".update.run.transact(xa).void
 
-  private def getSpecialistCategories(specialistId: UUID): IO[List[UUID]] =
+  private def getSpecialistCategoryRates(specialistId: UUID): IO[List[SpecialistCategoryRate]] =
     sql"""
-      SELECT category_id FROM specialist_categories WHERE specialist_id = $specialistId
-    """.query[UUID].to[List].transact(xa)
+      SELECT category_id, hourly_rate, experience_years, rating, total_consultations
+      FROM specialist_category_rates
+      WHERE specialist_id = $specialistId
+    """.query[SpecialistCategoryRate].to[List].transact(xa)
