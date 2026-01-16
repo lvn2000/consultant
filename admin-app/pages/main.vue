@@ -96,6 +96,12 @@
             <div class="form-field form-field--full">
               <label>Category Rates</label>
               <div class="rate-rows">
+                <div class="rate-header">
+                  <span>Category</span>
+                  <span>Rate</span>
+                  <span>Experience</span>
+                  <span>Action</span>
+                </div>
                 <div v-for="(rate, index) in specialistForm.categoryRates" :key="index" class="rate-row">
                   <select v-model="rate.categoryId">
                     <option value="">Select category</option>
@@ -738,17 +744,22 @@ onMounted(() => {
 .main-container {
   display: flex;
   min-height: 100vh;
+  width: 100%;
+  justify-content: center;
+  background: #f8fafc;
 }
 .menu-panel {
   width: 200px;
   background: #f5f5f5;
-  padding: 2rem 1rem;
+  padding: 1.5rem 0.75rem;
   border-right: 1px solid #ddd;
+  flex-shrink: 0;
 }
 .menu-title {
   font-weight: 700;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   color: #1f2937;
+  font-size: 0.95rem;
 }
 .menu-divider {
   height: 1px;
@@ -760,11 +771,12 @@ onMounted(() => {
   padding: 0;
 }
 .menu-panel li {
-  padding: 0.75rem 1rem;
+  padding: 0.55rem 0.75rem;
   cursor: pointer;
   color: #007bff;
   border-radius: 4px;
   transition: background 0.2s;
+  font-size: 0.9rem;
 }
 .menu-panel li.active {
   background: #e0e7ff;
@@ -779,14 +791,15 @@ onMounted(() => {
 }
 .content {
   flex: 1;
-  padding: 2rem;
+  padding: 1.25rem;
+  max-width: 90vw;
 }
 .section {
-  margin-top: 2rem;
+  margin-top: 1.25rem;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  padding: 1.5rem;
+  padding: 1rem;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
 }
 .section-header {
@@ -820,8 +833,9 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 1.2fr 1.5fr 1fr 1.4fr 0.8fr 0.8fr 1.3fr;
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   align-items: center;
+  font-size: 0.85rem;
 }
 .table-header.categories-table,
 .table-row.categories-table {
@@ -864,8 +878,8 @@ onMounted(() => {
   color: #374151;
 }
 .section h2 {
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.25rem;
   color: #111827;
 }
 .form {
@@ -889,14 +903,15 @@ onMounted(() => {
 .form-field label {
   font-weight: 600;
   color: #374151;
+  font-size: 0.85rem;
 }
 .form-field input,
 .form-field textarea,
 .form-field select {
-  padding: 0.6rem 0.8rem;
+  padding: 0.45rem 0.6rem;
   border: 1px solid #d1d5db;
   border-radius: 6px;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   outline: none;
   transition: border 0.2s ease;
 }
@@ -907,6 +922,14 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+.rate-header {
+  display: grid;
+  grid-template-columns: 1.2fr 0.6fr 0.6fr auto;
+  gap: 0.75rem;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #475569;
 }
 .rate-row {
   display: grid;
@@ -929,13 +952,14 @@ onMounted(() => {
   color: #1f2937;
 }
 .btn {
-  padding: 0.65rem 1.2rem;
+  padding: 0.45rem 0.9rem;
   border-radius: 6px;
   border: 1px solid #cbd5f5;
   background: #ffffff;
   color: #1f2937;
   cursor: pointer;
   font-weight: 600;
+  font-size: 0.85rem;
 }
 .btn.primary {
   background: #4f46e5;
