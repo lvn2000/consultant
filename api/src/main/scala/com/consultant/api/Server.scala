@@ -86,6 +86,7 @@ object Server extends IOApp:
 
       // Repositories
       userRepo           = PostgresUserRepository(xa)
+      sessionRepo        = PostgresSessionRepository(xa)
       connectionTypeRepo = PostgresConnectionTypeRepository(xa)
       connectionRepo     = PostgresConnectionRepository(xa)
       specialistRepo     = PostgresSpecialistRepository(xa, connectionRepo)
@@ -96,7 +97,7 @@ object Server extends IOApp:
       notificationService = MockNotificationService()
 
       // Services
-      userService       = UserService(userRepo)
+      userService       = UserService(userRepo, sessionRepo)
       specialistService = SpecialistService(specialistRepo, categoryRepo)
       consultationService = ConsultationService(
         consultationRepo,
