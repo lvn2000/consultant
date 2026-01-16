@@ -14,12 +14,31 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { useRuntimeConfig } from 'nuxt/app'
+import { $fetch } from 'ofetch'
 
 const router = useRouter()
+const config = useRuntimeConfig()
 
-const logout = () => {
-  localStorage.removeItem('admin_session')
-  router.push('/login')
+const logout = async () => {
+  const sessionId = sessionStorage.getItem('sessionId')
+
+  try {
+    if (sessionId) {
+      await $fetch(`${config.public.apiBase}/users/logout`, {
+        method: 'POST',
+        body: { sessionId },
+      })
+    }
+  } finally {
+    sessionStorage.removeItem('sessionId')
+    sessionStorage.removeItem('userId')
+    sessionStorage.removeItem('login')
+    sessionStorage.removeItem('email')
+    sessionStorage.removeItem('role')
+    localStorage.removeItem('admin_session')
+    router.push('/login')
+  }
 }
 </script>
 

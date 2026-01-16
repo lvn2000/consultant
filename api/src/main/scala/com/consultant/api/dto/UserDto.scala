@@ -29,7 +29,12 @@ case class LoginResponseDto(
   userId: String,
   login: String,
   email: String,
-  role: String
+  role: String,
+  sessionId: String
+) derives Codec.AsObject
+
+case class LogoutDto(
+  sessionId: String
 ) derives Codec.AsObject
 
 case class UserDto(

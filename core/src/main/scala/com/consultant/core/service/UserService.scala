@@ -7,8 +7,13 @@ import com.consultant.core.ports.*
 import java.util.UUID
 import java.time.Instant
 import org.mindrot.jbcrypt.BCrypt
+import scala.concurrent.duration.*
 
-class UserService(userRepo: UserRepository):
+class UserService(userRepo: UserRepository, sessionRepo: SessionRepository):
+
+  case class LoginResult(user: User, session: UserSession)
+
+  private val sessionTtl = 24.hours
 
   def createUser(request: CreateUserRequest): IO[Either[DomainError, User]] =
     for
@@ -32,11 +37,34 @@ class UserService(userRepo: UserRepository):
   def listUsers(offset: Int, limit: Int): IO[List[User]] =
     userRepo.list(offset, limit)
 
-  def login(login: String, password: String): IO[Either[DomainError, User]] =
-    userRepo.login(login, password).map {
-      case Some(user) => Right(user)
-      case None       => Left(DomainError.InvalidCredentials)
+  def login(
+    login: String,
+    password: String,
+    ipAddress: String,
+    userAgent: String
+  ): IO[Either[DomainError, LoginResult]] =
+    userRepo.login(login, password).flatMap {
+      case Some(user) =>
+        val now       = Instant.now()
+        val sessionId = UUID.randomUUID().toString
+        val session = UserSession(
+          sessionId = sessionId,
+          userId = user.id,
+          role = user.role,
+          ipAddress = ipAddress,
+          userAgent = userAgent,
+          createdAt = now,
+          lastActivity = now,
+          expiresAt = now.plusSeconds(sessionTtl.toSeconds)
+        )
+
+        sessionRepo.create(session).map(created => Right(LoginResult(user, created)))
+      case None =>
+        IO.pure(Left(DomainError.InvalidCredentials))
     }
+
+  def logout(sessionId: String): IO[Boolean] =
+    sessionRepo.delete(sessionId)
 
   private def isValidEmail(email: String): Boolean =
     email.matches("""^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$""")

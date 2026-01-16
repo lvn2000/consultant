@@ -57,9 +57,32 @@ class UserRoutes(userService: UserService):
     .errorOut(jsonBody[ErrorResponse])
 
   val login = loginEndpoint.serverLogic { dto =>
-    userService.login(dto.login, dto.password).map {
-      case Right(user) => Right(LoginResponseDto(user.id.toString, user.login, user.email, user.role.toString))
+    userService.login(dto.login, dto.password, "0.0.0.0", "unknown").map {
+      case Right(result) =>
+        Right(
+          LoginResponseDto(
+            result.user.id.toString,
+            result.user.login,
+            result.user.email,
+            result.user.role.toString,
+            result.session.sessionId
+          )
+        )
       case Left(error) => Left(toErrorResponse(error))
+    }
+  }
+
+  // Logout user session
+  val logoutEndpoint = baseEndpoint.post
+    .in("logout")
+    .in(jsonBody[LogoutDto])
+    .out(stringBody)
+    .errorOut(jsonBody[ErrorResponse])
+
+  val logout = logoutEndpoint.serverLogic { dto =>
+    userService.logout(dto.sessionId).map { success =>
+      if success then Right("Logged out successfully")
+      else Left(ErrorResponse("LOGOUT_ERROR", "Session not found"))
     }
   }
 
@@ -78,6 +101,6 @@ class UserRoutes(userService: UserService):
     IO.pure(Right("API is working!"))
   }
 
-  val endpoints = List(test, createUser, listUsers, getUser, login)
+  val endpoints = List(test, createUser, listUsers, getUser, login, logout)
 
   val routes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(endpoints)
