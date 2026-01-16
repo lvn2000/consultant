@@ -8,6 +8,7 @@ import com.consultant.api.dto.*
 import com.consultant.core.service.SpecialistService
 import com.consultant.api.DtoMappers.*
 import java.util.UUID
+import java.time.Instant
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 import org.http4s.HttpRoutes
 
@@ -65,6 +66,47 @@ class SpecialistRoutes(specialistService: SpecialistService):
         .map(specialists => Right(specialists.map(toSpecialistDto)))
   }
 
-  val endpoints = List(createSpecialist, getSpecialist, searchSpecialists)
+  // Update specialist
+  val updateSpecialistEndpoint = baseEndpoint.put
+    .in(path[UUID]("specialistId"))
+    .in(jsonBody[UpdateSpecialistDto])
+    .out(jsonBody[SpecialistDto])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val updateSpecialist = updateSpecialistEndpoint.serverLogic { case (id, dto) =>
+    specialistService.getSpecialist(id).flatMap {
+      case Right(existing) =>
+        val updated = existing.copy(
+          email = dto.email,
+          name = dto.name,
+          phone = dto.phone,
+          bio = dto.bio,
+          categoryRates = dto.categoryRates.map(toSpecialistCategoryRate),
+          isAvailable = dto.isAvailable,
+          updatedAt = Instant.now()
+        )
+
+        specialistService.updateSpecialist(updated).map {
+          case Right(saved) => Right(toSpecialistDto(saved))
+          case Left(error)  => Left(toErrorResponse(error))
+        }
+      case Left(error) => IO.pure(Left(toErrorResponse(error)))
+    }
+  }
+
+  // Delete specialist
+  val deleteSpecialistEndpoint = baseEndpoint.delete
+    .in(path[UUID]("specialistId"))
+    .out(stringBody)
+    .errorOut(jsonBody[ErrorResponse])
+
+  val deleteSpecialist = deleteSpecialistEndpoint.serverLogic { id =>
+    specialistService.deleteSpecialist(id).map {
+      case Right(_)    => Right("Specialist deleted")
+      case Left(error) => Left(toErrorResponse(error))
+    }
+  }
+
+  val endpoints = List(createSpecialist, searchSpecialists, getSpecialist, updateSpecialist, deleteSpecialist)
 
   val routes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(endpoints)

@@ -6,6 +6,7 @@ import sttp.tapir.json.circe.*
 import sttp.tapir.generic.auto.*
 import com.consultant.api.dto.*
 import com.consultant.core.service.CategoryService
+import com.consultant.core.domain.Category
 import com.consultant.api.DtoMappers.*
 import java.util.UUID
 import sttp.tapir.server.http4s.Http4sServerInterpreter
@@ -52,6 +53,33 @@ class CategoryRoutes(categoryService: CategoryService):
       .map(categories => Right(categories.map(toCategoryDto)))
   }
 
-  val endpoints = List(createCategory, getCategory, listCategories)
+  // Update category
+  val updateCategoryEndpoint = baseEndpoint.put
+    .in(path[UUID]("categoryId"))
+    .in(jsonBody[UpdateCategoryDto])
+    .out(jsonBody[CategoryDto])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val updateCategory = updateCategoryEndpoint.serverLogic { case (id, dto) =>
+    categoryService.updateCategory(Category(id, dto.name, dto.description, dto.parentId)).map {
+      case Right(category) => Right(toCategoryDto(category))
+      case Left(error)     => Left(toErrorResponse(error))
+    }
+  }
+
+  // Delete category
+  val deleteCategoryEndpoint = baseEndpoint.delete
+    .in(path[UUID]("categoryId"))
+    .out(stringBody)
+    .errorOut(jsonBody[ErrorResponse])
+
+  val deleteCategory = deleteCategoryEndpoint.serverLogic { id =>
+    categoryService.deleteCategory(id).map {
+      case Right(_)    => Right("Category deleted")
+      case Left(error) => Left(toErrorResponse(error))
+    }
+  }
+
+  val endpoints = List(createCategory, getCategory, listCategories, updateCategory, deleteCategory)
 
   val routes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(endpoints)

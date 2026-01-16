@@ -11,15 +11,19 @@ case class Specialist(
   name: String,
   phone: String,
   bio: String,
-  categories: List[CategoryId],
-  hourlyRate: BigDecimal,
-  experienceYears: Int,
-  rating: Option[BigDecimal],
-  totalConsultations: Int,
+  categoryRates: List[SpecialistCategoryRate],
   isAvailable: Boolean,
   connections: List[SpecialistConnection],
   createdAt: Instant,
   updatedAt: Instant
+)
+
+case class SpecialistCategoryRate(
+  categoryId: CategoryId,
+  hourlyRate: BigDecimal,
+  experienceYears: Int,
+  rating: Option[BigDecimal],
+  totalConsultations: Int
 )
 
 case class CreateSpecialistRequest(
@@ -27,9 +31,8 @@ case class CreateSpecialistRequest(
   name: String,
   phone: String,
   bio: String,
-  categories: List[CategoryId],
-  hourlyRate: BigDecimal,
-  experienceYears: Int
+  categoryRates: List[SpecialistCategoryRate],
+  isAvailable: Boolean
 )
 
 case class SpecialistSearchCriteria(

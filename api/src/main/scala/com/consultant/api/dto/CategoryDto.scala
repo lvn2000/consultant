@@ -17,3 +17,9 @@ case class CategoryDto(
   description: String,
   parentId: Option[UUID]
 ) derives Codec.AsObject
+
+case class UpdateCategoryDto(
+  name: String,
+  description: String,
+  parentId: Option[UUID]
+) derives Codec.AsObject
