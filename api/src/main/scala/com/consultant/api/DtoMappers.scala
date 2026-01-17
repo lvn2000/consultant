@@ -109,6 +109,18 @@ object DtoMappers:
       connType.updatedAt
     )
 
+  def toCreateConnectionTypeRequest(dto: CreateConnectionTypeDto): CreateConnectionTypeRequest =
+    CreateConnectionTypeRequest(
+      dto.name,
+      dto.description
+    )
+
+  def toUpdateConnectionTypeRequest(dto: UpdateConnectionTypeDto): UpdateConnectionTypeRequest =
+    UpdateConnectionTypeRequest(
+      dto.name,
+      dto.description
+    )
+
   def toSpecialistConnectionDto(connection: SpecialistConnection): SpecialistConnectionDto =
     SpecialistConnectionDto(
       connection.id,

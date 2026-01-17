@@ -13,10 +13,14 @@ import org.http4s.HttpRoutes
 
 class ConnectionRoutes(connectionService: ConnectionService):
 
-  private val baseEndpoint = endpoint
+  private val baseEndpoint            = endpoint
+  private val connectionTypesEndpoint = endpoint
+  private val specialistConnectionsEndpoint = endpoint
+    .in(path[UUID]("specialistId"))
+    .in("connections")
 
   // List connection types
-  val listConnectionTypesEndpoint = endpoint.get
+  val listConnectionTypesEndpoint = connectionTypesEndpoint.get
     .out(jsonBody[List[ConnectionTypeDto]])
 
   val listConnectionTypes = listConnectionTypesEndpoint.serverLogic { _ =>
@@ -26,7 +30,7 @@ class ConnectionRoutes(connectionService: ConnectionService):
   }
 
   // Get connection type by ID
-  val getConnectionTypeEndpoint = endpoint.get
+  val getConnectionTypeEndpoint = connectionTypesEndpoint.get
     .in(path[UUID]("connectionTypeId"))
     .out(jsonBody[ConnectionTypeDto])
     .errorOut(jsonBody[ErrorResponse])
@@ -38,12 +42,48 @@ class ConnectionRoutes(connectionService: ConnectionService):
     }
   }
 
+  // Create connection type
+  val createConnectionTypeEndpoint = connectionTypesEndpoint.post
+    .in(jsonBody[CreateConnectionTypeDto])
+    .out(jsonBody[ConnectionTypeDto])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val createConnectionType = createConnectionTypeEndpoint.serverLogic { dto =>
+    connectionService.createConnectionType(toCreateConnectionTypeRequest(dto)).map {
+      case Right(connType) => Right(toConnectionTypeDto(connType))
+      case Left(error)     => Left(toErrorResponse(error))
+    }
+  }
+
+  // Update connection type
+  val updateConnectionTypeEndpoint = connectionTypesEndpoint.put
+    .in(path[UUID]("connectionTypeId"))
+    .in(jsonBody[UpdateConnectionTypeDto])
+    .out(jsonBody[ConnectionTypeDto])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val updateConnectionType = updateConnectionTypeEndpoint.serverLogic { case (id, dto) =>
+    connectionService.updateConnectionType(id, toUpdateConnectionTypeRequest(dto)).map {
+      case Right(connType) => Right(toConnectionTypeDto(connType))
+      case Left(error)     => Left(toErrorResponse(error))
+    }
+  }
+
+  // Delete connection type
+  val deleteConnectionTypeEndpoint = connectionTypesEndpoint.delete
+    .in(path[UUID]("connectionTypeId"))
+    .errorOut(jsonBody[ErrorResponse])
+    .out(emptyOutput)
+
+  val deleteConnectionType = deleteConnectionTypeEndpoint.serverLogic { id =>
+    connectionService.deleteConnectionType(id).map {
+      case Right(_)    => Right(())
+      case Left(error) => Left(toErrorResponse(error))
+    }
+  }
+
   // Add connection for specialist
-  val addConnectionEndpoint = baseEndpoint
-    .in("specialists")
-    .post
-    .in(path[UUID]("specialistId"))
-    .in("connections")
+  val addConnectionEndpoint = specialistConnectionsEndpoint.post
     .in(jsonBody[CreateConnectionDto])
     .out(jsonBody[SpecialistConnectionDto])
     .errorOut(jsonBody[ErrorResponse])
@@ -56,11 +96,7 @@ class ConnectionRoutes(connectionService: ConnectionService):
   }
 
   // Get specialist's connections
-  val getSpecialistConnectionsEndpoint = baseEndpoint
-    .in("specialists")
-    .get
-    .in(path[UUID]("specialistId"))
-    .in("connections")
+  val getSpecialistConnectionsEndpoint = specialistConnectionsEndpoint.get
     .out(jsonBody[List[SpecialistConnectionDto]])
 
   val getSpecialistConnections = getSpecialistConnectionsEndpoint.serverLogic { specialistId =>
@@ -70,11 +106,8 @@ class ConnectionRoutes(connectionService: ConnectionService):
   }
 
   // Get a specific connection
-  val getConnectionEndpoint = baseEndpoint
-    .in("specialists")
-    .get
-    .in(path[UUID]("specialistId"))
-    .in("connections" / path[UUID]("connectionId"))
+  val getConnectionEndpoint = specialistConnectionsEndpoint.get
+    .in(path[UUID]("connectionId"))
     .out(jsonBody[SpecialistConnectionDto])
     .errorOut(jsonBody[ErrorResponse])
 
@@ -86,11 +119,8 @@ class ConnectionRoutes(connectionService: ConnectionService):
   }
 
   // Update a connection
-  val updateConnectionEndpoint = baseEndpoint
-    .in("specialists")
-    .put
-    .in(path[UUID]("specialistId"))
-    .in("connections" / path[UUID]("connectionId"))
+  val updateConnectionEndpoint = specialistConnectionsEndpoint.put
+    .in(path[UUID]("connectionId"))
     .in(jsonBody[UpdateConnectionDto])
     .out(jsonBody[SpecialistConnectionDto])
     .errorOut(jsonBody[ErrorResponse])
@@ -103,11 +133,8 @@ class ConnectionRoutes(connectionService: ConnectionService):
   }
 
   // Delete a connection
-  val deleteConnectionEndpoint = baseEndpoint
-    .in("specialists")
-    .delete
-    .in(path[UUID]("specialistId"))
-    .in("connections" / path[UUID]("connectionId"))
+  val deleteConnectionEndpoint = specialistConnectionsEndpoint.delete
+    .in(path[UUID]("connectionId"))
     .errorOut(jsonBody[ErrorResponse])
     .out(emptyOutput)
 
@@ -118,9 +145,15 @@ class ConnectionRoutes(connectionService: ConnectionService):
     }
   }
 
-  val endpoints = List(
+  private val connectionTypeEndpoints = List(
     listConnectionTypes,
     getConnectionType,
+    createConnectionType,
+    updateConnectionType,
+    deleteConnectionType
+  )
+
+  private val specialistConnectionEndpoints = List(
     addConnection,
     getSpecialistConnections,
     getConnection,
@@ -128,4 +161,8 @@ class ConnectionRoutes(connectionService: ConnectionService):
     deleteConnection
   )
 
-  val routes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(endpoints)
+  val endpoints = connectionTypeEndpoints ++ specialistConnectionEndpoints
+
+  val connectionTypeRoutes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(connectionTypeEndpoints)
+  val specialistConnectionRoutes: HttpRoutes[IO] =
+    Http4sServerInterpreter[IO]().toRoutes(specialistConnectionEndpoints)

@@ -1,6 +1,7 @@
 package com.consultant.api
 
 import cats.effect.{ ExitCode, IO, IOApp, Resource }
+import cats.syntax.all.*
 import com.comcast.ip4s.*
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Router
@@ -36,10 +37,11 @@ object Server extends IOApp:
 
         val routes = Router(
           "/api/users"            -> userRoutes.routes,
-          "/api/specialists"      -> specialistRoutes.routes,
+          "/api/specialists"      -> (connectionRoutes.specialistConnectionRoutes <+> specialistRoutes.routes),
           "/api/consultations"    -> consultationRoutes.routes,
           "/api/categories"       -> categoryRoutes.routes,
-          "/api/connection-types" -> connectionRoutes.routes
+          "/api/connection-types" -> connectionRoutes.connectionTypeRoutes,
+          "/docs"                 -> swaggerRoutes
         ).orNotFound
 
         val corsRoutes = CORS.policy.withAllowOriginAll.withAllowCredentials(false).apply(routes)
