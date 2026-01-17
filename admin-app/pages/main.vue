@@ -34,21 +34,23 @@
         <div class="list-state error" v-else-if="specialistsError">{{ specialistsError }}</div>
 
         <div class="table" v-else>
-          <div class="table-header">
+          <div class="table-header specialists-table">
             <span>Name</span>
             <span>Email</span>
             <span>Phone</span>
             <span>Categories</span>
             <span>Rate Items</span>
+            <span>Connections</span>
             <span>Availability</span>
             <span>Actions</span>
           </div>
-          <div v-for="specialist in specialists" :key="specialist.id" class="table-row">
+          <div v-for="specialist in specialists" :key="specialist.id" class="table-row specialists-table">
             <span>{{ specialist.name }}</span>
             <span>{{ specialist.email }}</span>
             <span>{{ specialist.phone }}</span>
             <span>{{ resolveCategoryRates(specialist.categoryRates) }}</span>
             <span>{{ specialist.categoryRates.length }}</span>
+            <span>{{ resolveSpecialistConnections(specialist.connections) }}</span>
             <span>{{ specialist.isAvailable ? 'Available' : 'Unavailable' }}</span>
             <span class="row-actions">
               <button type="button" class="btn" @click="startEditSpecialist(specialist)">Update</button>
@@ -94,38 +96,132 @@
               <input id="specialist-phone" v-model="specialistForm.phone" type="tel" placeholder="+1 555 123 4567" />
             </div>
             <div class="form-field form-field--full">
-              <label>Category Rates</label>
-              <div class="rate-rows">
-                <div class="rate-header">
-                  <span>Category</span>
-                  <span>Rate</span>
-                  <span>Experience</span>
-                  <span>Action</span>
+              <label>Specialist Details</label>
+              <div class="details-tabs">
+                <button
+                  type="button"
+                  class="tab"
+                  :class="{ active: specialistDetailsTab === 'categoryRates' }"
+                  @click="specialistDetailsTab = 'categoryRates'"
+                >
+                  Category Rates
+                </button>
+                <button
+                  type="button"
+                  class="tab"
+                  :class="{ active: specialistDetailsTab === 'connections' }"
+                  @click="specialistDetailsTab = 'connections'"
+                >
+                  Connections
+                </button>
+              </div>
+
+              <div v-if="specialistDetailsTab === 'categoryRates'" class="details-panel">
+                <div class="rate-rows">
+                  <div class="rate-header">
+                    <span>Category</span>
+                    <span>Rate</span>
+                    <span>Experience</span>
+                    <span>Action</span>
+                  </div>
+                  <div v-for="(rate, index) in specialistForm.categoryRates" :key="index" class="rate-row">
+                    <select v-model="rate.categoryId">
+                      <option value="">Select category</option>
+                      <option v-for="category in categories" :key="category.id" :value="category.id">
+                        {{ category.name }}
+                      </option>
+                    </select>
+                    <input
+                      v-model.number="rate.hourlyRate"
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      placeholder="Rate"
+                    />
+                    <input
+                      v-model.number="rate.experienceYears"
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Experience"
+                    />
+                    <button type="button" class="btn" @click="removeCategoryRate(index)">Remove</button>
+                  </div>
+                  <button type="button" class="btn" @click="addCategoryRate">Add Category Rate</button>
                 </div>
-                <div v-for="(rate, index) in specialistForm.categoryRates" :key="index" class="rate-row">
-                  <select v-model="rate.categoryId">
-                    <option value="">Select category</option>
-                    <option v-for="category in categories" :key="category.id" :value="category.id">
-                      {{ category.name }}
-                    </option>
-                  </select>
-                  <input
-                    v-model.number="rate.hourlyRate"
-                    type="number"
-                    min="1"
-                    step="0.01"
-                    placeholder="Rate"
-                  />
-                  <input
-                    v-model.number="rate.experienceYears"
-                    type="number"
-                    min="0"
-                    step="1"
-                    placeholder="Experience"
-                  />
-                  <button type="button" class="btn" @click="removeCategoryRate(index)">Remove</button>
+              </div>
+
+              <div v-else class="details-panel">
+                <p v-if="!selectedSpecialistId" class="muted">
+                  Select a specialist to manage connections.
+                </p>
+                <div v-else class="connections-manager">
+                  <div class="list-state" v-if="specialistConnectionsLoading">Loading specialist connections...</div>
+                  <div class="list-state error" v-else-if="specialistConnectionsError">
+                    {{ specialistConnectionsError }}
+                  </div>
+
+                  <div class="table" v-else>
+                    <div class="table-header specialist-connections-table">
+                      <span>Type</span>
+                      <span>Value</span>
+                      <span>Verified</span>
+                      <span>Actions</span>
+                    </div>
+                    <div
+                      v-for="connection in specialistConnections"
+                      :key="connection.id"
+                      class="table-row specialist-connections-table"
+                    >
+                      <span>{{ resolveConnectionTypeName(connection.connectionTypeId) }}</span>
+                      <span>{{ connection.connectionValue }}</span>
+                      <span>{{ connection.isVerified ? 'Yes' : 'No' }}</span>
+                      <span class="row-actions">
+                        <button type="button" class="btn" @click="startEditConnection(connection)">Update</button>
+                        <button type="button" class="btn danger" @click="removeConnection(connection.id)">Delete</button>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="form-grid">
+                    <div class="form-field">
+                      <label for="specialist-connection-type">Connection Type</label>
+                      <select id="specialist-connection-type" v-model="connectionForm.connectionTypeId">
+                        <option value="">Select type</option>
+                        <option v-for="type in connectionTypes" :key="type.id" :value="type.id">
+                          {{ type.name }}
+                        </option>
+                      </select>
+                    </div>
+                    <div class="form-field">
+                      <label for="specialist-connection-value">Connection Value</label>
+                      <input
+                        id="specialist-connection-value"
+                        v-model="connectionForm.connectionValue"
+                        type="text"
+                        placeholder="@username or +123456789"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="form-actions">
+                    <button type="button" class="btn primary" @click="addConnection">Add Connection</button>
+                    <button type="button" class="btn" :disabled="!selectedConnectionId" @click="updateConnection">
+                      Update Connection
+                    </button>
+                    <button
+                      type="button"
+                      class="btn danger"
+                      :disabled="!selectedConnectionId"
+                      @click="deleteSelectedConnection"
+                    >
+                      Delete Connection
+                    </button>
+                    <button type="button" class="btn" @click="resetConnectionForm">Clear</button>
+                  </div>
+
+                  <p v-if="connectionActionMessage" class="form-message">{{ connectionActionMessage }}</p>
                 </div>
-                <button type="button" class="btn" @click="addCategoryRate">Add Category Rate</button>
               </div>
             </div>
             <div class="form-field form-field--full">
@@ -162,8 +258,60 @@
       </section>
 
       <section v-else-if="selectedMenu === 'connections'" class="section">
-        <h2>Type Connections</h2>
-        <p class="muted">Connection types management UI will be added here.</p>
+        <div class="section-header">
+          <h2>Type Connections</h2>
+          <button type="button" class="btn" @click="loadConnectionTypes">Refresh</button>
+        </div>
+
+        <div class="list-state" v-if="connectionTypesLoading">Loading connection types...</div>
+        <div class="list-state error" v-else-if="connectionTypesError">{{ connectionTypesError }}</div>
+
+        <div class="table" v-else>
+          <div class="table-header connections-types-table">
+            <span>Name</span>
+            <span>Description</span>
+            <span>Actions</span>
+          </div>
+          <div v-for="type in connectionTypes" :key="type.id" class="table-row connections-types-table">
+            <span>{{ type.name }}</span>
+            <span>{{ type.description || '-' }}</span>
+            <span class="row-actions">
+              <button type="button" class="btn" @click="startEditConnectionType(type)">Update</button>
+              <button type="button" class="btn danger" @click="removeConnectionType(type.id)">Delete</button>
+            </span>
+          </div>
+        </div>
+
+        <form class="form" @submit.prevent>
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="connection-type-name">Name</label>
+              <input id="connection-type-name" v-model="connectionTypeForm.name" type="text" placeholder="WhatsApp" />
+            </div>
+            <div class="form-field">
+              <label for="connection-type-description">Description</label>
+              <input
+                id="connection-type-description"
+                v-model="connectionTypeForm.description"
+                type="text"
+                placeholder="Messaging app"
+              />
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn primary" @click="addConnectionType">Add Type</button>
+            <button type="button" class="btn" :disabled="!selectedConnectionTypeId" @click="updateConnectionType">
+              Update Type
+            </button>
+            <button type="button" class="btn danger" :disabled="!selectedConnectionTypeId" @click="deleteSelectedConnectionType">
+              Delete Type
+            </button>
+            <button type="button" class="btn" @click="resetConnectionTypeForm">Clear</button>
+          </div>
+
+          <p v-if="connectionTypeActionMessage" class="form-message">{{ connectionTypeActionMessage }}</p>
+        </form>
       </section>
 
       <section v-else-if="selectedMenu === 'categories'" class="section">
@@ -271,7 +419,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRuntimeConfig } from 'nuxt/app'
 import { $fetch } from 'ofetch'
@@ -297,6 +445,8 @@ const specialistForm = ref({
   isAvailable: true,
 })
 
+const specialistDetailsTab = ref<'categoryRates' | 'connections'>('categoryRates')
+
 type Specialist = {
   id: string
   name: string
@@ -310,6 +460,7 @@ type Specialist = {
     rating?: number | null
     totalConsultations?: number | null
   }>
+  connections: SpecialistConnection[]
   isAvailable: boolean
 }
 
@@ -318,6 +469,22 @@ type Category = {
   name: string
   description: string
   parentId: string | null
+}
+
+type ConnectionType = {
+  id: string
+  name: string
+  description: string | null
+}
+
+type SpecialistConnection = {
+  id: string
+  specialistId: string
+  connectionTypeId: string
+  connectionValue: string
+  isVerified: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 const specialists = ref<Specialist[]>([])
@@ -339,6 +506,26 @@ const categoryForm = ref({
   name: '',
   description: '',
   parentId: '' as string | '',
+})
+
+const connectionTypes = ref<ConnectionType[]>([])
+const connectionTypesLoading = ref(false)
+const connectionTypesError = ref('')
+const specialistConnections = ref<SpecialistConnection[]>([])
+const specialistConnectionsLoading = ref(false)
+const specialistConnectionsError = ref('')
+const selectedConnectionId = ref<string | null>(null)
+const connectionActionMessage = ref('')
+const connectionForm = ref({
+  connectionTypeId: '',
+  connectionValue: '',
+})
+
+const selectedConnectionTypeId = ref<string | null>(null)
+const connectionTypeActionMessage = ref('')
+const connectionTypeForm = ref({
+  name: '',
+  description: '',
 })
 
 const categoryTotalPages = computed(() =>
@@ -378,6 +565,14 @@ const resolveCategoryName = (id: string | null) => {
   return categories.value.find(category => category.id === id)?.name ?? id
 }
 
+const resolveConnectionTypeName = (id: string) =>
+  connectionTypes.value.find(type => type.id === id)?.name ?? id
+
+const resolveSpecialistConnections = (connections: SpecialistConnection[]) =>
+  connections
+    .map(connection => `${resolveConnectionTypeName(connection.connectionTypeId)}: ${connection.connectionValue}`)
+    .join(', ')
+
 const loadCategories = async () => {
   categoriesLoading.value = true
   categoriesError.value = ''
@@ -397,6 +592,66 @@ const loadCategories = async () => {
     categoriesLoading.value = false
   }
 }
+
+const loadConnectionTypes = async () => {
+  connectionTypesLoading.value = true
+  connectionTypesError.value = ''
+
+  try {
+    const data = await $fetch<ConnectionType[]>(`${config.public.apiBase}/connection-types`, {
+      method: 'GET',
+    })
+    connectionTypes.value = data
+  } catch (error) {
+    connectionTypes.value = []
+    connectionTypesError.value = 'Failed to load connection types'
+  } finally {
+    connectionTypesLoading.value = false
+  }
+}
+
+const loadSpecialistConnections = async () => {
+  if (!selectedSpecialistId.value) {
+    specialistConnections.value = []
+    return
+  }
+
+  specialistConnectionsLoading.value = true
+  specialistConnectionsError.value = ''
+
+  try {
+    const data = await $fetch<SpecialistConnection[]>(
+      `${config.public.apiBase}/specialists/${selectedSpecialistId.value}/connections`,
+      {
+        method: 'GET',
+      }
+    )
+    specialistConnections.value = data
+  } catch (error) {
+    specialistConnections.value = []
+    specialistConnectionsError.value = 'Failed to load specialist connections'
+  } finally {
+    specialistConnectionsLoading.value = false
+  }
+}
+
+watch(
+  () => specialistDetailsTab.value,
+  async newTab => {
+    if (newTab === 'connections' && selectedSpecialistId.value) {
+      await loadSpecialistConnections()
+    }
+  }
+)
+
+watch(
+  () => selectedSpecialistId.value,
+  async newId => {
+    if (newId && specialistDetailsTab.value === 'connections') {
+      await loadSpecialistConnections()
+    }
+  }
+)
 
 const goToPreviousCategoryPage = () => {
   if (categoryCurrentPage.value > 1) {
@@ -486,6 +741,16 @@ const resetSpecialistForm = () => {
     isAvailable: true,
   }
   selectedSpecialistId.value = null
+  specialistConnections.value = []
+  specialistDetailsTab.value = 'categoryRates'
+}
+
+const resetConnectionForm = () => {
+  connectionForm.value = {
+    connectionTypeId: '',
+    connectionValue: '',
+  }
+  selectedConnectionId.value = null
 }
 
 const resetCategoryForm = () => {
@@ -495,6 +760,14 @@ const resetCategoryForm = () => {
     parentId: '',
   }
   selectedCategoryId.value = null
+}
+
+const resetConnectionTypeForm = () => {
+  connectionTypeForm.value = {
+    name: '',
+    description: '',
+  }
+  selectedConnectionTypeId.value = null
 }
 
 const startEditSpecialist = (specialist: Specialist) => {
@@ -508,6 +781,18 @@ const startEditSpecialist = (specialist: Specialist) => {
     isAvailable: specialist.isAvailable,
   }
   specialistActionMessage.value = ''
+  resetConnectionForm()
+  loadSpecialistConnections()
+  specialistDetailsTab.value = 'categoryRates'
+}
+
+const startEditConnection = (connection: SpecialistConnection) => {
+  selectedConnectionId.value = connection.id
+  connectionForm.value = {
+    connectionTypeId: connection.connectionTypeId,
+    connectionValue: connection.connectionValue,
+  }
+  connectionActionMessage.value = ''
 }
 
 const addCategoryRate = () => {
@@ -532,6 +817,15 @@ const startEditCategory = (category: Category) => {
     parentId: category.parentId ?? '',
   }
   categoryActionMessage.value = ''
+}
+
+const startEditConnectionType = (type: ConnectionType) => {
+  selectedConnectionTypeId.value = type.id
+  connectionTypeForm.value = {
+    name: type.name,
+    description: type.description ?? '',
+  }
+  connectionTypeActionMessage.value = ''
 }
 
 const addSpecialist = async () => {
@@ -585,6 +879,71 @@ const addCategory = async () => {
     await loadCategories()
   } catch (error) {
     categoryActionMessage.value = 'Failed to create category.'
+  }
+}
+
+const addConnection = async () => {
+  connectionActionMessage.value = ''
+
+  if (!selectedSpecialistId.value) {
+    connectionActionMessage.value = 'Select a specialist to add a connection.'
+    return
+  }
+  if (!connectionForm.value.connectionTypeId || !connectionForm.value.connectionValue) {
+    connectionActionMessage.value = 'Select a connection type and provide a value.'
+    return
+  }
+
+  const confirmed = await confirmAction('Add Connection', 'Add this connection?')
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await $fetch(
+      `${config.public.apiBase}/specialists/${selectedSpecialistId.value}/connections`,
+      {
+        method: 'POST',
+        body: {
+          connectionTypeId: connectionForm.value.connectionTypeId,
+          connectionValue: connectionForm.value.connectionValue,
+        },
+      }
+    )
+    connectionActionMessage.value = 'Connection created successfully.'
+    resetConnectionForm()
+    await loadSpecialistConnections()
+  } catch (error) {
+    connectionActionMessage.value = 'Failed to create connection.'
+  }
+}
+
+const addConnectionType = async () => {
+  connectionTypeActionMessage.value = ''
+
+  if (!connectionTypeForm.value.name.trim()) {
+    connectionTypeActionMessage.value = 'Provide a name for the connection type.'
+    return
+  }
+
+  const confirmed = await confirmAction('Add Connection Type', 'Add this connection type?')
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await $fetch(`${config.public.apiBase}/connection-types`, {
+      method: 'POST',
+      body: {
+        name: connectionTypeForm.value.name,
+        description: connectionTypeForm.value.description || null,
+      },
+    })
+    connectionTypeActionMessage.value = 'Connection type created successfully.'
+    resetConnectionTypeForm()
+    await loadConnectionTypes()
+  } catch (error) {
+    connectionTypeActionMessage.value = 'Failed to create connection type.'
   }
 }
 
@@ -650,6 +1009,72 @@ const updateCategory = async () => {
   }
 }
 
+const updateConnection = async () => {
+  if (!selectedConnectionId.value) {
+    connectionActionMessage.value = 'Select a connection to update.'
+    return
+  }
+  if (!selectedSpecialistId.value) {
+    connectionActionMessage.value = 'Select a specialist.'
+    return
+  }
+
+  const confirmed = await confirmAction('Update Connection', 'Update this connection?')
+  if (!confirmed) {
+    return
+  }
+
+  connectionActionMessage.value = ''
+
+  try {
+    await $fetch(
+      `${config.public.apiBase}/specialists/${selectedSpecialistId.value}/connections/${selectedConnectionId.value}`,
+      {
+        method: 'PUT',
+        body: {
+          connectionValue: connectionForm.value.connectionValue,
+        },
+      }
+    )
+    connectionActionMessage.value = 'Connection updated successfully.'
+    await loadSpecialistConnections()
+  } catch (error) {
+    connectionActionMessage.value = 'Failed to update connection.'
+  }
+}
+
+const updateConnectionType = async () => {
+  if (!selectedConnectionTypeId.value) {
+    connectionTypeActionMessage.value = 'Select a connection type to update.'
+    return
+  }
+  if (!connectionTypeForm.value.name.trim()) {
+    connectionTypeActionMessage.value = 'Provide a name for the connection type.'
+    return
+  }
+
+  const confirmed = await confirmAction('Update Connection Type', 'Update this connection type?')
+  if (!confirmed) {
+    return
+  }
+
+  connectionTypeActionMessage.value = ''
+
+  try {
+    await $fetch(`${config.public.apiBase}/connection-types/${selectedConnectionTypeId.value}`, {
+      method: 'PUT',
+      body: {
+        name: connectionTypeForm.value.name,
+        description: connectionTypeForm.value.description || null,
+      },
+    })
+    connectionTypeActionMessage.value = 'Connection type updated successfully.'
+    await loadConnectionTypes()
+  } catch (error) {
+    connectionTypeActionMessage.value = 'Failed to update connection type.'
+  }
+}
+
 const removeSpecialist = async (specialistId: string) => {
   specialistActionMessage.value = ''
 
@@ -697,6 +1122,58 @@ const removeCategory = async (categoryId: string) => {
   }
 }
 
+const removeConnection = async (connectionId: string) => {
+  connectionActionMessage.value = ''
+
+  if (!selectedSpecialistId.value) {
+    connectionActionMessage.value = 'Select a specialist first.'
+    return
+  }
+
+  const confirmed = await confirmAction('Delete Connection', 'Delete this connection?')
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await $fetch(
+      `${config.public.apiBase}/specialists/${selectedSpecialistId.value}/connections/${connectionId}`,
+      {
+        method: 'DELETE',
+      }
+    )
+    connectionActionMessage.value = 'Connection deleted successfully.'
+    if (selectedConnectionId.value === connectionId) {
+      resetConnectionForm()
+    }
+    await loadSpecialistConnections()
+  } catch (error) {
+    connectionActionMessage.value = 'Failed to delete connection.'
+  }
+}
+
+const removeConnectionType = async (connectionTypeId: string) => {
+  connectionTypeActionMessage.value = ''
+
+  const confirmed = await confirmAction('Delete Connection Type', 'Delete this connection type?')
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await $fetch(`${config.public.apiBase}/connection-types/${connectionTypeId}`, {
+      method: 'DELETE',
+    })
+    connectionTypeActionMessage.value = 'Connection type deleted successfully.'
+    if (selectedConnectionTypeId.value === connectionTypeId) {
+      resetConnectionTypeForm()
+    }
+    await loadConnectionTypes()
+  } catch (error) {
+    connectionTypeActionMessage.value = 'Failed to delete connection type.'
+  }
+}
+
 const deleteSelectedCategory = async () => {
   if (!selectedCategoryId.value) {
     categoryActionMessage.value = 'Select a category to delete.'
@@ -711,6 +1188,22 @@ const deleteSelectedSpecialist = async () => {
     return
   }
   await removeSpecialist(selectedSpecialistId.value)
+}
+
+const deleteSelectedConnection = async () => {
+  if (!selectedConnectionId.value) {
+    connectionActionMessage.value = 'Select a connection to delete.'
+    return
+  }
+  await removeConnection(selectedConnectionId.value)
+}
+
+const deleteSelectedConnectionType = async () => {
+  if (!selectedConnectionTypeId.value) {
+    connectionTypeActionMessage.value = 'Select a connection type to delete.'
+    return
+  }
+  await removeConnectionType(selectedConnectionTypeId.value)
 }
 
 const logout = async () => {
@@ -737,6 +1230,7 @@ const logout = async () => {
 onMounted(() => {
   loadSpecialists()
   loadCategories()
+  loadConnectionTypes()
 })
 </script>
 
@@ -837,9 +1331,21 @@ onMounted(() => {
   align-items: center;
   font-size: 0.85rem;
 }
+.table-header.specialists-table,
+.table-row.specialists-table {
+  grid-template-columns: 1.2fr 1.5fr 1fr 1.4fr 0.8fr 1.6fr 0.8fr 1.3fr;
+}
 .table-header.categories-table,
 .table-row.categories-table {
   grid-template-columns: 1fr 2fr 1fr 1.2fr;
+}
+.table-header.connections-types-table,
+.table-row.connections-types-table {
+  grid-template-columns: 1fr 2fr 1.2fr;
+}
+.table-header.specialist-connections-table,
+.table-row.specialist-connections-table {
+  grid-template-columns: 1.2fr 1.6fr 0.6fr 1.2fr;
 }
 .table-header {
   background: #f1f5f9;
@@ -882,6 +1388,12 @@ onMounted(() => {
   font-size: 1.25rem;
   color: #111827;
 }
+.section-subtitle {
+  margin: 1.25rem 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
 .form {
   display: flex;
   flex-direction: column;
@@ -922,6 +1434,33 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+.details-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+.tab {
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid #cbd5f5;
+  background: #ffffff;
+  color: #1f2937;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.tab.active {
+  background: #4f46e5;
+  color: #ffffff;
+  border-color: #4f46e5;
+}
+.details-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: #f8fafc;
 }
 .rate-header {
   display: grid;

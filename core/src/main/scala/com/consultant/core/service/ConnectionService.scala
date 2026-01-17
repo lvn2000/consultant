@@ -74,3 +74,38 @@ class ConnectionService(
       case Some(connType) => Right(connType)
       case None           => Left(DomainError.ValidationError(s"Connection type not found: $id"))
     }
+
+  // Create a connection type
+  def createConnectionType(
+    request: CreateConnectionTypeRequest
+  ): IO[Either[DomainError, ConnectionType]] =
+    connectionTypeRepo.findByName(request.name).flatMap {
+      case Some(_) =>
+        IO.pure(Left(DomainError.ValidationError("Connection type already exists")))
+      case None =>
+        connectionTypeRepo.create(request).map(Right(_))
+    }
+
+  // Update a connection type
+  def updateConnectionType(
+    id: ConnectionTypeId,
+    request: UpdateConnectionTypeRequest
+  ): IO[Either[DomainError, ConnectionType]] =
+    connectionTypeRepo.findById(id).flatMap {
+      case None => IO.pure(Left(DomainError.ValidationError(s"Connection type not found: $id")))
+      case Some(existing) =>
+        connectionTypeRepo.findByName(request.name).flatMap {
+          case Some(duplicate) if duplicate.id != id =>
+            IO.pure(Left(DomainError.ValidationError("Connection type name already exists")))
+          case _ =>
+            val updated = existing.copy(name = request.name, description = request.description)
+            connectionTypeRepo.update(updated).map(Right(_))
+        }
+    }
+
+  // Delete a connection type
+  def deleteConnectionType(id: ConnectionTypeId): IO[Either[DomainError, Unit]] =
+    connectionTypeRepo.findById(id).flatMap {
+      case None    => IO.pure(Left(DomainError.ValidationError(s"Connection type not found: $id")))
+      case Some(_) => connectionTypeRepo.delete(id).map(Right(_))
+    }

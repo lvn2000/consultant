@@ -60,6 +60,9 @@ trait ConnectionRepository:
   def deleteBySpecialist(specialistId: SpecialistId): IO[Unit]
 
 trait ConnectionTypeRepository:
+  def create(request: CreateConnectionTypeRequest): IO[ConnectionType]
   def findById(id: ConnectionTypeId): IO[Option[ConnectionType]]
   def listAll(): IO[List[ConnectionType]]
   def findByName(name: String): IO[Option[ConnectionType]]
+  def update(connectionType: ConnectionType): IO[ConnectionType]
+  def delete(id: ConnectionTypeId): IO[Unit]

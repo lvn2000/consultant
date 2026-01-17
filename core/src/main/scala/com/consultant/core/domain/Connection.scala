@@ -13,6 +13,16 @@ case class ConnectionType(
   updatedAt: Instant
 )
 
+case class CreateConnectionTypeRequest(
+  name: String,
+  description: Option[String]
+)
+
+case class UpdateConnectionTypeRequest(
+  name: String,
+  description: Option[String]
+)
+
 // Specialist connection to a service (e.g., specialist's WhatsApp number)
 case class SpecialistConnection(
   id: UUID,

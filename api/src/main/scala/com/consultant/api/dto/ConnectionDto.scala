@@ -14,6 +14,16 @@ case class ConnectionTypeDto(
   updatedAt: Instant
 ) derives Codec.AsObject
 
+case class CreateConnectionTypeDto(
+  name: String,
+  description: Option[String]
+) derives Codec.AsObject
+
+case class UpdateConnectionTypeDto(
+  name: String,
+  description: Option[String]
+) derives Codec.AsObject
+
 // SpecialistConnection DTOs
 case class CreateConnectionDto(
   connectionTypeId: UUID,
