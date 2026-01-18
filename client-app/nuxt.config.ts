@@ -8,7 +8,8 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
-    '@nuxt/icon'
+    '@nuxt/icon',
+    '@primevue/nuxt-module'
   ],
 
   runtimeConfig: {
@@ -41,5 +42,14 @@ export default defineNuxtConfig({
     }
   },
 
-  css: ['element-plus/dist/index.css', '~/assets/css/main.css']
+  css: ['~/assets/css/main.css'],
+
+  primevue: {
+    options: {
+      ripple: true,
+      theme: {
+        preset: 'Aura'
+      }
+    }
+  }
 })
