@@ -145,6 +145,69 @@ class ConnectionRoutes(connectionService: ConnectionService):
     }
   }
 
+  // Client connection endpoints
+  private val clientConnectionsEndpoint = endpoint
+    .in(path[UUID]("userId"))
+    .in("connections")
+
+  val addClientConnectionEndpoint = clientConnectionsEndpoint.post
+    .in(jsonBody[CreateConnectionDto])
+    .out(jsonBody[ClientConnectionDto])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val addClientConnection = addClientConnectionEndpoint.serverLogic { case (userId, dto) =>
+    connectionService.addClientConnection(userId, toCreateConnectionRequest(dto)).map {
+      case Right(connection) => Right(toClientConnectionDto(connection))
+      case Left(error)       => Left(toErrorResponse(error))
+    }
+  }
+
+  val getClientConnectionsEndpoint = clientConnectionsEndpoint.get
+    .out(jsonBody[List[ClientConnectionDto]])
+
+  val getClientConnections = getClientConnectionsEndpoint.serverLogic { userId =>
+    connectionService.getClientConnections(userId).map { connections =>
+      Right(connections.map(toClientConnectionDto))
+    }
+  }
+
+  val getClientConnectionEndpoint = clientConnectionsEndpoint.get
+    .in(path[UUID]("connectionId"))
+    .out(jsonBody[ClientConnectionDto])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val getClientConnection = getClientConnectionEndpoint.serverLogic { case (_, connectionId) =>
+    connectionService.getClientConnection(connectionId).map {
+      case Right(connection) => Right(toClientConnectionDto(connection))
+      case Left(error)       => Left(toErrorResponse(error))
+    }
+  }
+
+  val updateClientConnectionEndpoint = clientConnectionsEndpoint.put
+    .in(path[UUID]("connectionId"))
+    .in(jsonBody[UpdateConnectionDto])
+    .out(jsonBody[ClientConnectionDto])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val updateClientConnection = updateClientConnectionEndpoint.serverLogic { case (_, connectionId, dto) =>
+    connectionService.updateClientConnection(connectionId, dto.connectionValue).map {
+      case Right(connection) => Right(toClientConnectionDto(connection))
+      case Left(error)       => Left(toErrorResponse(error))
+    }
+  }
+
+  val deleteClientConnectionEndpoint = clientConnectionsEndpoint.delete
+    .in(path[UUID]("connectionId"))
+    .errorOut(jsonBody[ErrorResponse])
+    .out(emptyOutput)
+
+  val deleteClientConnection = deleteClientConnectionEndpoint.serverLogic { case (_, connectionId) =>
+    connectionService.removeClientConnection(connectionId).map {
+      case Right(_)    => Right(())
+      case Left(error) => Left(toErrorResponse(error))
+    }
+  }
+
   private val connectionTypeEndpoints = List(
     listConnectionTypes,
     getConnectionType,
@@ -161,8 +224,18 @@ class ConnectionRoutes(connectionService: ConnectionService):
     deleteConnection
   )
 
-  val endpoints = connectionTypeEndpoints ++ specialistConnectionEndpoints
+  private val clientConnectionEndpoints = List(
+    addClientConnection,
+    getClientConnections,
+    getClientConnection,
+    updateClientConnection,
+    deleteClientConnection
+  )
+
+  val endpoints = connectionTypeEndpoints ++ specialistConnectionEndpoints ++ clientConnectionEndpoints
 
   val connectionTypeRoutes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(connectionTypeEndpoints)
   val specialistConnectionRoutes: HttpRoutes[IO] =
     Http4sServerInterpreter[IO]().toRoutes(specialistConnectionEndpoints)
+  val clientConnectionRoutes: HttpRoutes[IO] =
+    Http4sServerInterpreter[IO]().toRoutes(clientConnectionEndpoints)

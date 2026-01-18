@@ -47,3 +47,9 @@ case class UserDto(
   createdAt: Instant,
   updatedAt: Instant
 ) derives Codec.AsObject
+
+case class UpdateUserDto(
+  name: String,
+  email: String,
+  phone: Option[String]
+) derives Codec.AsObject

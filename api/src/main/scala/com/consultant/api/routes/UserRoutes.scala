@@ -43,6 +43,29 @@ class UserRoutes(userService: UserService):
     }
   }
 
+  // Update user
+  val updateUserEndpoint = baseEndpoint.put
+    .in(path[UUID]("userId"))
+    .in(jsonBody[UpdateUserDto])
+    .out(jsonBody[UserDto])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val updateUser = updateUserEndpoint.serverLogic { case (id, dto) =>
+    userService.getUser(id).flatMap {
+      case Left(error) => IO.pure(Left(toErrorResponse(error)))
+      case Right(user) =>
+        val updated = user.copy(
+          name = dto.name,
+          email = dto.email,
+          phone = dto.phone
+        )
+        userService.updateUser(updated).map {
+          case Right(updatedUser) => Right(toUserDto(updatedUser))
+          case Left(error)        => Left(toErrorResponse(error))
+        }
+    }
+  }
+
   // List users
   val listUsersEndpoint = baseEndpoint.get
     .in(query[Option[Int]]("offset").default(Some(0)))
@@ -101,6 +124,6 @@ class UserRoutes(userService: UserService):
     IO.pure(Right("API is working!"))
   }
 
-  val endpoints = List(test, createUser, listUsers, getUser, login, logout)
+  val endpoints = List(test, createUser, getUser, updateUser, listUsers, login, logout)
 
   val routes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(endpoints)

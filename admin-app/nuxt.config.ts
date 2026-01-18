@@ -3,7 +3,8 @@ import { defineNuxtConfig } from 'nuxt/config'
 
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
-  devtools: { enabled: true },
+  // Disable Nuxt DevTools to avoid default port 24678 conflicts during multi-app dev
+  devtools: { enabled: false },
   
   modules: [
     '@nuxtjs/tailwindcss',
@@ -36,7 +37,10 @@ export default defineNuxtConfig({
   vite: {
     server: {
       hmr: {
-        port: 24678
+        protocol: 'ws',
+        host: 'localhost',
+        port: 24682,
+        clientPort: 24682
       }
     }
   },

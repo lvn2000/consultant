@@ -43,3 +43,14 @@ case class SpecialistConnectionDto(
 case class UpdateConnectionDto(
   connectionValue: String
 ) derives Codec.AsObject
+
+// ClientConnection DTOs
+case class ClientConnectionDto(
+  id: UUID,
+  userId: UUID,
+  connectionTypeId: UUID,
+  connectionValue: String,
+  isVerified: Boolean,
+  createdAt: Instant,
+  updatedAt: Instant
+) derives Codec.AsObject

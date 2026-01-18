@@ -148,66 +148,88 @@
       <section v-if="selectedMenu === 'connections'" class="section">
         <div class="section-header">
           <h2>My Connections</h2>
-          <button type="button" class="btn" @click="loadConnections">Refresh</button>
+          <button type="button" class="btn btn-primary" @click="startEditConnection(null)">
+            <span class="btn-icon">+</span> Add Connection
+          </button>
         </div>
 
-        <div class="list-state" v-if="connectionsLoading">Loading connections...</div>
-        <div class="list-state error" v-else-if="connectionsError">{{ connectionsError }}</div>
-
-        <div class="table" v-else-if="connections.length > 0">
-          <div class="table-header connections-table">
-            <span>Type</span>
-            <span>Value</span>
-            <span>Verified</span>
-            <span>Actions</span>
-          </div>
-          <div v-for="connection in connections" :key="connection.id" class="table-row connections-table">
-            <span>{{ getConnectionTypeName(connection.connectionTypeId) }}</span>
-            <span>{{ connection.connectionValue }}</span>
-            <span>{{ connection.isVerified ? 'Yes' : 'No' }}</span>
-            <span class="row-actions">
-              <button type="button" class="btn" @click="startEditConnection(connection)">Update</button>
-              <button type="button" class="btn danger" @click="removeConnection(connection.id)">Delete</button>
-            </span>
+        <div v-if="connectionsLoading" class="list-state">
+          <div class="spinner"></div>
+          <p>Loading connections...</p>
+        </div>
+        <div v-else-if="connectionsError" class="list-state error">{{ connectionsError }}</div>
+        <div v-else-if="connections.length === 0" class="empty-state">
+          <div class="empty-icon">📱</div>
+          <h3>No connections yet</h3>
+          <p>Add your first connection to get started</p>
+          <button type="button" class="btn btn-primary" @click="startEditConnection(null)">
+            <span class="btn-icon">+</span> Add Connection
+          </button>
+        </div>
+        <div v-else class="connections-list">
+          <div class="connection-card" v-for="connection in connections" :key="connection.id">
+            <div class="connection-header">
+              <div class="connection-type-badge">
+                {{ getConnectionTypeName(connection.connectionTypeId) }}
+              </div>
+              <div class="connection-status" :class="{ verified: connection.isVerified }">
+                <span class="status-dot"></span>
+                {{ connection.isVerified ? 'Verified' : 'Not verified' }}
+              </div>
+            </div>
+            <div class="connection-value">{{ connection.connectionValue }}</div>
+            <div class="connection-actions">
+              <button type="button" class="btn btn-sm btn-secondary" @click="startEditConnection(connection)">
+                ✏️ Edit
+              </button>
+              <button type="button" class="btn btn-sm btn-danger" @click="removeConnection(connection.id)">
+                🗑️ Remove
+              </button>
+            </div>
           </div>
         </div>
-        <div v-else class="list-state">No connections configured yet.</div>
 
-        <!-- Connection Form -->
-        <form class="form" @submit.prevent="saveConnection">
-          <h3>{{ editingConnectionId ? 'Update Connection' : 'Add New Connection' }}</h3>
-          <div class="form-grid">
-            <div class="form-field">
-              <label for="connection-type">Connection Type</label>
-              <select id="connection-type" v-model="connectionForm.connectionTypeId" required>
-                <option value="">Select type</option>
-                <option v-for="type in connectionTypes" :key="type.id" :value="type.id">
-                  {{ type.name }}
-                </option>
-              </select>
+        <!-- Connection Form Modal -->
+        <div v-if="editingConnectionId !== null" class="form-modal">
+          <div class="form-card">
+            <div class="form-header">
+              <h3>{{ editingConnectionId ? 'Edit Connection' : 'Add New Connection' }}</h3>
+              <button type="button" class="close-btn" @click="cancelEditConnection">×</button>
             </div>
-            <div class="form-field">
-              <label for="connection-value">Connection Value</label>
-              <input id="connection-value" v-model="connectionForm.connectionValue" type="text" required />
-            </div>
-            <div class="form-field">
-              <label for="connection-verified">Verified</label>
-              <select id="connection-verified" v-model="connectionForm.isVerified">
-                <option :value="true">Yes</option>
-                <option :value="false">No</option>
-              </select>
-            </div>
+            <form class="form-body" @submit.prevent="saveConnection">
+              <div class="form-field">
+                <label for="connection-type">Connection Type *</label>
+                <select id="connection-type" v-model="connectionForm.connectionTypeId" :disabled="!!editingConnectionId" required>
+                  <option value="">Select a connection type</option>
+                  <option v-for="type in connectionTypes" :key="type.id" :value="type.id">
+                    {{ type.name }} {{ type.description ? `- ${type.description}` : '' }}
+                  </option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label for="connection-value">Connection Value *</label>
+                <input 
+                  id="connection-value" 
+                  v-model="connectionForm.connectionValue" 
+                  type="text" 
+                  placeholder="e.g., +1234567890 or username"
+                  required 
+                />
+              </div>
+              <div v-if="connectionMessage" :class="['form-message', connectionSuccess ? 'success' : 'error']">
+                {{ connectionMessage }}
+              </div>
+              <div class="form-footer">
+                <button type="button" class="btn btn-secondary" @click="cancelEditConnection" :disabled="connectionSaving">
+                  Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" :disabled="connectionSaving || !connectionForm.connectionTypeId || !connectionForm.connectionValue">
+                  {{ connectionSaving ? 'Saving...' : 'Save Connection' }}
+                </button>
+              </div>
+            </form>
           </div>
-          <div class="form-actions">
-            <button type="submit" class="btn" :disabled="connectionSaving">
-              {{ connectionSaving ? 'Saving...' : (editingConnectionId ? 'Update Connection' : 'Add Connection') }}
-            </button>
-            <button v-if="editingConnectionId" type="button" class="btn" @click="cancelEditConnection">Cancel</button>
-          </div>
-          <div v-if="connectionMessage" :class="['form-message', connectionSuccess ? 'success' : 'error']">
-            {{ connectionMessage }}
-          </div>
-        </form>
+        </div>
       </section>
     </div>
   </div>
@@ -265,7 +287,7 @@ const connectionForm = ref({
   connectionValue: '',
   isVerified: false
 })
-const editingConnectionId = ref('')
+const editingConnectionId = ref<string | null>(null)
 const connectionSaving = ref(false)
 const connectionMessage = ref('')
 const connectionSuccess = ref(false)
@@ -490,17 +512,24 @@ const loadConnections = async () => {
 }
 
 const startEditConnection = (connection: any) => {
-  connectionForm.value = {
-    connectionTypeId: connection.connectionTypeId,
-    connectionValue: connection.connectionValue,
-    isVerified: connection.isVerified
+  if (connection) {
+    connectionForm.value = {
+      connectionTypeId: connection.connectionTypeId,
+      connectionValue: connection.connectionValue,
+      isVerified: connection.isVerified
+    }
+    editingConnectionId.value = connection.id
+  } else {
+    // New connection
+    connectionForm.value = { connectionTypeId: '', connectionValue: '', isVerified: false }
+    editingConnectionId.value = 'new'
   }
-  editingConnectionId.value = connection.id
+  connectionMessage.value = ''
 }
 
 const cancelEditConnection = () => {
   connectionForm.value = { connectionTypeId: '', connectionValue: '', isVerified: false }
-  editingConnectionId.value = ''
+  editingConnectionId.value = null
   connectionMessage.value = ''
 }
 
@@ -515,7 +544,7 @@ const saveConnection = async () => {
       return
     }
     
-    if (editingConnectionId.value) {
+    if (editingConnectionId.value && editingConnectionId.value !== 'new') {
       // Update existing connection
       await $fetch(`${config.public.apiBase}/specialists/${userId}/connections/${editingConnectionId.value}`, {
         method: 'PUT',
@@ -532,8 +561,10 @@ const saveConnection = async () => {
     }
     
     connectionSuccess.value = true
-    cancelEditConnection()
-    await loadConnections()
+    setTimeout(() => {
+      cancelEditConnection()
+      loadConnections()
+    }, 1500)
   } catch (error: any) {
     connectionMessage.value = error.message || 'Failed to save connection'
     connectionSuccess.value = false
@@ -587,6 +618,17 @@ const logout = async () => {
 }
 
 onMounted(() => {
+  // Check if user is properly logged in
+  const userId = sessionStorage.getItem('userId')
+  const role = sessionStorage.getItem('role')?.toLowerCase()
+  
+  if (!userId || role !== 'specialist') {
+    // Not logged in or not a specialist, redirect to login
+    localStorage.removeItem('specialist_session')
+    router.push('/login')
+    return
+  }
+  
   loadProfile()
 })
 </script>
@@ -680,12 +722,312 @@ onMounted(() => {
   margin: 0;
 }
 
-.list-state {
+/* Loading Spinner */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+}
+
+/* Connections List */
+.connections-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.connection-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+  border-left: 4px solid #667eea;
+}
+
+.connection-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+.connection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.connection-type-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.375rem 0.875rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.connection-status.verified {
+  color: #059669;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #dc2626;
+}
+
+.connection-status.verified .status-dot {
+  background: #059669;
+}
+
+.connection-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 1rem;
+  word-break: break-word;
+}
+
+.connection-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Modal */
+.form-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
   padding: 1rem;
-  background: #f3f4f6;
+}
+
+.form-card {
+  background: white;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.form-header h3 {
+  margin: 0;
+  color: #1f2937;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #6b7280;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.close-btn:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.form-body {
+  padding: 1.5rem;
+}
+
+.form-footer {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+/* Buttons */
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 0.625rem 1.25rem;
+  font-weight: 600;
+  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(102, 126, 234, 0.5);
+}
+
+.btn-secondary {
+  background: #6b7280;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #4b5563;
+}
+
+.btn-danger {
+  background: #dc2626;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.btn-icon {
+  font-size: 1.125rem;
+  margin-right: 0.25rem;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Form Fields */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+.form-field label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.form-field input,
+.form-field select {
+  padding: 0.625rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-message {
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.form-message.success {
+  background: #d1fae5;
+  color: #065f46;
+  border-left: 4px solid #059669;
+}
+
+.form-message.error {
+  background: #fee2e2;
+  color: #dc2626;
+  border-left: 4px solid #dc2626;
+}
+
+.list-state {
+  padding: 2rem 1rem;
+  background: white;
+  border-radius: 12px;
   text-align: center;
   color: #6b7280;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .list-state.error {
@@ -693,6 +1035,7 @@ onMounted(() => {
   color: #dc2626;
 }
 
+/* Rates Table (keep for rates section) */
 .table {
   background: white;
   border-radius: 8px;
@@ -710,10 +1053,6 @@ onMounted(() => {
 
 .rates-table {
   grid-template-columns: 2fr 1fr 1fr 1.5fr;
-}
-
-.connections-table {
-  grid-template-columns: 1.5fr 2fr 1fr 1.5fr;
 }
 
 .table-header {
@@ -762,82 +1101,9 @@ onMounted(() => {
   margin-bottom: 1.5rem;
 }
 
-.form-field {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-field label {
-  font-weight: 500;
-  margin-bottom: 0.5rem;
-  color: #374151;
-  font-size: 0.875rem;
-}
-
-.form-field input,
-.form-field select {
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 0.875rem;
-}
-
-.form-field input:focus,
-.form-field select:focus {
-  outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-}
-
 .form-actions {
   display: flex;
   gap: 1rem;
-}
-
-.form-message {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  border-radius: 4px;
-  font-size: 0.875rem;
-}
-
-.form-message.success {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.form-message.error {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.btn {
-  padding: 0.5rem 1rem;
-  background: #4f46e5;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: background 0.15s;
-}
-
-.btn:hover:not(:disabled) {
-  background: #4338ca;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn.danger {
-  background: #dc2626;
-}
-
-.btn.danger:hover:not(:disabled) {
-  background: #b91c1c;
 }
 
 .modal-overlay {

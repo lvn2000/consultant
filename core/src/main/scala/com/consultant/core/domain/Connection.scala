@@ -38,3 +38,14 @@ case class CreateConnectionRequest(
   connectionTypeId: ConnectionTypeId,
   connectionValue: String
 )
+
+// Client connection to a service (e.g., client's WhatsApp number)
+case class ClientConnection(
+  id: UUID,
+  userId: UserId,
+  connectionTypeId: ConnectionTypeId,
+  connectionValue: String, // The actual contact value (phone number, username, etc.)
+  isVerified: Boolean,
+  createdAt: Instant,
+  updatedAt: Instant
+)
