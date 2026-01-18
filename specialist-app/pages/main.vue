@@ -306,6 +306,11 @@ const updateProfile = async () => {
   profileUpdateMessage.value = ''
   try {
     const userId = sessionStorage.getItem('userId')
+    if (!userId) {
+      profileUpdateMessage.value = 'User ID not found'
+      profileUpdateSuccess.value = false
+      return
+    }
     await $fetch(`${config.public.apiBase}/specialists/${userId}`, {
       method: 'PUT',
       body: profileForm.value
@@ -324,6 +329,10 @@ const removeAccount = async () => {
   accountRemoving.value = true
   try {
     const userId = sessionStorage.getItem('userId')
+    if (!userId) {
+      alert('User ID not found')
+      return
+    }
     await $fetch(`${config.public.apiBase}/specialists/${userId}`, {
       method: 'DELETE'
     })
@@ -343,11 +352,15 @@ const loadRates = async () => {
   ratesError.value = ''
   try {
     const userId = sessionStorage.getItem('userId')
+    if (!userId) {
+      ratesError.value = 'User ID not found'
+      return
+    }
     const specialist = await $fetch(`${config.public.apiBase}/specialists/${userId}`)
     rates.value = specialist.categoryRates || []
     // Load categories
     const categoriesData = await $fetch(`${config.public.apiBase}/categories?page=1&pageSize=100`)
-    categories.value = categoriesData.categories || []
+    categories.value = Array.isArray(categoriesData) ? categoriesData : []
   } catch (error: any) {
     ratesError.value = error.message || 'Failed to load rates'
   } finally {
@@ -375,6 +388,11 @@ const saveRate = async () => {
   rateMessage.value = ''
   try {
     const userId = sessionStorage.getItem('userId')
+    if (!userId) {
+      rateMessage.value = 'User ID not found'
+      rateSuccess.value = false
+      return
+    }
     const specialist = await $fetch(`${config.public.apiBase}/specialists/${userId}`)
     
     let updatedRates = [...(specialist.categoryRates || [])]
@@ -383,11 +401,19 @@ const saveRate = async () => {
       // Update existing rate
       const index = updatedRates.findIndex(r => r.categoryId === editingRateId.value)
       if (index !== -1) {
-        updatedRates[index] = { ...rateForm.value }
+        updatedRates[index] = { 
+          ...rateForm.value,
+          rating: updatedRates[index].rating || null,
+          totalConsultations: updatedRates[index].totalConsultations || 0
+        }
       }
     } else {
       // Add new rate
-      updatedRates.push({ ...rateForm.value })
+      updatedRates.push({ 
+        ...rateForm.value,
+        rating: null,
+        totalConsultations: 0
+      })
     }
     
     await $fetch(`${config.public.apiBase}/specialists/${userId}`, {
@@ -415,6 +441,10 @@ const removeRate = async (categoryId: string) => {
   
   try {
     const userId = sessionStorage.getItem('userId')
+    if (!userId) {
+      alert('User ID not found')
+      return
+    }
     const specialist = await $fetch(`${config.public.apiBase}/specialists/${userId}`)
     const updatedRates = (specialist.categoryRates || []).filter((r: any) => r.categoryId !== categoryId)
     
@@ -443,11 +473,15 @@ const loadConnections = async () => {
   connectionsError.value = ''
   try {
     const userId = sessionStorage.getItem('userId')
+    if (!userId) {
+      connectionsError.value = 'User ID not found'
+      return
+    }
     const connectionsData = await $fetch(`${config.public.apiBase}/specialists/${userId}/connections`)
     connections.value = connectionsData || []
     // Load connection types
-    const typesData = await $fetch(`${config.public.apiBase}/connections?page=1&pageSize=100`)
-    connectionTypes.value = typesData.typeConnections || []
+    const typesData = await $fetch(`${config.public.apiBase}/connection-types`)
+    connectionTypes.value = typesData || []
   } catch (error: any) {
     connectionsError.value = error.message || 'Failed to load connections'
   } finally {
@@ -475,6 +509,11 @@ const saveConnection = async () => {
   connectionMessage.value = ''
   try {
     const userId = sessionStorage.getItem('userId')
+    if (!userId) {
+      connectionMessage.value = 'User ID not found'
+      connectionSuccess.value = false
+      return
+    }
     
     if (editingConnectionId.value) {
       // Update existing connection
@@ -508,6 +547,10 @@ const removeConnection = async (connectionId: string) => {
   
   try {
     const userId = sessionStorage.getItem('userId')
+    if (!userId) {
+      alert('User ID not found')
+      return
+    }
     await $fetch(`${config.public.apiBase}/specialists/${userId}/connections/${connectionId}`, {
       method: 'DELETE'
     })
@@ -683,6 +726,7 @@ onMounted(() => {
 
 .table-row {
   border-bottom: 1px solid #f3f4f6;
+  color: #1f2937;
 }
 
 .table-row:last-child {
@@ -833,48 +877,5 @@ onMounted(() => {
   gap: 1rem;
   justify-content: flex-end;
   margin-top: 1.5rem;
-}
-</style>
-  width: 100%;
-  justify-content: center;
-  background: #f8fafc;
-}
-.menu-panel {
-  width: 200px;
-  background: #f5f5f5;
-  padding: 1.5rem 0.75rem;
-  border-right: 1px solid #ddd;
-  flex-shrink: 0;
-}
-.menu-title {
-  font-weight: 700;
-  margin-bottom: 0.75rem;
-  color: #1f2937;
-  font-size: 0.95rem;
-}
-.menu-divider {
-  height: 1px;
-  background: #e5e7eb;
-  margin: 0.75rem 0;
-}
-.menu-panel ul {
-  list-style: none;
-  padding: 0;
-}
-.menu-panel li {
-  padding: 0.55rem 0.75rem;
-  cursor: pointer;
-  color: #4f46e5;
-  border-radius: 4px;
-  transition: background 0.2s;
-  font-size: 0.9rem;
-}
-.menu-panel li:hover {
-  background: #e6e6e6;
-}
-.content {
-  flex: 1;
-  padding: 1.25rem;
-  max-width: 90vw;
 }
 </style>
