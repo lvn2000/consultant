@@ -4,6 +4,10 @@ import cats.effect.{ ExitCode, IO, IOApp, Resource }
 import cats.syntax.all.*
 import com.comcast.ip4s.*
 import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.{ HttpRoutes, Response }
+import org.http4s.dsl.io.*
+import org.http4s.headers.Location
+import org.http4s.implicits.*
 import org.http4s.server.Router
 import org.http4s.server.middleware.CORS
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
@@ -35,13 +39,24 @@ object Server extends IOApp:
           .fromServerEndpoints(allEndpoints, "Consultant API", "1.0.0")
         val swaggerRoutes = Http4sServerInterpreter[IO]().toRoutes(docEndpoints)
 
-        val routes = Router(
+        val rootRedirect: HttpRoutes[IO] = HttpRoutes.of[IO] {
+          case req if req.pathInfo == Root =>
+            // Redirect only the bare root to Swagger UI to avoid loops
+            PermanentRedirect(Location(uri"/docs"))
+        }
+
+        val apiRoutes = Router(
           "/api/users"            -> (connectionRoutes.clientConnectionRoutes <+> userRoutes.routes),
           "/api/specialists"      -> (connectionRoutes.specialistConnectionRoutes <+> specialistRoutes.routes),
           "/api/consultations"    -> consultationRoutes.routes,
           "/api/categories"       -> categoryRoutes.routes,
-          "/api/connection-types" -> connectionRoutes.connectionTypeRoutes,
-          "/docs"                 -> swaggerRoutes
+          "/api/connection-types" -> connectionRoutes.connectionTypeRoutes
+        )
+
+        // swaggerRoutes already serve under /docs by default; do not double-prefix in Router
+        // Mount everything at root to avoid pathInfo mismatches that lead to 404s
+        val routes = Router(
+          "/" -> (rootRedirect <+> swaggerRoutes <+> apiRoutes)
         ).orNotFound
 
         val corsRoutes = CORS.policy.withAllowOriginAll.withAllowCredentials(false).apply(routes)
@@ -53,12 +68,10 @@ object Server extends IOApp:
           .withHttpApp(corsRoutes)
           .build
           .use { _ =>
-            IO.println(s"Server started on http://${config.server.host}:${config.server.port}") >>
-              IO.println(s"Swagger UI: http://${config.server.host}:${config.server.port}/docs") >>
-              IO.println(s"Swagger endpoints count: ${allEndpoints.size}") >>
-              IO.println("Swagger endpoints:") >>
-              IO.println(allEndpoints.map(_.endpoint.show).mkString("\n---\n")) >>
-              IO.never
+            // Keep startup logs concise to avoid noisy console output
+            IO.println(
+              s"Server up at http://${config.server.host}:${config.server.port} | Swagger: /docs | Endpoints: ${allEndpoints.size}"
+            ) >> IO.never
           }
           .as(ExitCode.Success)
     }
