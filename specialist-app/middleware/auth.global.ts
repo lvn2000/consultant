@@ -1,6 +1,6 @@
 import { defineNuxtRouteMiddleware, navigateTo } from 'nuxt/app'
 
-export default defineNuxtRouteMiddleware((to: any) => {
+export default defineNuxtRouteMiddleware((to) => {
   if (process.client) {
     const isLoggedIn = !!localStorage.getItem('specialist_session')
     if (!isLoggedIn && to.path !== '/login') {

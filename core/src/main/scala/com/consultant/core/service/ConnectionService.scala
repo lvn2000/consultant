@@ -109,3 +109,51 @@ class ConnectionService(
       case None    => IO.pure(Left(DomainError.ValidationError(s"Connection type not found: $id")))
       case Some(_) => connectionTypeRepo.delete(id).map(Right(_))
     }
+
+  // Client connections methods
+  def addClientConnection(
+    userId: UserId,
+    request: CreateConnectionRequest
+  ): IO[Either[DomainError, ClientConnection]] =
+    for
+      // Verify connection type exists
+      connTypeOpt <- connectionTypeRepo.findById(request.connectionTypeId)
+      result <- connTypeOpt match
+        case None    => IO.pure(Left(DomainError.ValidationError("Connection type not found")))
+        case Some(_) =>
+          // Check if client already has this connection type
+          for
+            existingOpt <- connectionRepo.findClientConnectionByUserAndType(userId, request.connectionTypeId)
+            result <- existingOpt match
+              case Some(_) => IO.pure(Left(DomainError.ValidationError("Client already has this connection type")))
+              case None    => connectionRepo.createClientConnection(userId, request).map(Right(_))
+          yield result
+    yield result
+
+  def getClientConnections(userId: UserId): IO[List[ClientConnection]] =
+    connectionRepo.findClientConnectionsByUser(userId)
+
+  def getClientConnection(id: UUID): IO[Either[DomainError, ClientConnection]] =
+    connectionRepo.findClientConnectionById(id).map {
+      case Some(connection) => Right(connection)
+      case None             => Left(DomainError.ValidationError(s"Connection not found: $id"))
+    }
+
+  def updateClientConnection(
+    id: UUID,
+    newValue: String
+  ): IO[Either[DomainError, ClientConnection]] =
+    for
+      connectionOpt <- connectionRepo.findClientConnectionById(id)
+      result <- connectionOpt match
+        case None => IO.pure(Left(DomainError.ValidationError(s"Connection not found: $id")))
+        case Some(connection) =>
+          val updated = connection.copy(connectionValue = newValue)
+          connectionRepo.updateClientConnection(updated).map(Right(_))
+    yield result
+
+  def removeClientConnection(id: UUID): IO[Either[DomainError, Unit]] =
+    connectionRepo.findClientConnectionById(id).flatMap {
+      case None    => IO.pure(Left(DomainError.ValidationError(s"Connection not found: $id")))
+      case Some(_) => connectionRepo.deleteClientConnection(id).map(Right(_))
+    }

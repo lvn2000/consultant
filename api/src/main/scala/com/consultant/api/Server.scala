@@ -36,7 +36,7 @@ object Server extends IOApp:
         val swaggerRoutes = Http4sServerInterpreter[IO]().toRoutes(docEndpoints)
 
         val routes = Router(
-          "/api/users"            -> userRoutes.routes,
+          "/api/users"            -> (connectionRoutes.clientConnectionRoutes <+> userRoutes.routes),
           "/api/specialists"      -> (connectionRoutes.specialistConnectionRoutes <+> specialistRoutes.routes),
           "/api/consultations"    -> consultationRoutes.routes,
           "/api/categories"       -> categoryRoutes.routes,

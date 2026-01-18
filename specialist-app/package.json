@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "VITE_HMR_PORT=24681 nuxt dev --port 3002",
+    "dev": "NUXT_DEVTOOLS_PORT=24683 NUXT_DEVTOOLS_UI_PORT=24683 NITRO_DEV_HMR_PORT=24683 VITE_HMR_PORT=24683 NUXT_HMR_PORT=24683 nuxi dev --port 3003 --hmr-port 24683 --devtools false",
     "build": "nuxt build",
     "generate": "nuxt generate",
     "preview": "nuxt preview",

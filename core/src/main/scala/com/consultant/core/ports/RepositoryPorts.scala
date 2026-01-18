@@ -59,6 +59,18 @@ trait ConnectionRepository:
   def delete(id: UUID): IO[Unit]
   def deleteBySpecialist(specialistId: SpecialistId): IO[Unit]
 
+  // Client connections
+  def createClientConnection(userId: UserId, request: CreateConnectionRequest): IO[ClientConnection]
+  def findClientConnectionById(id: UUID): IO[Option[ClientConnection]]
+  def findClientConnectionsByUser(userId: UserId): IO[List[ClientConnection]]
+  def findClientConnectionByUserAndType(
+    userId: UserId,
+    connectionTypeId: ConnectionTypeId
+  ): IO[Option[ClientConnection]]
+  def updateClientConnection(connection: ClientConnection): IO[ClientConnection]
+  def deleteClientConnection(id: UUID): IO[Unit]
+  def deleteClientConnectionsByUser(userId: UserId): IO[Unit]
+
 trait ConnectionTypeRepository:
   def create(request: CreateConnectionTypeRequest): IO[ConnectionType]
   def findById(id: ConnectionTypeId): IO[Option[ConnectionType]]

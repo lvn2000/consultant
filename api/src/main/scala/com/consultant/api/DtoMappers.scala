@@ -138,6 +138,17 @@ object DtoMappers:
       dto.connectionValue
     )
 
+  def toClientConnectionDto(connection: ClientConnection): ClientConnectionDto =
+    ClientConnectionDto(
+      connection.id,
+      connection.userId,
+      connection.connectionTypeId,
+      connection.connectionValue,
+      connection.isVerified,
+      connection.createdAt,
+      connection.updatedAt
+    )
+
   // Error mapper
   def toErrorResponse(error: DomainError): ErrorResponse =
     error match

@@ -18,13 +18,14 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { loginRequest } from '../composables/useLogin'
 
 const login = ref('')
 const password = ref('')
 const error = ref('')
 const router = useRouter()
+const route = useRoute()
 
 const onLogin = async () => {
   error.value = ''
@@ -35,7 +36,8 @@ const onLogin = async () => {
   const result = await loginRequest(login.value, password.value)
   if (result.success) {
     localStorage.setItem('specialist_session', '1')
-    router.push('/main')
+    // Use hard redirect to ensure we leave the login page even if client-side routing fails
+    window.location.assign('/main')
   } else {
     error.value = result.error || 'Invalid credentials'
   }
