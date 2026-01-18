@@ -103,7 +103,7 @@
             <div class="form-body">
               <div class="form-field">
                 <label>Connection Type *</label>
-                <select v-model="connectionForm.connectionTypeId" :disabled="!!editingConnectionId">
+                <select v-model="connectionForm.connectionTypeId">
                   <option value="">Select a connection type</option>
                   <option v-for="type in connectionTypes" :key="type.id" :value="type.id">
                     {{ type.name }} {{ type.description ? `- ${type.description}` : '' }}

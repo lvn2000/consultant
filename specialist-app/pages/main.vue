@@ -199,7 +199,11 @@
             <form class="form-body" @submit.prevent="saveConnection">
               <div class="form-field">
                 <label for="connection-type">Connection Type *</label>
-                <select id="connection-type" v-model="connectionForm.connectionTypeId" :disabled="!!editingConnectionId" required>
+                <select
+                  id="connection-type"
+                  v-model="connectionForm.connectionTypeId"
+                  required
+                >
                   <option value="">Select a connection type</option>
                   <option v-for="type in connectionTypes" :key="type.id" :value="type.id">
                     {{ type.name }} {{ type.description ? `- ${type.description}` : '' }}
