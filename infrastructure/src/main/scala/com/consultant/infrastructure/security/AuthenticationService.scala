@@ -74,7 +74,9 @@ class AuthenticationService(
         email = request.email,
         name = request.name,
         phone = request.phone,
-        role = request.role
+        role = request.role,
+        countryId = None,
+        languages = Set.empty
       )
       createdUser <- userRepository.create(createRequest)
 

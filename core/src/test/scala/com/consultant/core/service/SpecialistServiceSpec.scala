@@ -19,7 +19,9 @@ class SpecialistServiceSpec extends AnyFlatSpec with Matchers with MockFactory {
       phone = "1234567890",
       bio = "Bio",
       categoryRates = List(),
-      isAvailable = true
+      isAvailable = true,
+      countryId = None,
+      languages = Set.empty
     )
     specialistRepo.findByEmail
       .expects(req.email)
@@ -35,6 +37,8 @@ class SpecialistServiceSpec extends AnyFlatSpec with Matchers with MockFactory {
               categoryRates = List(),
               isAvailable = true,
               connections = List(),
+              countryId = req.countryId,
+              languages = req.languages,
               createdAt = java.time.Instant.now(),
               updatedAt = java.time.Instant.now()
             )

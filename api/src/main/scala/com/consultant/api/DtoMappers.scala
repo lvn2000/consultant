@@ -10,7 +10,15 @@ object DtoMappers:
     UserDto(user.id, user.login, user.email, user.name, user.phone, user.role, user.createdAt, user.updatedAt)
 
   def toCreateUserRequest(dto: CreateUserDto): CreateUserRequest =
-    CreateUserRequest(dto.login, dto.email, dto.name, dto.phone, dto.role)
+    CreateUserRequest(
+      login = dto.login,
+      email = dto.email,
+      name = dto.name,
+      phone = dto.phone,
+      role = dto.role,
+      countryId = None,
+      languages = Set.empty
+    )
 
   // Specialist mappers
   def toSpecialistDto(specialist: Specialist): SpecialistDto =
@@ -29,12 +37,14 @@ object DtoMappers:
 
   def toCreateSpecialistRequest(dto: CreateSpecialistDto): CreateSpecialistRequest =
     CreateSpecialistRequest(
-      dto.email,
-      dto.name,
-      dto.phone,
-      dto.bio,
-      dto.categoryRates.map(toSpecialistCategoryRate),
-      dto.isAvailable
+      email = dto.email,
+      name = dto.name,
+      phone = dto.phone,
+      bio = dto.bio,
+      categoryRates = dto.categoryRates.map(toSpecialistCategoryRate),
+      isAvailable = dto.isAvailable,
+      countryId = None,
+      languages = Set.empty
     )
 
   def toSpecialistCategoryRateDto(rate: SpecialistCategoryRate): SpecialistCategoryRateDto =

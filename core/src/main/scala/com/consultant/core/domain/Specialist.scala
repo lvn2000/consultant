@@ -5,6 +5,10 @@ import java.util.UUID
 import types.*
 
 // Specialist domain model
+
+import com.consultant.core.domain.CountryId
+import com.consultant.core.domain.LanguageId
+
 case class Specialist(
   id: SpecialistId,
   email: String,
@@ -14,6 +18,8 @@ case class Specialist(
   categoryRates: List[SpecialistCategoryRate],
   isAvailable: Boolean,
   connections: List[SpecialistConnection],
+  countryId: Option[CountryId],
+  languages: Set[LanguageId],
   createdAt: Instant,
   updatedAt: Instant
 )
@@ -32,7 +38,9 @@ case class CreateSpecialistRequest(
   phone: String,
   bio: String,
   categoryRates: List[SpecialistCategoryRate],
-  isAvailable: Boolean
+  isAvailable: Boolean,
+  countryId: Option[CountryId],
+  languages: Set[LanguageId]
 )
 
 case class SpecialistSearchCriteria(

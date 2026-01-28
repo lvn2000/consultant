@@ -31,6 +31,8 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
               name = "User",
               phone = None,
               role = com.consultant.core.domain.security.UserRole.Client,
+              countryId = Some(java.util.UUID.randomUUID()),
+              languages = Set(java.util.UUID.randomUUID()),
               createdAt = java.time.Instant.now(),
               updatedAt = java.time.Instant.now()
             )

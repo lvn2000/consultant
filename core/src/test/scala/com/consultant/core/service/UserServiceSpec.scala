@@ -25,6 +25,8 @@ class UserServiceSpec extends AnyFlatSpec with Matchers with MockFactory {
       name = "Test",
       phone = Some("1234567890"),
       role = UserRole.Client,
+      countryId = Some(UUID.randomUUID()),
+      languages = Set(UUID.randomUUID()),
       createdAt = now,
       updatedAt = now
     )
@@ -34,7 +36,9 @@ class UserServiceSpec extends AnyFlatSpec with Matchers with MockFactory {
       email = "test@example.com",
       name = "Test",
       phone = Some("1234567890"),
-      role = UserRole.Client
+      role = UserRole.Client,
+      countryId = Some(UUID.randomUUID()),
+      languages = Set(UUID.randomUUID())
     )
     val result = service.createUser(req).unsafeRunSync()
     result.shouldBe(Left(DomainError.EmailAlreadyExists("test@example.com")))
@@ -53,6 +57,8 @@ class UserServiceSpec extends AnyFlatSpec with Matchers with MockFactory {
       name = "User",
       phone = Some("9876543210"),
       role = UserRole.Client,
+      countryId = Some(UUID.randomUUID()),
+      languages = Set(UUID.randomUUID()),
       createdAt = now,
       updatedAt = now
     )
