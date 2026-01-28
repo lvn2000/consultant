@@ -86,7 +86,7 @@ This project uses **Hexagonal Architecture** (Ports & Adapters) to ensure easy m
 createdb consultant
 
 # Run migrations (manual for now)
-psql -d consultant -f data/src/main/resources/db/migration/V001__initial_schema.sql
+psql -U consultant -d consultant_db -f data/src/main/resources/db/migration/V001__initial_schema.sql
 ```
 
 ### Configuration

@@ -155,6 +155,6 @@ lazy val api = (project in file("api"))
       case x =>
         val oldStrategy = (assembly / assemblyMergeStrategy).value
         oldStrategy(x)
-    }
+    },
   )
   .dependsOn(core, data, infrastructure)
