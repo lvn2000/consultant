@@ -150,7 +150,7 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
         phone,
         role,
         countryId,
-        langMap.getOrElse(id, Set.empty).asInstanceOf[Set[LanguageId]],
+        langMap.getOrElse(id, List.empty).toSet,
         created,
         updated
       )

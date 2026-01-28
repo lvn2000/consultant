@@ -90,7 +90,7 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
       countryId,
       created,
       updated,
-      langs.toSet.asInstanceOf[Set[LanguageId]],
+      langs.toSet,
       categoryRates
     )
     action.transact(xa).flatMap {
@@ -175,7 +175,7 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
       for {
         specialists <- specialistsQ
         langPairs   <- languagesQ(specialists.map(_._1))
-        langMap = langPairs.groupMap(_._1)(_._2).view.mapValues(_.toSet.asInstanceOf[Set[LanguageId]]).toMap
+        langMap = langPairs.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
       } yield specialists.map { case (id, email, name, phone, bio, available, countryId, created, updated) =>
         (
           id,
