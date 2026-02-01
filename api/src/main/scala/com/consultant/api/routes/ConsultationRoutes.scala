@@ -18,6 +18,7 @@ class ConsultationRoutes(consultationService: ConsultationService):
 
   // Create consultation
   val createConsultationEndpoint = baseEndpoint.post
+    .in("consultations")
     .in(jsonBody[CreateConsultationDto])
     .out(jsonBody[ConsultationDto])
     .errorOut(jsonBody[ErrorResponse])
@@ -31,7 +32,7 @@ class ConsultationRoutes(consultationService: ConsultationService):
 
   // Get consultation by ID
   val getConsultationEndpoint = baseEndpoint.get
-    .in(path[UUID]("consultationId"))
+    .in("consultations" / path[UUID]("consultationId"))
     .out(jsonBody[ConsultationDto])
     .errorOut(jsonBody[ErrorResponse])
 
@@ -44,7 +45,7 @@ class ConsultationRoutes(consultationService: ConsultationService):
 
   // Get user consultations
   val getUserConsultationsEndpoint = baseEndpoint.get
-    .in("user" / path[UUID]("userId"))
+    .in("consultations" / "user" / path[UUID]("userId"))
     .in(query[Option[Int]]("offset").default(Some(0)))
     .in(query[Option[Int]]("limit").default(Some(20)))
     .out(jsonBody[List[ConsultationDto]])
@@ -57,7 +58,7 @@ class ConsultationRoutes(consultationService: ConsultationService):
 
   // Get specialist consultations
   val getSpecialistConsultationsEndpoint = baseEndpoint.get
-    .in("specialist" / path[UUID]("specialistId"))
+    .in("consultations" / "specialist" / path[UUID]("specialistId"))
     .in(query[Option[Int]]("offset").default(Some(0)))
     .in(query[Option[Int]]("limit").default(Some(20)))
     .out(jsonBody[List[ConsultationDto]])
@@ -73,9 +74,33 @@ class ConsultationRoutes(consultationService: ConsultationService):
         .map(consultations => Right(consultations.map(toConsultationDto)))
   }
 
+  // Update consultation status
+  val updateConsultationStatusEndpoint = baseEndpoint.put
+    .in("consultations" / path[UUID]("consultationId") / "status")
+    .in(jsonBody[UpdateConsultationStatusDto])
+    .out(jsonBody[ConsultationDto])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val updateConsultationStatus = updateConsultationStatusEndpoint.serverLogic { (id, dto) =>
+    try
+      val status = ConsultationStatus.valueOf(dto.status)
+      for
+        consultationOpt <- consultationService.getConsultation(id)
+        result <- consultationOpt match
+          case Right(consultation) =>
+            consultationService.updateConsultationStatus(id, status).map {
+              case Right(()) => Right(toConsultationDto(consultation.copy(status = status)))
+              case Left(error) => Left(toErrorResponse(error))
+            }
+          case Left(error) => IO.pure(Left(toErrorResponse(error)))
+      yield result
+    catch
+      case _: IllegalArgumentException => IO.pure(Left(ErrorResponse("VALIDATION_ERROR", "Invalid status")))
+  }
+
   // Add review
   val addReviewEndpoint = baseEndpoint.post
-    .in(path[UUID]("consultationId") / "review")
+    .in("consultations" / path[UUID]("consultationId") / "review")
     .in(jsonBody[AddReviewDto])
     .out(jsonBody[String])
     .errorOut(jsonBody[ErrorResponse])
@@ -92,6 +117,7 @@ class ConsultationRoutes(consultationService: ConsultationService):
     getConsultation,
     getUserConsultations,
     getSpecialistConsultations,
+    updateConsultationStatus,
     addReview
   )
 

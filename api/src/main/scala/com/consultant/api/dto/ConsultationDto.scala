@@ -12,7 +12,8 @@ case class CreateConsultationDto(
   categoryId: UUID,
   description: String,
   scheduledAt: Option[Instant],
-  duration: Option[Int]
+  duration: Option[Int],
+  isFree: Boolean = false // Новое поле для бесплатных консультаций
 ) derives Codec.AsObject
 
 case class ConsultationDto(
@@ -25,6 +26,7 @@ case class ConsultationDto(
   scheduledAt: Option[Instant],
   duration: Option[Int],
   price: BigDecimal,
+  isFree: Boolean, // Новое поле для бесплатных консультаций
   rating: Option[Int],
   review: Option[String],
   createdAt: Instant,
@@ -34,4 +36,8 @@ case class ConsultationDto(
 case class AddReviewDto(
   rating: Int,
   review: String
+) derives Codec.AsObject
+
+case class UpdateConsultationStatusDto(
+  status: String
 ) derives Codec.AsObject
