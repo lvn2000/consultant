@@ -19,6 +19,7 @@ case class Consultation(
   scheduledAt: Option[Instant],
   duration: Option[Int], // in minutes
   price: BigDecimal,
+  isFree: Boolean = false, // Новое поле для бесплатных консультаций
   rating: Option[Int], // 1-5
   review: Option[String],
   createdAt: Instant,
@@ -31,5 +32,6 @@ case class CreateConsultationRequest(
   categoryId: CategoryId,
   description: String,
   scheduledAt: Option[Instant],
-  duration: Option[Int]
+  duration: Option[Int],
+  isFree: Boolean = false // Новое поле для бесплатных консультаций
 )

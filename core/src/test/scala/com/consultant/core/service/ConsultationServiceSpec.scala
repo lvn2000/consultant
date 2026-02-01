@@ -18,7 +18,7 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
     val userId              = java.util.UUID.randomUUID()
     val specialistId        = java.util.UUID.randomUUID()
     val categoryId          = java.util.UUID.randomUUID()
-    val req                 = CreateConsultationRequest(userId, specialistId, categoryId, "desc", None, None)
+    val req                 = CreateConsultationRequest(userId, specialistId, categoryId, "desc", None, None, false)
     userRepo.findById
       .expects(req.userId)
       .returning(

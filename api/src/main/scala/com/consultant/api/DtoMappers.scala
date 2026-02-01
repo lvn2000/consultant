@@ -93,6 +93,7 @@ object DtoMappers:
       consultation.scheduledAt,
       consultation.duration,
       consultation.price,
+      consultation.isFree, // Новое поле
       consultation.rating,
       consultation.review,
       consultation.createdAt,
@@ -106,7 +107,8 @@ object DtoMappers:
       dto.categoryId,
       dto.description,
       dto.scheduledAt,
-      dto.duration
+      dto.duration,
+      dto.isFree // Новое поле
     )
 
   // Connection mappers
