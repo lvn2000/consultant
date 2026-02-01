@@ -5,6 +5,7 @@
       <ul>
         <li :class="{ active: selectedMenu === 'profile' }" @click="selectMenu('profile')">Profile</li>
         <li :class="{ active: selectedMenu === 'connections' }" @click="selectMenu('connections')">My Connections</li>
+        <li :class="{ active: selectedMenu === 'consultations' }" @click="selectMenu('consultations')">My Consultations</li>
       </ul>
       <div class="menu-divider"></div>
       <ul>
@@ -133,6 +134,64 @@
           </div>
         </div>
       </div>
+
+      <!-- Consultations Section -->
+      <div v-if="selectedMenu === 'consultations'" class="section">
+        <h3>My Consultations</h3>
+        <div v-if="consultationsLoading" class="list-state">Loading consultations...</div>
+        <div v-else-if="consultationsError" class="list-state error">{{ consultationsError }}</div>
+        <div v-else>
+          <div class="list">
+            <div v-if="consultations.length === 0" class="list-state">No consultations found.</div>
+            <div v-else v-for="consultation in consultations" :key="consultation.id" class="list-item">
+              <div class="list-item-content">
+                <div class="list-item-title">{{ consultation.description }}</div>
+                <div class="list-item-subtitle">Specialist: {{ consultation.specialistId }} | Status: {{ consultation.status }}</div>
+                <div class="list-item-details">Price: {{ consultation.price }} | Free: {{ consultation.isFree ? 'Yes' : 'No' }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="form">
+            <h4>Book New Consultation</h4>
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Specialist ID *</label>
+                <input v-model="consultationForm.specialistId" type="text" placeholder="Specialist UUID" />
+              </div>
+              <div class="form-field">
+                <label>Category ID *</label>
+                <input v-model="consultationForm.categoryId" type="text" placeholder="Category UUID" />
+              </div>
+              <div class="form-field">
+                <label>Description *</label>
+                <textarea v-model="consultationForm.description" placeholder="Describe your consultation needs"></textarea>
+              </div>
+              <div class="form-field">
+                <label>Scheduled At</label>
+                <input v-model="consultationForm.scheduledAt" type="datetime-local" />
+              </div>
+              <div class="form-field">
+                <label>Duration (minutes)</label>
+                <input v-model="consultationForm.duration" type="number" placeholder="60" />
+              </div>
+              <div class="form-field">
+                <label>
+                  <input v-model="consultationForm.isFree" type="checkbox" />
+                  Free Consultation
+                </label>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" @click="createConsultation" :disabled="consultationCreating">
+                {{ consultationCreating ? 'Creating...' : 'Book Consultation' }}
+              </button>
+            </div>
+            <div v-if="consultationMessage" :class="['form-message', consultationSuccess ? 'success' : 'error']">
+              {{ consultationMessage }}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Remove Account Confirmation Modal -->
@@ -192,10 +251,27 @@ const connectionSaving = ref(false)
 const connectionMessage = ref('')
 const connectionSuccess = ref(false)
 
+// Consultations state
+const consultationsLoading = ref(false)
+const consultationsError = ref('')
+const consultations = ref<any[]>([])
+const consultationForm = ref({
+  specialistId: '',
+  categoryId: '',
+  description: '',
+  scheduledAt: '',
+  duration: '',
+  isFree: false
+})
+const consultationCreating = ref(false)
+const consultationMessage = ref('')
+const consultationSuccess = ref(false)
+
 const selectMenu = (menu: string) => {
   selectedMenu.value = menu
   if (menu === 'profile') loadProfile()
   if (menu === 'connections') loadConnections()
+  if (menu === 'consultations') loadConsultations()
 }
 
 // Profile operations
@@ -391,6 +467,71 @@ const removeConnection = async (connectionId: string) => {
 const getConnectionTypeName = (typeId: string) => {
   const type = connectionTypes.value.find(t => t.id === typeId)
   return type ? type.name : 'Unknown'
+}
+
+// Consultations operations
+const loadConsultations = async () => {
+  consultationsLoading.value = true
+  consultationsError.value = ''
+  try {
+    const userId = sessionStorage.getItem('userId')
+    if (!userId) {
+      consultationsError.value = 'User ID not found'
+      return
+    }
+    const data = await $fetch(`${config.public.apiBase}/consultations/user/${userId}`)
+    consultations.value = data
+  } catch (error: any) {
+    console.error('Consultations load error:', error)
+    consultationsError.value = error.data?.message || error.message || 'Failed to load consultations'
+  } finally {
+    consultationsLoading.value = false
+  }
+}
+
+const createConsultation = async () => {
+  consultationCreating.value = true
+  consultationMessage.value = ''
+  consultationSuccess.value = false
+  try {
+    const userId = sessionStorage.getItem('userId')
+    if (!userId) {
+      consultationMessage.value = 'User ID not found'
+      return
+    }
+    
+    const body = {
+      userId,
+      specialistId: consultationForm.value.specialistId,
+      categoryId: consultationForm.value.categoryId,
+      description: consultationForm.value.description,
+      scheduledAt: consultationForm.value.scheduledAt ? new Date(consultationForm.value.scheduledAt).toISOString() : null,
+      duration: consultationForm.value.duration ? parseInt(consultationForm.value.duration) : null,
+      isFree: consultationForm.value.isFree
+    }
+    
+    await $fetch(`${config.public.apiBase}/consultations`, {
+      method: 'POST',
+      body
+    })
+    
+    consultationMessage.value = 'Consultation created successfully!'
+    consultationSuccess.value = true
+    consultationForm.value = {
+      specialistId: '',
+      categoryId: '',
+      description: '',
+      scheduledAt: '',
+      duration: '',
+      isFree: false
+    }
+    loadConsultations()
+  } catch (error: any) {
+    console.error('Consultation create error:', error)
+    consultationMessage.value = error.data?.message || error.message || 'Failed to create consultation'
+  } finally {
+    consultationCreating.value = false
+  }
 }
 
 const logout = async () => {
