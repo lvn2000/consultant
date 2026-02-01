@@ -5,9 +5,9 @@ import types.*
 
 case class Country(
   id: CountryId,
-  code: String,     // e.g., "US", "RU"
-  name: String,     // e.g., "United States", "Russia"
-  shortname: String // e.g., "USA", "Russia"
+  code: String,     // e.g., "+001", "+380"
+  name: String,     // e.g., "United States", "Ukraine"
+  shortname: String // e.g., "USA", "Uk"
 )
 
 object Country {
