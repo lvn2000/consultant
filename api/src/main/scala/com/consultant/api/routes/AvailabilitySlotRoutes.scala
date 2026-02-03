@@ -102,6 +102,151 @@ class AvailabilitySlotRoutes(
     }
   }
 
-  val endpoints = List(getAvailableSlots, checkAvailability)
+  /**
+   * Get specialist's availability preferences (all time slots for managing their schedule).
+   *
+   * GET /specialists/{specialistId}/availability
+   */
+  val getSpecialistAvailabilityEndpoint = specialistAvailabilityEndpoint.get
+    .out(jsonBody[List[SpecialistAvailabilityDto]])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val getSpecialistAvailability = getSpecialistAvailabilityEndpoint.serverLogic { specialistId =>
+    availabilityRepository
+      .findBySpecialist(specialistId)
+      .map { availabilities =>
+        Right(availabilities.map { avail =>
+          SpecialistAvailabilityDto(
+            id = avail.id,
+            specialistId = avail.specialistId,
+            dayOfWeek = avail.dayOfWeek,
+            startTime = avail.startTime.toString,
+            endTime = avail.endTime.toString,
+            createdAt = avail.createdAt,
+            updatedAt = avail.updatedAt
+          )
+        })
+      }
+      .recover { case e =>
+        Left(ErrorResponse("ERROR", e.getMessage))
+      }
+  }
+
+  /**
+   * Add a new availability slot for a specialist.
+   *
+   * POST /specialists/{specialistId}/availability { "dayOfWeek": 1, "startTime": "09:00", "endTime": "17:00" }
+   */
+  val createAvailabilityEndpoint = specialistAvailabilityEndpoint.post
+    .in(jsonBody[CreateAvailabilityDto])
+    .out(jsonBody[SpecialistAvailabilityDto])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val createAvailability = createAvailabilityEndpoint.serverLogic { case (specialistId, dto) =>
+    (for {
+      availability <- availabilityRepository.create(
+        specialistId,
+        com.consultant.core.domain.CreateAvailabilityRequest(
+          dayOfWeek = dto.dayOfWeek,
+          startTime = java.time.LocalTime.parse(dto.startTime),
+          endTime = java.time.LocalTime.parse(dto.endTime)
+        )
+      )
+      response = SpecialistAvailabilityDto(
+        id = availability.id,
+        specialistId = availability.specialistId,
+        dayOfWeek = availability.dayOfWeek,
+        startTime = availability.startTime.toString,
+        endTime = availability.endTime.toString,
+        createdAt = availability.createdAt,
+        updatedAt = availability.updatedAt
+      )
+    } yield Right(response)).recover { case e =>
+      Left(ErrorResponse("ERROR", e.getMessage))
+    }
+  }
+
+  /**
+   * Update an availability slot.
+   *
+   * PUT /specialists/{specialistId}/availability/{slotId} { "dayOfWeek": 1, "startTime": "09:00", "endTime": "17:00" }
+   */
+  val updateAvailabilityEndpoint = specialistAvailabilityEndpoint.put
+    .in(path[UUID]("slotId"))
+    .in(jsonBody[UpdateAvailabilityDto])
+    .out(jsonBody[SpecialistAvailabilityDto])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val updateAvailability = updateAvailabilityEndpoint.serverLogic { case (specialistId, slotId, dto) =>
+    (for {
+      existing <- availabilityRepository.findById(slotId).map {
+        case Some(avail) => Right(avail)
+        case None        => Left(ErrorResponse("NOT_FOUND", "Availability slot not found"))
+      }
+      result <- existing match {
+        case Right(avail) =>
+          val updated = avail.copy(
+            dayOfWeek = dto.dayOfWeek,
+            startTime = java.time.LocalTime.parse(dto.startTime),
+            endTime = java.time.LocalTime.parse(dto.endTime),
+            updatedAt = java.time.Instant.now()
+          )
+          availabilityRepository.update(updated).map { updated =>
+            Right(
+              SpecialistAvailabilityDto(
+                id = updated.id,
+                specialistId = updated.specialistId,
+                dayOfWeek = updated.dayOfWeek,
+                startTime = updated.startTime.toString,
+                endTime = updated.endTime.toString,
+                createdAt = updated.createdAt,
+                updatedAt = updated.updatedAt
+              )
+            )
+          }
+        case Left(error) => IO.pure(Left(error))
+      }
+    } yield result).recover { case e =>
+      Left(ErrorResponse("ERROR", e.getMessage))
+    }
+  }
+
+  /**
+   * Delete an availability slot.
+   *
+   * DELETE /specialists/{specialistId}/availability/{slotId}
+   */
+  val deleteAvailabilityEndpoint = specialistAvailabilityEndpoint.delete
+    .in(path[UUID]("slotId"))
+    .out(jsonBody[Map[String, String]])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val deleteAvailability = deleteAvailabilityEndpoint.serverLogic { case (specialistId, slotId) =>
+    (for {
+      existing <- availabilityRepository.findById(slotId).map {
+        case Some(avail) if avail.specialistId == specialistId => Right(avail)
+        case Some(_)                                           => Left(ErrorResponse("FORBIDDEN", "Not authorized"))
+        case None => Left(ErrorResponse("NOT_FOUND", "Availability slot not found"))
+      }
+      result <- existing match {
+        case Right(_) =>
+          availabilityRepository.delete(slotId).map { _ =>
+            Right(Map("message" -> "Availability slot deleted successfully"))
+          }
+        case Left(error) => IO.pure(Left(error))
+      }
+    } yield result).recover { case e =>
+      Left(ErrorResponse("ERROR", e.getMessage))
+    }
+  }
+
+  val endpoints = List(
+    getAvailableSlots,
+    checkAvailability,
+    getSpecialistAvailability,
+    createAvailability,
+    updateAvailability,
+    deleteAvailability
+  )
 
   val routes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(endpoints)
