@@ -165,9 +165,10 @@
                 <select v-model="consultationFilters.status">
                   <option value="">All Status</option>
                   <option value="Requested">Requested</option>
-                  <option value="Confirmed">Confirmed</option>
+                  <option value="Scheduled">Scheduled</option>
                   <option value="InProgress">In Progress</option>
                   <option value="Completed">Completed</option>
+                  <option value="Missed">Missed</option>
                   <option value="Cancelled">Cancelled</option>
                 </select>
               </div>
@@ -211,7 +212,8 @@
                 </div>
                 <div class="consultation-details">
                   <div>Specialist: {{ consultation.specialistId }}</div>
-                  <div>Price: {{ consultation.price }} | Free: {{ consultation.isFree ? 'Yes' : 'No' }}</div>
+                  <div>Duration: {{ consultation.duration }} minutes</div>
+                  <div>Price: {{ consultation.price === 0 ? 'Free' : `$${consultation.price}` }}</div>
                 </div>
               </div>
             </div>
@@ -335,15 +337,32 @@
                 <input type="time" v-model="consultationForm.scheduledTime" />
               </div>
 
-              <!-- Duration -->
-              <div class="form-field">
-                <label>Duration (minutes) *</label>
-                <input type="number" min="15" step="15" v-model.number="consultationForm.duration" placeholder="30" />
-              </div>
-
-              <!-- Free toggle -->
-              <div class="form-field">
-                <label><input type="checkbox" v-model="consultationForm.isFree" /> Free consultation</label>
+              <!-- Available Slots -->
+              <div v-if="selectedSpecialist && consultationForm.scheduledDate" class="form-field" style="grid-column: 1 / -1;">
+                <label>Available Slots</label>
+                <div v-if="slotsLoading" class="slots-container">
+                  <div class="slots-spinner">Loading available slots...</div>
+                </div>
+                <div v-else-if="slotsError" class="slots-container error">
+                  <p>{{ slotsError }}</p>
+                </div>
+                <div v-else-if="availableSlots.length > 0" class="slots-container">
+                  <div class="slots-grid">
+                    <button 
+                      v-for="(slot, idx) in availableSlots" 
+                      :key="idx"
+                      type="button"
+                      class="slot-button"
+                      :class="{ selected: consultationForm.scheduledTime === slot.startTime }"
+                      @click="selectSlot(slot)"
+                    >
+                      {{ slot.startTime }} - {{ slot.endTime }}
+                    </button>
+                  </div>
+                </div>
+                <div v-else class="slots-container empty">
+                  <p>No available slots for the selected date and duration</p>
+                </div>
               </div>
             </div>
 
@@ -444,13 +463,16 @@ const consultationForm = ref({
   categoryId: '',
   description: '',
   scheduledDate: '',
-  scheduledTime: '',
-  duration: '',
-  isFree: false
+  scheduledTime: ''
 })
 const consultationCreating = ref(false)
 const consultationMessage = ref('')
 const consultationSuccess = ref(false)
+
+// Availability slots state
+const availableSlots = ref<any[]>([])
+const slotsLoading = ref(false)
+const slotsError = ref('')
 
 // Specialists and categories for dropdowns
 const specialists = ref<any[]>([])
@@ -745,9 +767,8 @@ const isConsultationFormValid = computed(() => {
     consultationForm.value.categoryId &&
     consultationForm.value.description &&
     consultationForm.value.scheduledDate &&
-    consultationForm.value.scheduledTime &&
-    consultationForm.value.duration &&
-    Number(consultationForm.value.duration) > 0
+    consultationForm.value.scheduledTime
+    // Duration is not required - specialist will set it
 })
 
 const filteredConsultations = computed(() => {
@@ -899,6 +920,11 @@ const closeDropdownsOnFormClick = (e: MouseEvent) => {
 
 onMounted(() => {
   document.addEventListener('keydown', handleEscapeKey)
+  
+  // Watch for changes to specialist or date to reload available slots
+  watch([() => consultationForm.value.specialistId, () => consultationForm.value.scheduledDate], () => {
+    loadAvailableSlots()
+  })
 })
 
 onUnmounted(() => {
@@ -946,6 +972,45 @@ const goToPage = (page: number) => {
   }
 }
 
+// Load available time slots for specialist and date
+const loadAvailableSlots = async () => {
+  if (!consultationForm.value.specialistId || !consultationForm.value.scheduledDate) {
+    availableSlots.value = []
+    return
+  }
+
+  slotsLoading.value = true
+  slotsError.value = ''
+  availableSlots.value = []
+
+  try {
+    const response = await $fetch(`${config.public.apiBase}/specialists/${consultationForm.value.specialistId}/availability/slots`, {
+      query: {
+        date: consultationForm.value.scheduledDate,
+        durationMinutes: 60
+      }
+    })
+    
+    if (response.slots && Array.isArray(response.slots)) {
+      availableSlots.value = response.slots
+      if (response.slots.length === 0) {
+        slotsError.value = 'No available slots for selected date'
+      }
+    }
+  } catch (error: any) {
+    console.error('Slots load error:', error)
+    slotsError.value = error.data?.message || error.message || 'Failed to load available slots'
+    availableSlots.value = []
+  } finally {
+    slotsLoading.value = false
+  }
+}
+
+// Set selected slot time
+const selectSlot = (slot: any) => {
+  consultationForm.value.scheduledTime = slot.startTime
+}
+
 const createConsultation = async () => {
   consultationCreating.value = true
   consultationMessage.value = ''
@@ -968,8 +1033,7 @@ const createConsultation = async () => {
       categoryId: consultationForm.value.categoryId,
       description: consultationForm.value.description,
       scheduledAt: scheduledDateTime,
-      duration: consultationForm.value.duration ? parseInt(consultationForm.value.duration) : null,
-      isFree: consultationForm.value.isFree
+      duration: 60 // Default duration
     }
     
     const result = await $fetch(`${config.public.apiBase}/consultations`, {
@@ -984,9 +1048,7 @@ const createConsultation = async () => {
       categoryId: '',
       description: '',
       scheduledDate: '',
-      scheduledTime: '',
-      duration: '',
-      isFree: false
+      scheduledTime: ''
     }
     selectedSpecialist.value = null
     selectedCategory.value = null
@@ -1878,6 +1940,11 @@ onMounted(() => {
   color: #065f46;
 }
 
+.consultation-status.scheduled {
+  background: #d1fae5;
+  color: #065f46;
+}
+
 .consultation-status.inprogress {
   background: #fef3c7;
   color: #92400e;
@@ -1886,6 +1953,16 @@ onMounted(() => {
 .consultation-status.completed {
   background: #e0e7ff;
   color: #3730a3;
+}
+
+.consultation-status.missed {
+  background: #fed7aa;
+  color: #92400e;
+}
+
+.consultation-status.cancelled {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .consultation-status.cancelled {
@@ -1987,5 +2064,75 @@ onMounted(() => {
 .form-field input[type="time"]::placeholder,
 .form-field input[type="number"]::placeholder {
   color: #9ca3af;
+}
+
+/* Available Slots Styling */
+.slots-container {
+  padding: 1rem;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slots-container.error {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.slots-container.empty {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.slots-spinner {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.slot-button {
+  padding: 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.slot-button:hover:not(.selected) {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+  color: #1e40af;
+}
+
+.slot-button.selected {
+  background-color: #3b82f6;
+  color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.slot-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

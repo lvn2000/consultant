@@ -23,12 +23,12 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
   given userRoleMeta: Meta[UserRole] =
     Meta[String].timap(str => UserRole.valueOf(str))(_.toString)
 
-  override def login(email: String, password: String): IO[Option[User]] = {
+  override def login(login: String, password: String): IO[Option[User]] = {
     val userQ = sql"""
       SELECT u.id, u.login, u.email, u.name, u.phone, u.role, u.country_id, c.password_hash, u.created_at, u.updated_at
       FROM users u
       JOIN credentials c ON u.email = c.email
-      WHERE u.email = $email AND c.is_active = true
+      WHERE u.login = $login AND c.is_active = true
     """.query[(UUID, String, String, String, Option[String], UserRole, Option[UUID], String, Instant, Instant)].option
     val action: ConnectionIO[Option[User]] = for {
       userOpt <- userQ
@@ -91,6 +91,25 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
       SELECT id, login, email, name, phone, role, country_id, created_at, updated_at
       FROM users
       WHERE email = $email
+    """.query[(UUID, String, String, String, Option[String], UserRole, Option[UUID], Instant, Instant)].option
+    val action: ConnectionIO[Option[User]] = for {
+      userOpt <- userQ
+      langs <- userOpt match {
+        case Some((id, _, _, _, _, _, _, _, _)) =>
+          sql"SELECT language_id FROM user_languages WHERE user_id = $id".query[UUID].to[List]
+        case None => connection.pure(List.empty[UUID])
+      }
+    } yield userOpt.map { case (id, login, email, name, phone, role, countryId, created, updated) =>
+      User(id, login, email, name, phone, role, countryId, langs.toSet, created, updated)
+    }
+    action.transact(xa)
+  }
+
+  override def findByLogin(login: String): IO[Option[User]] = {
+    val userQ = sql"""
+      SELECT id, login, email, name, phone, role, country_id, created_at, updated_at
+      FROM users
+      WHERE login = $login
     """.query[(UUID, String, String, String, Option[String], UserRole, Option[UUID], Instant, Instant)].option
     val action: ConnectionIO[Option[User]] = for {
       userOpt <- userQ
