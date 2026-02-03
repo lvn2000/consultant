@@ -26,7 +26,7 @@ object AuthenticationService:
   )
 
   case class LoginRequest(
-    email: String,
+    login: String,
     password: String,
     ipAddress: String,
     userAgent: String
@@ -102,7 +102,7 @@ class AuthenticationService(
   def login(request: AuthenticationService.LoginRequest): IO[Either[String, AuthenticationService.LoginResponse]] =
     (for
       // Get credentials
-      credentials <- credentialsRepository.findByEmail(request.email).flatMap {
+      credentials <- credentialsRepository.findByLogin(request.login).flatMap {
         case Some(creds) => IO.pure(creds)
         case None        => IO.raiseError(new RuntimeException("Invalid credentials"))
       }
@@ -132,9 +132,9 @@ class AuthenticationService(
       _ <-
         if !validPassword then
           // Incorrect password - increment counter
-          credentialsRepository.incrementFailedAttempts(request.email) *>
+          credentialsRepository.incrementFailedAttempts(credentials.email) *>
             (if credentials.failedLoginAttempts + 1 >= maxFailedAttempts then
-               credentialsRepository.lockAccount(request.email, Instant.now().plusSeconds(lockDuration.toSeconds))
+               credentialsRepository.lockAccount(credentials.email, Instant.now().plusSeconds(lockDuration.toSeconds))
              else IO.unit) *>
             auditLog(
               credentials.userId,
@@ -148,7 +148,7 @@ class AuthenticationService(
         else IO.unit
 
       // Successful authentication
-      _ <- credentialsRepository.resetFailedAttempts(request.email)
+      _ <- credentialsRepository.resetFailedAttempts(credentials.email)
 
       // Get user
       user <- userRepository.findById(credentials.userId).flatMap {
@@ -157,7 +157,7 @@ class AuthenticationService(
       }
 
       // Generate tokens
-      accessToken  <- jwtService.generateAccessToken(credentials.userId, credentials.role, request.email)
+      accessToken  <- jwtService.generateAccessToken(credentials.userId, credentials.role, credentials.email)
       refreshToken <- jwtService.generateRefreshToken(credentials.userId)
 
       // Save refresh token

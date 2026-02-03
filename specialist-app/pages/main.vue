@@ -9,8 +9,14 @@
         <li :class="{ active: selectedMenu === 'rates' }" @click="selectMenu('rates')">
           My Rates
         </li>
+        <li :class="{ active: selectedMenu === 'availability' }" @click="selectMenu('availability')">
+          Availability
+        </li>
         <li :class="{ active: selectedMenu === 'connections' }" @click="selectMenu('connections')">
           My Connections
+        </li>
+        <li :class="{ active: selectedMenu === 'consultations' }" @click="selectMenu('consultations')">
+          My Consultations
         </li>
       </ul>
       <div class="menu-divider"></div>
@@ -118,10 +124,13 @@
               <label for="rate-category">Category</label>
               <select id="rate-category" v-model="rateForm.categoryId" required :disabled="!!editingRateId">
                 <option value="">Select category</option>
-                <option v-for="category in categories" :key="category.id" :value="category.id">
+                <option v-for="category in availableCategories" :key="category.id" :value="category.id">
                   {{ category.name }}
                 </option>
               </select>
+              <div v-if="isDuplicateCategory" class="form-error">
+                This category has already been added
+              </div>
             </div>
             <div class="form-field">
               <label for="rate-hourly">Hourly Rate ($)</label>
@@ -133,7 +142,7 @@
             </div>
           </div>
           <div class="form-actions">
-            <button type="submit" class="btn" :disabled="rateSaving">
+            <button type="submit" class="btn" :disabled="rateSaving || isDuplicateCategory">
               {{ rateSaving ? 'Saving...' : (editingRateId ? 'Update Rate' : 'Add Rate') }}
             </button>
             <button v-if="editingRateId" type="button" class="btn" @click="cancelEditRate">Cancel</button>
@@ -235,12 +244,218 @@
           </div>
         </div>
       </section>
+
+      <!-- Availability Section -->
+      <section v-if="selectedMenu === 'availability'" class="section">
+        <div class="section-header">
+          <h2>My Availability</h2>
+          <button type="button" class="btn" @click="loadAvailability">Refresh</button>
+        </div>
+
+        <div class="list-state" v-if="availabilityLoading">Loading availability...</div>
+        <div class="list-state error" v-else-if="availabilityError">{{ availabilityError }}</div>
+
+        <div v-else class="availability-section">
+          <!-- Current Availability -->
+          <div v-if="availability.length > 0" class="availability-list">
+            <h3>Current Time Slots</h3>
+            <div class="availability-grid">
+              <div v-for="slot in sortedAvailability" :key="slot.id" class="availability-slot">
+                <div class="slot-day">{{ getDayName(slot.dayOfWeek) }}</div>
+                <div class="slot-time">{{ formatTime(slot.startTime) }} - {{ formatTime(slot.endTime) }}</div>
+                <div class="slot-actions">
+                  <button type="button" class="btn btn-sm btn-danger" @click="deleteAvailability(slot.id)" :disabled="deletingAvailabilityId === slot.id">
+                    🗑️ Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add New Availability -->
+          <div class="form">
+            <h3>{{ editingAvailabilityId ? 'Edit Time Slot' : 'Add New Time Slot' }}</h3>
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="day-of-week">Day of Week *</label>
+                <select id="day-of-week" v-model.number="availabilityForm.dayOfWeek" required>
+                  <option value="">Select day</option>
+                  <option value="0">Monday</option>
+                  <option value="1">Tuesday</option>
+                  <option value="2">Wednesday</option>
+                  <option value="3">Thursday</option>
+                  <option value="4">Friday</option>
+                  <option value="5">Saturday</option>
+                  <option value="6">Sunday</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label for="start-time">Start Time *</label>
+                <input id="start-time" v-model="availabilityForm.startTime" type="time" required />
+              </div>
+              <div class="form-field">
+                <label for="end-time">End Time *</label>
+                <input id="end-time" v-model="availabilityForm.endTime" type="time" required />
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn" @click="saveAvailability" :disabled="availabilitySaving || !isAvailabilityFormValid">
+                {{ availabilitySaving ? 'Saving...' : (editingAvailabilityId ? 'Update Slot' : 'Add Slot') }}
+              </button>
+              <button v-if="editingAvailabilityId" type="button" class="btn" @click="cancelEditAvailability">Cancel</button>
+            </div>
+            <div v-if="availabilityMessage" :class="['form-message', availabilitySuccess ? 'success' : 'error']">
+              {{ availabilityMessage }}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Consultations Section -->
+      <section v-if="selectedMenu === 'consultations'" class="section">
+        <div class="section-header">
+          <h2>My Consultations</h2>
+          <button type="button" class="btn" @click="loadConsultations">Refresh</button>
+        </div>
+
+        <div class="list-state" v-if="consultationsLoading">Loading consultations...</div>
+        <div class="list-state error" v-else-if="consultationsError">{{ consultationsError }}</div>
+        <div v-else-if="consultations.length === 0" class="empty-state">
+          <div class="empty-icon">📋</div>
+          <h3>No consultations yet</h3>
+          <p>You haven't received any consultation requests yet.</p>
+        </div>
+        <div v-else class="consultations-container">
+          <!-- Consultations Table -->
+          <div class="table" v-if="paginatedConsultations.length > 0">
+            <div class="table-header consultations-table">
+              <span>Client</span>
+              <span>Category</span>
+              <span>Date & Time</span>
+              <span>Duration (minutes)</span>
+              <span>Status</span>
+              <span>Price</span>
+              <span>Actions</span>
+            </div>
+            <div v-for="consultation in paginatedConsultations" :key="consultation.id" class="table-row consultations-table">
+              <span>{{ consultation.clientName || consultation.userId }}</span>
+              <span>{{ consultation.categoryName || consultation.categoryId }}</span>
+              <span>{{ formatDateTime(consultation.scheduledAt) }}</span>
+              <span>{{ consultation.duration }} min</span>
+              <span :class="['status-badge', consultation.status.toLowerCase()]">
+                {{ consultation.status }}
+              </span>
+              <span>{{ consultation.price === 0 ? 'Free' : `$${consultation.price}` }}</span>
+              <span class="actions-cell">
+                <template v-if="isConsultationActionable(consultation)">
+                  <template v-if="consultation.status === 'Requested'">
+                    <button 
+                      type="button" 
+                      class="btn btn-sm btn-success" 
+                      @click="approveConsultation(consultation.id)"
+                      :disabled="updatingConsultationId === consultation.id"
+                    >
+                      {{ updatingConsultationId === consultation.id ? '...' : '✓ Approve' }}
+                    </button>
+                    <button 
+                      type="button" 
+                      class="btn btn-sm btn-danger" 
+                      @click="declineConsultation(consultation.id)"
+                      :disabled="updatingConsultationId === consultation.id"
+                    >
+                      {{ updatingConsultationId === consultation.id ? '...' : '✗ Decline' }}
+                    </button>
+                  </template>
+                  <template v-else-if="consultation.status === 'Scheduled'">
+                    <template v-if="isConsultationInFuture(consultation)">
+                      <button 
+                        type="button" 
+                        class="btn btn-sm btn-danger" 
+                        @click="declineConsultation(consultation.id)"
+                        :disabled="updatingConsultationId === consultation.id"
+                      >
+                        {{ updatingConsultationId === consultation.id ? '...' : '✗ Cancel' }}
+                      </button>
+                    </template>
+                    <template v-else>
+                      <button 
+                        type="button" 
+                        class="btn btn-sm btn-warning" 
+                        @click="markAsMissed(consultation.id)"
+                        :disabled="updatingConsultationId === consultation.id"
+                      >
+                        {{ updatingConsultationId === consultation.id ? '...' : '⏭ Mark Missed' }}
+                      </button>
+                    </template>
+                  </template>
+                  <template v-else>
+                    <span class="text-gray">-</span>
+                  </template>
+                </template>
+                <template v-else>
+                  <span class="text-gray">Expired</span>
+                </template>
+              </span>
+            </div>
+          </div>
+
+          <!-- Pagination -->
+          <div v-if="consultationPagination.totalPages > 1" class="pagination">
+            <button 
+              class="pagination-btn" 
+              :disabled="consultationPagination.currentPage === 1"
+              @click="goToConsultationPage(consultationPagination.currentPage - 1)"
+            >
+              Previous
+            </button>
+            <span class="pagination-info">
+              Page {{ consultationPagination.currentPage }} of {{ consultationPagination.totalPages }}
+              ({{ consultationPagination.totalCount }} total)
+            </span>
+            <button 
+              class="pagination-btn" 
+              :disabled="consultationPagination.currentPage === consultationPagination.totalPages"
+              @click="goToConsultationPage(consultationPagination.currentPage + 1)"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+
+        <!-- Approve Consultation Dialog -->
+        <div v-if="showApprovalDialog" class="modal-overlay" @click="showApprovalDialog = false">
+          <div class="modal" @click.stop>
+            <h3>Approve Consultation</h3>
+            <p>Estimate the duration for this consultation (in minutes):</p>
+            <div class="form-field">
+              <label>Duration (minutes) *</label>
+              <input 
+                v-model.number="approvingConsultationDuration" 
+                type="number" 
+                min="15" 
+                step="15" 
+                placeholder="60"
+                @keyup.enter="confirmApprove"
+              />
+            </div>
+            <div v-if="approvingConsultationDurationError" class="error-message">
+              {{ approvingConsultationDurationError }}
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn success" @click="confirmApprove" :disabled="updatingConsultationId !== null">
+                {{ updatingConsultationId !== null ? 'Approving...' : 'Approve' }}
+              </button>
+              <button type="button" class="btn" @click="showApprovalDialog = false" :disabled="updatingConsultationId !== null">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRuntimeConfig } from 'nuxt/app'
 import { $fetch } from 'ofetch'
@@ -296,11 +511,42 @@ const connectionSaving = ref(false)
 const connectionMessage = ref('')
 const connectionSuccess = ref(false)
 
+// Consultations state
+const consultationsLoading = ref(false)
+const consultationsError = ref('')
+const consultations = ref<any[]>([])
+const currentConsultationPage = ref(1)
+const itemsPerPage = 10
+const updatingConsultationId = ref<string | null>(null)
+
+// Approval dialog state
+const showApprovalDialog = ref(false)
+const approvingConsultationId = ref<string | null>(null)
+const approvingConsultationDuration = ref<number | null>(null)
+const approvingConsultationDurationError = ref('')
+
+const consultationPagination = computed(() => {
+  const total = consultations.value.length
+  const totalPages = Math.ceil(total / itemsPerPage)
+  return {
+    currentPage: currentConsultationPage.value,
+    totalPages: totalPages || 1,
+    totalCount: total
+  }
+})
+
+const paginatedConsultations = computed(() => {
+  const start = (currentConsultationPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return consultations.value.slice(start, end)
+})
+
 const selectMenu = (menu: string) => {
   selectedMenu.value = menu
   if (menu === 'profile') loadProfile()
   if (menu === 'rates') loadRates()
   if (menu === 'connections') loadConnections()
+  if (menu === 'consultations') loadConsultations()
 }
 
 // Profile operations
@@ -493,6 +739,18 @@ const getCategoryName = (categoryId: string) => {
   return category ? category.name : 'Unknown'
 }
 
+// Filter out categories that are already added
+const availableCategories = computed(() => {
+  const addedCategoryIds = rates.value.map(r => r.categoryId)
+  return categories.value.filter(c => !addedCategoryIds.includes(c.id))
+})
+
+// Check if current form selection is a duplicate
+const isDuplicateCategory = computed(() => {
+  if (!rateForm.value.categoryId || editingRateId.value) return false
+  return rates.value.some(r => r.categoryId === rateForm.value.categoryId)
+})
+
 // Connections operations
 const loadConnections = async () => {
   connectionsLoading.value = true
@@ -598,6 +856,360 @@ const removeConnection = async (connectionId: string) => {
 const getConnectionTypeName = (typeId: string) => {
   const type = connectionTypes.value.find(t => t.id === typeId)
   return type ? type.name : 'Unknown'
+}
+
+// Availability state
+const availabilityLoading = ref(false)
+const availabilityError = ref('')
+const availability = ref<any[]>([])
+const availabilityForm = ref({
+  dayOfWeek: '',
+  startTime: '',
+  endTime: ''
+})
+const editingAvailabilityId = ref<string | null>(null)
+const availabilitySaving = ref(false)
+const availabilityMessage = ref('')
+const availabilitySuccess = ref(false)
+const deletingAvailabilityId = ref<string | null>(null)
+
+const sortedAvailability = computed(() => {
+  return [...availability.value].sort((a, b) => a.dayOfWeek - b.dayOfWeek)
+})
+
+const isAvailabilityFormValid = computed(() => {
+  return availabilityForm.value.dayOfWeek !== '' && 
+         availabilityForm.value.startTime && 
+         availabilityForm.value.endTime &&
+         availabilityForm.value.startTime < availabilityForm.value.endTime
+})
+
+const getDayName = (dayOfWeek: number): string => {
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  return days[dayOfWeek] || 'Unknown'
+}
+
+const formatTime = (timeString: string): string => {
+  // Assuming timeString is in HH:mm format
+  return timeString || 'N/A'
+}
+
+// Availability operations
+const loadAvailability = async () => {
+  availabilityLoading.value = true
+  availabilityError.value = ''
+  try {
+    const userId = sessionStorage.getItem('userId')
+    if (!userId) {
+      availabilityError.value = 'User ID not found'
+      return
+    }
+    const data = await $fetch(`${config.public.apiBase}/specialists/${userId}/availability`)
+    availability.value = data || []
+  } catch (error: any) {
+    availabilityError.value = error.data?.message || error.message || 'Failed to load availability'
+  } finally {
+    availabilityLoading.value = false
+  }
+}
+
+const saveAvailability = async () => {
+  availabilitySaving.value = true
+  availabilityMessage.value = ''
+  try {
+    const userId = sessionStorage.getItem('userId')
+    if (!userId) {
+      availabilityMessage.value = 'User ID not found'
+      availabilitySuccess.value = false
+      return
+    }
+    
+    if (editingAvailabilityId.value) {
+      // Update existing availability
+      await $fetch(`${config.public.apiBase}/specialists/${userId}/availability/${editingAvailabilityId.value}`, {
+        method: 'PUT',
+        body: {
+          dayOfWeek: parseInt(availabilityForm.value.dayOfWeek),
+          startTime: availabilityForm.value.startTime,
+          endTime: availabilityForm.value.endTime
+        }
+      })
+      availabilityMessage.value = 'Availability updated successfully'
+    } else {
+      // Add new availability
+      await $fetch(`${config.public.apiBase}/specialists/${userId}/availability`, {
+        method: 'POST',
+        body: {
+          dayOfWeek: parseInt(availabilityForm.value.dayOfWeek),
+          startTime: availabilityForm.value.startTime,
+          endTime: availabilityForm.value.endTime
+        }
+      })
+      availabilityMessage.value = 'Availability added successfully'
+    }
+    
+    availabilitySuccess.value = true
+    setTimeout(() => {
+      cancelEditAvailability()
+      loadAvailability()
+    }, 1500)
+  } catch (error: any) {
+    availabilityMessage.value = error.data?.message || error.message || 'Failed to save availability'
+    availabilitySuccess.value = false
+  } finally {
+    availabilitySaving.value = false
+  }
+}
+
+const cancelEditAvailability = () => {
+  availabilityForm.value = { dayOfWeek: '', startTime: '', endTime: '' }
+  editingAvailabilityId.value = null
+  availabilityMessage.value = ''
+}
+
+const deleteAvailability = async (availabilityId: string) => {
+  if (!confirm('Are you sure you want to delete this time slot?')) return
+  
+  deletingAvailabilityId.value = availabilityId
+  try {
+    const userId = sessionStorage.getItem('userId')
+    if (!userId) {
+      alert('User ID not found')
+      return
+    }
+    await $fetch(`${config.public.apiBase}/specialists/${userId}/availability/${availabilityId}`, {
+      method: 'DELETE'
+    })
+    await loadAvailability()
+  } catch (error: any) {
+    alert(error.data?.message || error.message || 'Failed to delete availability')
+  } finally {
+    deletingAvailabilityId.value = null
+  }
+}
+
+// Consultations operations
+const loadConsultations = async () => {
+  consultationsLoading.value = true
+  consultationsError.value = ''
+  currentConsultationPage.value = 1
+  try {
+    const userId = sessionStorage.getItem('userId')
+    if (!userId) {
+      consultationsError.value = 'User ID not found'
+      return
+    }
+    const data = await $fetch(`${config.public.apiBase}/consultations/specialist/${userId}`)
+    const consultationsData = data || []
+    
+    console.log('Raw consultations data:', consultationsData)
+    
+    // Enrich consultations with client names and category names
+    const enrichedConsultations = await Promise.all(
+      consultationsData.map(async (consultation: any) => {
+        try {
+          console.log('Processing consultation:', consultation)
+          
+          // Fetch client name
+          let clientName = 'Unknown Client'
+          if (consultation.userId) {
+            try {
+              console.log('Fetching client:', consultation.userId)
+              const clientData = await $fetch(`${config.public.apiBase}/users/${consultation.userId}`)
+              console.log('Client data:', clientData)
+              clientName = clientData?.name || consultation.userId
+            } catch (e: any) {
+              console.error('Failed to fetch client:', consultation.userId, e)
+              clientName = `Client (${consultation.userId})`
+            }
+          } else {
+            console.warn('No userId in consultation:', consultation)
+          }
+          
+          // Fetch category name
+          let categoryName = 'Unknown Category'
+          if (consultation.categoryId) {
+            try {
+              console.log('Fetching category:', consultation.categoryId)
+              const categoryData = await $fetch(`${config.public.apiBase}/categories/${consultation.categoryId}`)
+              console.log('Category data:', categoryData)
+              categoryName = categoryData?.name || consultation.categoryId
+            } catch (e: any) {
+              console.error('Failed to fetch category:', consultation.categoryId, e)
+              categoryName = `Category (${consultation.categoryId})`
+            }
+          } else {
+            console.warn('No categoryId in consultation:', consultation)
+          }
+          
+          const enriched = {
+            ...consultation,
+            clientName,
+            categoryName
+          }
+          console.log('Enriched consultation:', enriched)
+          return enriched
+        } catch (e) {
+          console.error('Error enriching consultation:', e)
+          return consultation
+        }
+      })
+    )
+    
+    consultations.value = enrichedConsultations
+    console.log('Final consultations:', enrichedConsultations)
+  } catch (error: any) {
+    console.error('Error loading consultations:', error)
+    consultationsError.value = error.data?.message || error.message || 'Failed to load consultations'
+  } finally {
+    consultationsLoading.value = false
+  }
+}
+
+const goToConsultationPage = (page: number) => {
+  const totalPages = consultationPagination.value.totalPages
+  if (page >= 1 && page <= totalPages) {
+    currentConsultationPage.value = page
+  }
+}
+
+const approveConsultation = async (consultationId: string) => {
+  // Open dialog to set duration
+  console.log('Opening approval dialog for consultation:', consultationId)
+  approvingConsultationId.value = consultationId
+  approvingConsultationDuration.value = null
+  approvingConsultationDurationError.value = ''
+  showApprovalDialog.value = true
+  console.log('Approval dialog opened, showApprovalDialog:', showApprovalDialog.value)
+}
+
+const confirmApprove = async () => {
+  if (!approvingConsultationDuration.value || approvingConsultationDuration.value < 15) {
+    approvingConsultationDurationError.value = 'Duration must be at least 15 minutes'
+    return
+  }
+
+  updatingConsultationId.value = approvingConsultationId.value
+  try {
+    const result = await $fetch(`${config.public.apiBase}/consultations/${approvingConsultationId.value}/approve`, {
+      method: 'PUT',
+      body: { 
+        status: 'Scheduled',
+        duration: approvingConsultationDuration.value
+      }
+    })
+    
+    console.log('Consultation approved:', result)
+    // Update the consultation in the list
+    const consultation = consultations.value.find(c => c.id === approvingConsultationId.value)
+    if (consultation) {
+      consultation.status = 'Scheduled'
+      consultation.duration = approvingConsultationDuration.value
+    }
+    showApprovalDialog.value = false
+  } catch (error: any) {
+    console.error('Error approving consultation:', error)
+    approvingConsultationDurationError.value = error.data?.message || error.message || 'Failed to approve consultation'
+  } finally {
+    updatingConsultationId.value = null
+  }
+}
+
+const declineConsultation = async (consultationId: string) => {
+  updatingConsultationId.value = consultationId
+  try {
+    const result = await $fetch(`${config.public.apiBase}/consultations/${consultationId}/status`, {
+      method: 'PUT',
+      body: { status: 'Cancelled' }
+    })
+    
+    console.log('Consultation declined:', result)
+    // Update the consultation in the list
+    const consultation = consultations.value.find(c => c.id === consultationId)
+    if (consultation) {
+      consultation.status = 'Cancelled'
+    }
+  } catch (error: any) {
+    console.error('Error declining consultation:', error)
+    alert(error.data?.message || error.message || 'Failed to decline consultation')
+  } finally {
+    updatingConsultationId.value = null
+  }
+}
+
+const markAsMissed = async (consultationId: string) => {
+  updatingConsultationId.value = consultationId
+  try {
+    const result = await $fetch(`${config.public.apiBase}/consultations/${consultationId}/status`, {
+      method: 'PUT',
+      body: { status: 'Missed' }
+    })
+    
+    console.log('Consultation marked as missed:', result)
+    // Update the consultation in the list
+    const consultation = consultations.value.find(c => c.id === consultationId)
+    if (consultation) {
+      consultation.status = 'Missed'
+    }
+  } catch (error: any) {
+    console.error('Error marking consultation as missed:', error)
+    alert(error.data?.message || error.message || 'Failed to mark consultation as missed')
+  } finally {
+    updatingConsultationId.value = null
+  }
+}
+
+const isConsultationActionable = (consultation: any): boolean => {
+  // Check if the consultation date/time is still in the future
+  if (!consultation.scheduledAt) return false
+  
+  try {
+    const scheduledDate = new Date(consultation.scheduledAt)
+    const now = new Date()
+    
+    // Consultation is actionable if it's still in the future
+    return scheduledDate > now
+  } catch (e) {
+    console.error('Error checking consultation date:', e)
+    return false
+  }
+}
+
+const isConsultationInFuture = (consultation: any): boolean => {
+  // Check if the consultation date/time is still in the future
+  if (!consultation.scheduledAt) return false
+  
+  try {
+    const scheduledDate = new Date(consultation.scheduledAt)
+    const now = new Date()
+    
+    return scheduledDate > now
+  } catch (e) {
+    console.error('Error checking consultation date:', e)
+    return false
+  }
+}
+
+const formatDateTime = (dateString: string) => {
+  if (!dateString) return 'N/A'
+  try {
+    // Handle ISO 8601 format with timezone
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return 'Invalid Date'
+    
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    })
+  } catch (e) {
+    console.error('Error formatting date:', dateString, e)
+    return dateString || 'N/A'
+  }
 }
 
 const logout = async () => {
@@ -1025,6 +1637,12 @@ onMounted(() => {
   border-left: 4px solid #dc2626;
 }
 
+.form-error {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
 .list-state {
   padding: 2rem 1rem;
   background: white;
@@ -1057,6 +1675,117 @@ onMounted(() => {
 
 .rates-table {
   grid-template-columns: 2fr 1fr 1fr 1.5fr;
+}
+
+.consultations-table {
+  grid-template-columns: 1.5fr 1.5fr 2fr 1fr 1fr 1fr 1.5fr;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-badge.requested {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-badge.confirmed {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge.scheduled {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge.inprogress {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.completed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.missed {
+  background: #fed7aa;
+  color: #92400e;
+}
+
+.status-badge.cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-badge.cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.consultations-container {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.pagination-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #1f2937;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+  color: #1f2937;
+  margin: 1rem 0 0.5rem;
 }
 
 .table-header {
@@ -1147,5 +1876,127 @@ onMounted(() => {
   gap: 1rem;
   justify-content: flex-end;
   margin-top: 1.5rem;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.btn-sm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-success {
+  background: #10b981;
+  color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.btn-warning {
+  background: #f59e0b;
+  color: white;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: #d97706;
+  transform: translateY(-1px);
+}
+
+.text-gray {
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+/* Availability Section Styles */
+.availability-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.availability-list {
+  margin-bottom: 2rem;
+}
+
+.availability-list h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #1f2937;
+}
+
+.availability-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.availability-slot {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.slot-day {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.95rem;
+}
+
+.slot-time {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.slot-actions {
+  margin-top: 0.5rem;
+}
+
+.btn-warning {
+  background: #f59e0b;
+  color: white;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: #d97706;
+  transform: translateY(-1px);
+}
+
+.text-gray {
+  color: #9ca3af;
+  font-size: 0.875rem;
 }
 </style>

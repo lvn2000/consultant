@@ -15,6 +15,7 @@ import sttp.tapir.server.http4s.Http4sServerInterpreter
 import com.consultant.data.config.{ DatabaseConfig, DbConfig }
 import com.consultant.data.repository.*
 import com.consultant.core.service.*
+import com.consultant.core.ports.AvailabilityRepository
 import com.consultant.api.routes.*
 import com.consultant.infrastructure.config.AppConfig
 import com.consultant.infrastructure.local.MockNotificationService
@@ -24,16 +25,26 @@ object Server extends IOApp:
 
   def run(args: List[String]): IO[ExitCode] =
     resources.use {
-      case (config, userService, specialistService, consultationService, categoryService, connectionService) =>
+      case (
+            config,
+            userService,
+            specialistService,
+            consultationService,
+            categoryService,
+            connectionService,
+            availabilityRepository
+          ) =>
         val userRoutes         = UserRoutes(userService)
         val specialistRoutes   = SpecialistRoutes(specialistService)
         val consultationRoutes = ConsultationRoutes(consultationService)
         val categoryRoutes     = CategoryRoutes(categoryService)
         val connectionRoutes   = ConnectionRoutes(connectionService)
+        val availabilityRoutes = AvailabilitySlotRoutes(consultationService, availabilityRepository)
 
         // Swagger documentation
         val allEndpoints = userRoutes.endpoints ++ specialistRoutes.endpoints ++
-          consultationRoutes.endpoints ++ categoryRoutes.endpoints ++ connectionRoutes.endpoints
+          consultationRoutes.endpoints ++ categoryRoutes.endpoints ++ connectionRoutes.endpoints ++
+          availabilityRoutes.endpoints
 
         val docEndpoints = SwaggerInterpreter()
           .fromServerEndpoints(allEndpoints, "Consultant API", "1.0.0")
@@ -46,8 +57,8 @@ object Server extends IOApp:
         }
 
         val apiRoutes = Router(
-          "/api/users"            -> (connectionRoutes.clientConnectionRoutes <+> userRoutes.routes),
-          "/api/specialists"      -> (connectionRoutes.specialistConnectionRoutes <+> specialistRoutes.routes),
+          "/api/users" -> (connectionRoutes.clientConnectionRoutes <+> userRoutes.routes),
+          "/api/specialists" -> (availabilityRoutes.routes <+> connectionRoutes.specialistConnectionRoutes <+> specialistRoutes.routes),
           "/api/consultations"    -> consultationRoutes.routes,
           "/api/categories"       -> categoryRoutes.routes,
           "/api/connection-types" -> connectionRoutes.connectionTypeRoutes
@@ -78,7 +89,15 @@ object Server extends IOApp:
 
   private def resources: Resource[
     IO,
-    (AppConfig, UserService, SpecialistService, ConsultationService, CategoryService, ConnectionService)
+    (
+      AppConfig,
+      UserService,
+      SpecialistService,
+      ConsultationService,
+      CategoryService,
+      ConnectionService,
+      AvailabilityRepository
+    )
   ] =
     for
       config <- Resource.eval(AppConfig.load)
@@ -107,6 +126,7 @@ object Server extends IOApp:
       specialistRepo     = PostgresSpecialistRepository(xa, connectionRepo)
       categoryRepo       = PostgresCategoryRepository(xa)
       consultationRepo   = PostgresConsultationRepository(xa)
+      availabilityRepo   = PostgresAvailabilityRepository(xa)
 
       // Infrastructure services
       notificationService = MockNotificationService()
@@ -122,4 +142,12 @@ object Server extends IOApp:
       )
       categoryService   = CategoryService(categoryRepo)
       connectionService = ConnectionService(connectionRepo, connectionTypeRepo, specialistRepo)
-    yield (config, userService, specialistService, consultationService, categoryService, connectionService)
+    yield (
+      config,
+      userService,
+      specialistService,
+      consultationService,
+      categoryService,
+      connectionService,
+      availabilityRepo
+    )

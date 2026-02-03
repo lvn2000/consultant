@@ -93,7 +93,6 @@ object DtoMappers:
       consultation.scheduledAt,
       consultation.duration,
       consultation.price,
-      consultation.isFree, // Новое поле
       consultation.rating,
       consultation.review,
       consultation.createdAt,
@@ -107,8 +106,7 @@ object DtoMappers:
       dto.categoryId,
       dto.description,
       dto.scheduledAt,
-      dto.duration,
-      dto.isFree // Новое поле
+      dto.duration
     )
 
   // Connection mappers
@@ -175,3 +173,9 @@ object DtoMappers:
       case DomainError.SpecialistNotAvailable(id) => ErrorResponse("UNAVAILABLE", s"Specialist not available: $id")
       case DomainError.ValidationError(msg)       => ErrorResponse("VALIDATION_ERROR", msg)
       case DomainError.InvalidCredentials         => ErrorResponse("UNAUTHORIZED", "Invalid credentials")
+      case DomainError.DuplicateCategoryRate(catId) =>
+        ErrorResponse(
+          "CONFLICT",
+          s"This category has already been added for this specialist (Category: $catId). Each specialist can only have one rate per category."
+        )
+      case DomainError.DatabaseError(msg) => ErrorResponse("DATABASE_ERROR", msg)

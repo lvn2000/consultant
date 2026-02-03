@@ -29,7 +29,6 @@ class PostgresConsultationRepository(xa: Transactor[IO]) extends ConsultationRep
       request.scheduledAt,
       request.duration,
       price,
-      request.isFree,
       None,
       None,
       now,
@@ -39,13 +38,13 @@ class PostgresConsultationRepository(xa: Transactor[IO]) extends ConsultationRep
     sql"""
       INSERT INTO consultations (
         id, user_id, specialist_id, category_id, description, status,
-        scheduled_at, duration, price, is_free, created_at, updated_at
+        scheduled_at, duration, price, created_at, updated_at
       )
       VALUES (
         ${consultation.id}, ${consultation.userId}, ${consultation.specialistId},
         ${consultation.categoryId}, ${consultation.description}, ${consultation.status},
         ${consultation.scheduledAt}, ${consultation.duration}, ${consultation.price},
-        ${consultation.isFree}, ${consultation.createdAt}, ${consultation.updatedAt}
+        ${consultation.createdAt}, ${consultation.updatedAt}
       )
     """.update.run
       .transact(xa)
@@ -54,7 +53,7 @@ class PostgresConsultationRepository(xa: Transactor[IO]) extends ConsultationRep
   override def findById(id: ConsultationId): IO[Option[Consultation]] =
     sql"""
       SELECT id, user_id, specialist_id, category_id, description, status,
-             scheduled_at, duration, price, is_free, rating, review, created_at, updated_at
+             scheduled_at, duration, price, rating, review, created_at, updated_at
       FROM consultations
       WHERE id = $id
     """.query[Consultation].option.transact(xa)
@@ -62,7 +61,7 @@ class PostgresConsultationRepository(xa: Transactor[IO]) extends ConsultationRep
   override def findByUser(userId: UserId, offset: Int, limit: Int): IO[List[Consultation]] =
     sql"""
       SELECT id, user_id, specialist_id, category_id, description, status,
-             scheduled_at, duration, price, is_free, rating, review, created_at, updated_at
+             scheduled_at, duration, price, rating, review, created_at, updated_at
       FROM consultations
       WHERE user_id = $userId
       ORDER BY created_at DESC
@@ -76,7 +75,7 @@ class PostgresConsultationRepository(xa: Transactor[IO]) extends ConsultationRep
   ): IO[List[Consultation]] =
     sql"""
       SELECT id, user_id, specialist_id, category_id, description, status,
-             scheduled_at, duration, price, is_free, rating, review, created_at, updated_at
+             scheduled_at, duration, price, rating, review, created_at, updated_at
       FROM consultations
       WHERE specialist_id = $specialistId
       ORDER BY created_at DESC
@@ -91,7 +90,6 @@ class PostgresConsultationRepository(xa: Transactor[IO]) extends ConsultationRep
           scheduled_at = ${updated.scheduledAt},
           duration = ${updated.duration},
           price = ${updated.price},
-          is_free = ${updated.isFree},
           rating = ${updated.rating},
           review = ${updated.review},
           updated_at = ${updated.updatedAt}

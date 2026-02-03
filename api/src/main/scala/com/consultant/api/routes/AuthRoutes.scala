@@ -24,7 +24,7 @@ class AuthRoutes(authService: AuthenticationService):
   ) derives Codec.AsObject
 
   case class LoginDto(
-    email: String,
+    login: String,
     password: String
   ) derives Codec.AsObject
 
@@ -37,6 +37,7 @@ class AuthRoutes(authService: AuthenticationService):
     refreshToken: String,
     expiresAt: Instant,
     userId: UUID,
+    login: String,
     email: String,
     name: String,
     role: String
@@ -81,7 +82,7 @@ class AuthRoutes(authService: AuthenticationService):
       case Right(user) =>
         // Auto login after registration
         val loginRequest = AuthenticationService.LoginRequest(
-          email = dto.email,
+          login = user.login,
           password = dto.password,
           ipAddress = "0.0.0.0", // TODO: extract from request
           userAgent = "unknown"
@@ -95,6 +96,7 @@ class AuthRoutes(authService: AuthenticationService):
                 refreshToken = loginResponse.refreshToken,
                 expiresAt = loginResponse.expiresAt,
                 userId = loginResponse.user.id,
+                login = loginResponse.user.login,
                 email = loginResponse.user.email,
                 name = loginResponse.user.name,
                 role = loginResponse.user.role.toString
@@ -118,7 +120,7 @@ class AuthRoutes(authService: AuthenticationService):
 
   def loginRoute = loginEndpoint.serverLogic { dto =>
     val request = AuthenticationService.LoginRequest(
-      email = dto.email,
+      login = dto.login,
       password = dto.password,
       ipAddress = "0.0.0.0", // TODO: extract from request
       userAgent = "unknown"
@@ -132,6 +134,7 @@ class AuthRoutes(authService: AuthenticationService):
             refreshToken = response.refreshToken,
             expiresAt = response.expiresAt,
             userId = response.user.id,
+            login = response.user.login,
             email = response.user.email,
             name = response.user.name,
             role = response.user.role.toString
@@ -158,6 +161,7 @@ class AuthRoutes(authService: AuthenticationService):
             refreshToken = response.refreshToken,
             expiresAt = response.expiresAt,
             userId = response.user.id,
+            login = response.user.login,
             email = response.user.email,
             name = response.user.name,
             role = response.user.role.toString

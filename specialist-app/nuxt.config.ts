@@ -42,13 +42,19 @@ export default defineNuxtConfig({
         host: 'localhost',
         port: 24683,
         clientPort: 24683
-      },
-      port: 3003
+      }
+    }
+  },
+
+  nitro: {
+    devServer: {
+      watch: ['./src']
     }
   },
 
   css: ['~/assets/css/main.css'],
 
+  // @ts-ignore - PrimeVue module configuration
   primevue: {
     options: {
       ripple: true,

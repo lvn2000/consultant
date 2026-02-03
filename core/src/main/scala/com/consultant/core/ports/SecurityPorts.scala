@@ -7,6 +7,7 @@ import java.util.UUID
 /** Repository for working with credentials */
 trait CredentialsRepository:
   def findByEmail(email: String): IO[Option[Credentials]]
+  def findByLogin(login: String): IO[Option[Credentials]]
   def findByUserId(userId: UUID): IO[Option[Credentials]]
   def create(credentials: Credentials): IO[Credentials]
   def update(credentials: Credentials): IO[Option[Credentials]]

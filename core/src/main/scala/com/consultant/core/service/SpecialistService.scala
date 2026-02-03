@@ -33,7 +33,23 @@ class SpecialistService(
     specialistRepo.search(criteria, offset, limit)
 
   def updateSpecialist(specialist: Specialist): IO[Either[DomainError, Specialist]] =
-    specialistRepo.update(specialist).map(Right(_))
+    specialistRepo
+      .update(specialist)
+      .map(Right(_))
+      .handleError { error =>
+        val errorMsg = error.getMessage
+        if errorMsg != null && errorMsg.contains("duplicate key value violates unique constraint") && errorMsg.contains(
+            "specialist_category_rates_pkey"
+          )
+        then Left(DomainError.DuplicateCategoryRate("unknown"))
+        else if errorMsg != null && errorMsg.contains("duplicate key value violates unique constraint") then
+          Left(
+            DomainError.DatabaseError(
+              s"A duplicate entry already exists. Please check that you haven't added this category before."
+            )
+          )
+        else Left(DomainError.DatabaseError(s"Database error: ${error.getMessage}"))
+      }
 
   def deleteSpecialist(id: SpecialistId): IO[Either[DomainError, Unit]] =
     specialistRepo.findById(id).flatMap {
@@ -49,4 +65,16 @@ class SpecialistService(
       IO.pure(Left(DomainError.InvalidPrice(invalidRate)))
     else if request.categoryRates.exists(_.experienceYears < 0) then
       IO.pure(Left(DomainError.ValidationError("Experience years must be non-negative")))
-    else specialistRepo.create(request).map(Right(_))
+    else
+      specialistRepo
+        .create(request)
+        .map(Right(_))
+        .handleError { error =>
+          val errorMsg = error.getMessage
+          if errorMsg != null && errorMsg.contains("duplicate key value violates unique constraint") && errorMsg
+              .contains("specialist_category_rates_pkey")
+          then Left(DomainError.DuplicateCategoryRate("unknown"))
+          else if errorMsg != null && errorMsg.contains("duplicate key value violates unique constraint") then
+            Left(DomainError.DatabaseError(s"A duplicate entry already exists. Please check your input."))
+          else Left(DomainError.DatabaseError(s"Database error: ${error.getMessage}"))
+        }

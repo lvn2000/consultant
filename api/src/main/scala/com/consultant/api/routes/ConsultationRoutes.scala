@@ -96,6 +96,25 @@ class ConsultationRoutes(consultationService: ConsultationService):
     catch case _: IllegalArgumentException => IO.pure(Left(ErrorResponse("VALIDATION_ERROR", "Invalid status")))
   }
 
+  // Approve consultation with duration
+  val approveConsultationEndpoint = baseEndpoint.put
+    .in(path[UUID]("consultationId") / "approve")
+    .in(jsonBody[ApproveConsultationDto])
+    .out(jsonBody[ConsultationDto])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val approveConsultation = approveConsultationEndpoint.serverLogic { (id, dto) =>
+    for
+      result          <- consultationService.approveConsultation(id, dto.duration)
+      consultationOpt <- consultationService.getConsultation(id)
+      response <- (result, consultationOpt) match
+        case (Right(()), Right(consultation)) =>
+          IO.pure(Right(toConsultationDto(consultation)))
+        case (Left(error), _) => IO.pure(Left(toErrorResponse(error)))
+        case (_, Left(error)) => IO.pure(Left(toErrorResponse(error)))
+    yield response
+  }
+
   // Add review
   val addReviewEndpoint = baseEndpoint.post
     .in(path[UUID]("consultationId") / "review")
@@ -116,6 +135,7 @@ class ConsultationRoutes(consultationService: ConsultationService):
     getUserConsultations,
     getSpecialistConsultations,
     updateConsultationStatus,
+    approveConsultation,
     addReview
   )
 
