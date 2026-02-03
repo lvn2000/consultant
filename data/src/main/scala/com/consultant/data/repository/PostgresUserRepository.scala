@@ -25,9 +25,10 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
 
   override def login(email: String, password: String): IO[Option[User]] = {
     val userQ = sql"""
-      SELECT id, login, email, name, phone, role, country_id, password_hash, created_at, updated_at
-      FROM users
-      WHERE email = $email
+      SELECT u.id, u.login, u.email, u.name, u.phone, u.role, u.country_id, c.password_hash, u.created_at, u.updated_at
+      FROM users u
+      JOIN credentials c ON u.email = c.email
+      WHERE u.email = $email AND c.is_active = true
     """.query[(UUID, String, String, String, Option[String], UserRole, Option[UUID], String, Instant, Instant)].option
     val action: ConnectionIO[Option[User]] = for {
       userOpt <- userQ

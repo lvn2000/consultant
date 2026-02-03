@@ -138,54 +138,225 @@
       <!-- Consultations Section -->
       <div v-if="selectedMenu === 'consultations'" class="section">
         <h3>My Consultations</h3>
-        <div v-if="consultationsLoading" class="list-state">Loading consultations...</div>
-        <div v-else-if="consultationsError" class="list-state error">{{ consultationsError }}</div>
-        <div v-else>
-          <div class="list">
-            <div v-if="consultations.length === 0" class="list-state">No consultations found.</div>
-            <div v-else v-for="consultation in consultations" :key="consultation.id" class="list-item">
-              <div class="list-item-content">
-                <div class="list-item-title">{{ consultation.description }}</div>
-                <div class="list-item-subtitle">Specialist: {{ consultation.specialistId }} | Status: {{ consultation.status }}</div>
-                <div class="list-item-details">Price: {{ consultation.price }} | Free: {{ consultation.isFree ? 'Yes' : 'No' }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="form">
-            <h4>Book New Consultation</h4>
+        
+        <!-- Tabs for View and Book -->
+        <div class="tabs-header">
+          <button 
+            :class="['tab-btn', activeTab === 'view' ? 'active' : '']"
+            @click="activeTab = 'view'"
+          >
+            View Consultations
+          </button>
+          <button 
+            :class="['tab-btn', activeTab === 'book' ? 'active' : '']"
+            @click="activeTab = 'book'"
+          >
+            Book Consultation
+          </button>
+        </div>
+        
+        <!-- View Consultations Tab -->
+        <div v-if="activeTab === 'view'" class="tab-panel">
+          <div class="form" style="margin-bottom: 2rem;">
+            <h4>Filter Consultations</h4>
             <div class="form-grid">
               <div class="form-field">
-                <label>Specialist ID *</label>
-                <input v-model="consultationForm.specialistId" type="text" placeholder="Specialist UUID" />
+                <label>Status</label>
+                <select v-model="consultationFilters.status">
+                  <option value="">All Status</option>
+                  <option value="Requested">Requested</option>
+                  <option value="Confirmed">Confirmed</option>
+                  <option value="InProgress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
               </div>
               <div class="form-field">
-                <label>Category ID *</label>
-                <input v-model="consultationForm.categoryId" type="text" placeholder="Category UUID" />
+                <label>From Date</label>
+                <input type="date" v-model="consultationFilters.fromDate">
               </div>
               <div class="form-field">
-                <label>Description *</label>
-                <textarea v-model="consultationForm.description" placeholder="Describe your consultation needs"></textarea>
+                <label>To Date</label>
+                <input type="date" v-model="consultationFilters.toDate">
               </div>
               <div class="form-field">
-                <label>Scheduled At</label>
-                <input v-model="consultationForm.scheduledAt" type="datetime-local" />
-              </div>
-              <div class="form-field">
-                <label>Duration (minutes)</label>
-                <input v-model="consultationForm.duration" type="number" placeholder="60" />
-              </div>
-              <div class="form-field">
-                <label>
-                  <input v-model="consultationForm.isFree" type="checkbox" />
-                  Free Consultation
-                </label>
+                <label>Search</label>
+                <input type="text" v-model="consultationFilters.search" placeholder="Search by specialist or description">
               </div>
             </div>
             <div class="form-actions">
-              <button class="btn btn-primary" @click="createConsultation" :disabled="consultationCreating">
-                {{ consultationCreating ? 'Creating...' : 'Book Consultation' }}
+              <button class="btn btn-secondary" @click="clearConsultationFilters">Clear Filters</button>
+              <button class="btn btn-primary" @click="loadConsultations">Apply Filters</button>
+            </div>
+          </div>
+
+          <div v-if="consultationsLoading" class="list-state">Loading consultations...</div>
+          <div v-else-if="consultationsError" class="list-state error">{{ consultationsError }}</div>
+          <div v-else-if="consultations.length === 0" class="empty-state">
+            <div class="empty-icon">📋</div>
+            <h3>No consultations yet</h3>
+            <p>You haven't booked any consultations. Use the "Book Consultation" tab to schedule your first consultation.</p>
+          </div>
+          <div v-else class="consultation-list">
+            <div v-if="filteredConsultations.length === 0" class="empty-state">
+              No consultations match your filters. Try adjusting your search criteria.
+            </div>
+            <div v-else>
+              <div v-for="consultation in filteredConsultations" :key="consultation.id" class="consultation-item">
+                <div class="consultation-header">
+                  <div class="consultation-title">{{ consultation.description }}</div>
+                  <div class="consultation-status" :class="consultation.status.toLowerCase()">
+                    {{ consultation.status }}
+                  </div>
+                </div>
+                <div class="consultation-details">
+                  <div>Specialist: {{ consultation.specialistId }}</div>
+                  <div>Price: {{ consultation.price }} | Free: {{ consultation.isFree ? 'Yes' : 'No' }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pagination -->
+            <div v-if="consultationPagination.totalPages > 1" class="pagination">
+              <button 
+                class="pagination-btn" 
+                :disabled="consultationPagination.currentPage === 1"
+                @click="goToPage(consultationPagination.currentPage - 1)"
+              >
+                Previous
+              </button>
+              <span class="pagination-info">
+                Page {{ consultationPagination.currentPage }} of {{ consultationPagination.totalPages }}
+                ({{ consultationPagination.totalCount }} total)
+              </span>
+              <button 
+                class="pagination-btn" 
+                :disabled="consultationPagination.currentPage === consultationPagination.totalPages"
+                @click="goToPage(consultationPagination.currentPage + 1)"
+              >
+                Next
               </button>
             </div>
+          </div>
+        </div>
+
+        <!-- Book Consultation Tab -->
+        <div v-if="activeTab === 'book'" class="tab-panel">
+          <div class="form" @click="closeDropdownsOnFormClick">
+            <h4>Book New Consultation</h4>
+
+            <div class="form-grid">
+              <!-- Specialist selection -->
+              <div class="form-field specialist-field" style="position: relative;">
+                <label>Specialist *</label>
+                <input 
+                  type="text" 
+                  v-model="specialistSearch" 
+                  placeholder="Type to search specialist"
+                  @focus="handleSpecialistFocus"
+                  @click="handleSpecialistClick"
+                  @input="handleSpecialistInput"
+                />
+                <div v-if="showSpecialistDropdown" class="dropdown" @click.stop style="display: block; background: white; border: 1px solid #e5e7eb; position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; width: 100%; max-height: 300px; overflow-y: auto; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                  <div v-if="specialistsLoading" style="padding: 0.75rem;">
+                    <div class="text-gray-500">Loading specialists...</div>
+                  </div>
+                  <div v-else style="background: white;">
+                    <div v-if="filteredSpecialists.length > 0" style="padding: 0;">
+                      <div 
+                        v-for="(s) in filteredSpecialists" 
+                        :key="s.id"
+                        @click="selectSpecialist(s)"
+                        style="padding: 0.75rem; cursor: pointer; background: white; border-bottom: 1px solid #f3f4f6; color: #374151; font-size: 14px; transition: background 0.2s;"
+                        @mouseenter="($event.target as HTMLElement).style.background = '#f9fafb'"
+                        @mouseleave="($event.target as HTMLElement).style.background = 'white'"
+                      >
+                        {{ s.name }}
+                      </div>
+                    </div>
+                    <div v-else style="padding: 0.75rem; color: #666; font-size: 14px;">
+                      No specialists found
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Category selection -->
+              <div class="form-field category-field" style="position: relative;">
+                <label>Category *</label>
+                <input 
+                  type="text" 
+                  :value="selectedCategory?.name || ''" 
+                  readonly 
+                  placeholder="Select category"
+                  @focus="handleCategoryFocus"
+                  @click="handleCategoryClick"
+                />
+                <div v-if="showCategoryDropdown" class="dropdown" @click.stop style="display: block; background: white; border: 1px solid #e5e7eb; position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; width: 100%; max-height: 300px; overflow-y: auto; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                  <div v-if="categoriesLoading" style="padding: 0.75rem;">
+                    <div class="text-gray-500">Loading categories...</div>
+                  </div>
+                  <div v-else style="background: white;">
+                    <div v-if="filteredCategories.length > 0" style="padding: 0;">
+                      <div 
+                        v-for="(c) in filteredCategories" 
+                        :key="c.id"
+                        @click="selectCategoryFromDropdown(c)"
+                        style="padding: 0.75rem; cursor: pointer; background: white; border-bottom: 1px solid #f3f4f6; color: #374151; font-size: 14px; transition: background 0.2s;"
+                        @mouseenter="($event.target as HTMLElement).style.background = '#f9fafb'"
+                        @mouseleave="($event.target as HTMLElement).style.background = 'white'"
+                      >
+                        {{ c.name }}
+                      </div>
+                    </div>
+                    <div v-else style="padding: 0.75rem; color: #666; font-size: 14px;">
+                      <div v-if="!selectedSpecialist">Select a specialist first</div>
+                      <div v-else>No categories available</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Description -->
+              <div class="form-field" style="grid-column: 1 / -1;">
+                <label>Description *</label>
+                <textarea v-model="consultationForm.description" rows="3" placeholder="Describe your consultation request"></textarea>
+              </div>
+
+              <!-- Date -->
+              <div class="form-field">
+                <label>Scheduled Date *</label>
+                <input type="date" v-model="consultationForm.scheduledDate" />
+              </div>
+
+              <!-- Time -->
+              <div class="form-field">
+                <label>Scheduled Time *</label>
+                <input type="time" v-model="consultationForm.scheduledTime" />
+              </div>
+
+              <!-- Duration -->
+              <div class="form-field">
+                <label>Duration (minutes) *</label>
+                <input type="number" min="15" step="15" v-model.number="consultationForm.duration" placeholder="30" />
+              </div>
+
+              <!-- Free toggle -->
+              <div class="form-field">
+                <label><input type="checkbox" v-model="consultationForm.isFree" /> Free consultation</label>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button 
+                class="btn btn-primary" 
+                @click="createConsultation"
+                :disabled="!isConsultationFormValid"
+              >
+                {{ consultationCreating ? 'Booking...' : 'Book Consultation' }}
+              </button>
+            </div>
+
             <div v-if="consultationMessage" :class="['form-message', consultationSuccess ? 'success' : 'error']">
               {{ consultationMessage }}
             </div>
@@ -211,7 +382,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRuntimeConfig } from 'nuxt/app'
 import { $fetch } from 'ofetch'
@@ -221,6 +392,7 @@ const config = useRuntimeConfig()
 
 // Menu state
 const selectedMenu = ref('profile')
+const activeTab = ref('view')
 
 // Profile state
 const profileLoading = ref(false)
@@ -255,11 +427,24 @@ const connectionSuccess = ref(false)
 const consultationsLoading = ref(false)
 const consultationsError = ref('')
 const consultations = ref<any[]>([])
+const consultationFilters = ref({
+  status: '',
+  fromDate: '',
+  toDate: '',
+  search: ''
+})
+const consultationPagination = ref({
+  currentPage: 1,
+  pageSize: 10,
+  totalCount: 0,
+  totalPages: 0
+})
 const consultationForm = ref({
   specialistId: '',
   categoryId: '',
   description: '',
-  scheduledAt: '',
+  scheduledDate: '',
+  scheduledTime: '',
   duration: '',
   isFree: false
 })
@@ -267,11 +452,30 @@ const consultationCreating = ref(false)
 const consultationMessage = ref('')
 const consultationSuccess = ref(false)
 
+// Specialists and categories for dropdowns
+const specialists = ref<any[]>([])
+const categories = ref<any[]>([])
+const specialistsLoading = ref(false)
+const categoriesLoading = ref(false)
+const specialistSearch = ref('')
+const selectedSpecialist = ref<any>(null)
+const selectedCategory = ref<any>(null)
+const showSpecialistDropdown = ref(false)
+const showCategoryDropdown = ref(false)
+const justOpenedSpecialistDropdown = ref(false)
+const justOpenedCategoryDropdown = ref(false)
+
 const selectMenu = (menu: string) => {
+  console.log('Selecting menu:', menu)
   selectedMenu.value = menu
   if (menu === 'profile') loadProfile()
   if (menu === 'connections') loadConnections()
-  if (menu === 'consultations') loadConsultations()
+  if (menu === 'consultations') {
+    console.log('Loading consultations data...')
+    loadConsultations()
+    loadSpecialists()
+    loadCategories()
+  }
 }
 
 // Profile operations
@@ -469,6 +673,238 @@ const getConnectionTypeName = (typeId: string) => {
   return type ? type.name : 'Unknown'
 }
 
+// Specialists and categories operations
+const loadSpecialists = async () => {
+  specialistsLoading.value = true
+  try {
+    // Backend search endpoint doesn't support text search, only structured filters
+    // So we fetch without filters (uses defaults: offset=0, limit=20)
+    // and filter on client side using specialistSearch
+    const url = `${config.public.apiBase}/specialists/search`
+    const response = await $fetch(url)
+    
+    if (Array.isArray(response)) {
+      specialists.value = response
+    } else {
+      console.error('API did not return an array:', response)
+      specialists.value = []
+    }
+  } catch (error: any) {
+    console.error('Specialists load error:', error?.message || error)
+    specialists.value = []
+  } finally {
+    specialistsLoading.value = false
+  }
+}
+
+const loadCategories = async () => {
+  categoriesLoading.value = true
+  try {
+    const data = await $fetch(`${config.public.apiBase}/categories`)
+    categories.value = data || []
+  } catch (error: any) {
+    console.error('Categories load error:', error)
+    // Don't show error to user, just log it
+  } finally {
+    categoriesLoading.value = false
+  }
+}
+
+const filteredSpecialists = computed(() => {
+  if (!specialistSearch.value) return specialists.value
+  return specialists.value.filter(specialist =>
+    specialist.name.toLowerCase().includes(specialistSearch.value.toLowerCase()) ||
+    specialist.email.toLowerCase().includes(specialistSearch.value.toLowerCase()) ||
+    (specialist.bio && specialist.bio.toLowerCase().includes(specialistSearch.value.toLowerCase()))
+  )
+})
+
+const filteredCategories = computed(() => {
+  if (!selectedSpecialist.value || !selectedSpecialist.value.categoryRates || selectedSpecialist.value.categoryRates.length === 0) {
+    return categories.value
+  }
+  
+  if (categories.value.length === 0) {
+    return []
+  }
+  
+  // Filter categories to only show those that the selected specialist offers
+  const specialistCategoryIds = selectedSpecialist.value.categoryRates.map((rate: any) => rate.categoryId)
+  const filtered = categories.value.filter(category => specialistCategoryIds.includes(category.id))
+  return filtered
+})
+
+const selectedCategoryName = computed(() => {
+  const name = selectedCategory.value?.name || ''
+  return name
+})
+
+const isConsultationFormValid = computed(() => {
+  return !consultationCreating.value &&
+    consultationForm.value.specialistId &&
+    consultationForm.value.categoryId &&
+    consultationForm.value.description &&
+    consultationForm.value.scheduledDate &&
+    consultationForm.value.scheduledTime &&
+    consultationForm.value.duration &&
+    Number(consultationForm.value.duration) > 0
+})
+
+const filteredConsultations = computed(() => {
+  let filtered = consultations.value
+
+  // Filter by status
+  if (consultationFilters.value.status) {
+    filtered = filtered.filter(c => c.status === consultationFilters.value.status)
+  }
+
+  // Filter by date range
+  if (consultationFilters.value.fromDate) {
+    const fromDate = new Date(consultationFilters.value.fromDate)
+    filtered = filtered.filter(c => new Date(c.createdAt || c.date) >= fromDate)
+  }
+
+  if (consultationFilters.value.toDate) {
+    const toDate = new Date(consultationFilters.value.toDate)
+    toDate.setHours(23, 59, 59, 999) // End of day
+    filtered = filtered.filter(c => new Date(c.createdAt || c.date) <= toDate)
+  }
+
+  // Filter by search text
+  if (consultationFilters.value.search) {
+    const search = consultationFilters.value.search.toLowerCase()
+    filtered = filtered.filter(c => 
+      c.description?.toLowerCase().includes(search) ||
+      c.specialistId?.toLowerCase().includes(search)
+    )
+  }
+
+  // Update pagination info based on filtered results
+  const totalFiltered = filtered.length
+  const totalPages = Math.ceil(totalFiltered / consultationPagination.value.pageSize)
+  consultationPagination.value.totalPages = totalPages
+
+  // Apply pagination
+  const startIndex = (consultationPagination.value.currentPage - 1) * consultationPagination.value.pageSize
+  const endIndex = startIndex + consultationPagination.value.pageSize
+  const paginated = filtered.slice(startIndex, endIndex)
+
+  return paginated
+})
+
+const selectSpecialist = (specialist: any) => {
+  selectedSpecialist.value = specialist
+  consultationForm.value.specialistId = specialist.id
+  specialistSearch.value = specialist.name
+  // Reset category selection when specialist changes
+  consultationForm.value.categoryId = ''
+  selectedCategory.value = null
+  showSpecialistDropdown.value = false
+  
+  // Auto-open category dropdown to show available categories for this specialist
+  setTimeout(() => {
+    showCategoryDropdown.value = true
+  }, 100)
+}
+
+const selectCategoryFromDropdown = (category: any) => {
+  selectedCategory.value = category
+  consultationForm.value.categoryId = category.id
+  showCategoryDropdown.value = false
+}
+
+// Specialist field event handlers
+const handleSpecialistFocus = (e: Event) => {
+  e.stopImmediatePropagation()
+  showSpecialistDropdown.value = true
+  justOpenedSpecialistDropdown.value = true
+  // Clear the flag after the click event completes
+  setTimeout(() => { justOpenedSpecialistDropdown.value = false }, 50)
+  if (specialists.value.length === 0) loadSpecialists()
+}
+
+const handleSpecialistClick = (e: Event) => {
+  e.stopImmediatePropagation()
+  showSpecialistDropdown.value = true
+  justOpenedSpecialistDropdown.value = true
+  // Clear the flag after the click event completes
+  setTimeout(() => { justOpenedSpecialistDropdown.value = false }, 50)
+}
+
+const handleSpecialistInput = (e: Event) => {
+  e.stopImmediatePropagation()
+  showSpecialistDropdown.value = true
+  if (specialists.value.length === 0) loadSpecialists()
+}
+
+// Category field event handlers
+const handleCategoryFocus = (e: Event) => {
+  e.stopImmediatePropagation()
+  showCategoryDropdown.value = true
+  if (categories.value.length === 0) loadCategories()
+}
+
+const handleCategoryClick = (e: Event) => {
+  e.stopImmediatePropagation()
+  showCategoryDropdown.value = true
+  if (categories.value.length === 0) loadCategories()
+}
+
+// Close dropdown when clicking outside
+const closeDropdowns = (e: MouseEvent) => {
+  // Check all elements in the event path to see if we're inside the specialist or category field
+  const path = e.composedPath() as HTMLElement[]
+  
+  const insideSpecialist = path.some(el => el.classList?.contains('specialist-field'))
+  const insideCategory = path.some(el => el.classList?.contains('category-field'))
+  const insideDropdown = path.some(el => el.classList?.contains('dropdown'))
+  
+  // Only close if not clicking inside the field or dropdown
+  if (!insideDropdown && !insideSpecialist) {
+    showSpecialistDropdown.value = false
+  }
+  if (!insideDropdown && !insideCategory) {
+    showCategoryDropdown.value = false
+  }
+}
+
+// Add click outside listener
+// Handle Escape key to close dropdowns
+const handleEscapeKey = (e: KeyboardEvent) => {
+  if (e.key === 'Escape') {
+    showSpecialistDropdown.value = false
+    showCategoryDropdown.value = false
+  }
+}
+
+// Close dropdowns when clicking on form elements outside of fields
+const closeDropdownsOnFormClick = (e: MouseEvent) => {
+  const target = e.target as HTMLElement
+  const path = (e as any).composedPath() as HTMLElement[]
+  
+  const insideSpecialist = path.some(el => el.classList?.contains('specialist-field'))
+  const insideCategory = path.some(el => el.classList?.contains('category-field'))
+  const insideDropdown = path.some(el => el.classList?.contains('dropdown'))
+  
+  console.log('Form click - insideSpecialist:', insideSpecialist, 'insideCategory:', insideCategory, 'insideDropdown:', insideDropdown)
+  
+  // Close dropdowns if clicking outside the fields and dropdowns
+  if (!insideSpecialist && !insideDropdown) {
+    showSpecialistDropdown.value = false
+  }
+  if (!insideCategory && !insideDropdown) {
+    showCategoryDropdown.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', handleEscapeKey)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleEscapeKey)
+})
+
 // Consultations operations
 const loadConsultations = async () => {
   consultationsLoading.value = true
@@ -479,13 +915,34 @@ const loadConsultations = async () => {
       consultationsError.value = 'User ID not found'
       return
     }
+    // Load all consultations for client-side pagination
     const data = await $fetch(`${config.public.apiBase}/consultations/user/${userId}`)
+    console.log('Loaded consultations:', data)
     consultations.value = data
+    consultationPagination.value.totalCount = data.length
+    consultationPagination.value.totalPages = Math.ceil(data.length / consultationPagination.value.pageSize)
+    consultationPagination.value.currentPage = 1 // Reset to first page when loading
   } catch (error: any) {
     console.error('Consultations load error:', error)
     consultationsError.value = error.data?.message || error.message || 'Failed to load consultations'
   } finally {
     consultationsLoading.value = false
+  }
+}
+
+const clearConsultationFilters = () => {
+  consultationFilters.value = {
+    status: '',
+    fromDate: '',
+    toDate: '',
+    search: ''
+  }
+  consultationPagination.value.currentPage = 1
+}
+
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= consultationPagination.value.totalPages) {
+    consultationPagination.value.currentPage = page
   }
 }
 
@@ -500,17 +957,22 @@ const createConsultation = async () => {
       return
     }
     
+    // Combine date and time into ISO string
+    const scheduledDateTime = consultationForm.value.scheduledDate && consultationForm.value.scheduledTime 
+      ? new Date(`${consultationForm.value.scheduledDate}T${consultationForm.value.scheduledTime}`).toISOString()
+      : null
+    
     const body = {
       userId,
       specialistId: consultationForm.value.specialistId,
       categoryId: consultationForm.value.categoryId,
       description: consultationForm.value.description,
-      scheduledAt: consultationForm.value.scheduledAt ? new Date(consultationForm.value.scheduledAt).toISOString() : null,
+      scheduledAt: scheduledDateTime,
       duration: consultationForm.value.duration ? parseInt(consultationForm.value.duration) : null,
       isFree: consultationForm.value.isFree
     }
     
-    await $fetch(`${config.public.apiBase}/consultations`, {
+    const result = await $fetch(`${config.public.apiBase}/consultations`, {
       method: 'POST',
       body
     })
@@ -521,11 +983,18 @@ const createConsultation = async () => {
       specialistId: '',
       categoryId: '',
       description: '',
-      scheduledAt: '',
+      scheduledDate: '',
+      scheduledTime: '',
       duration: '',
       isFree: false
     }
-    loadConsultations()
+    selectedSpecialist.value = null
+    selectedCategory.value = null
+    specialistSearch.value = ''
+    
+    // Reload consultations to show the new one
+    await loadConsultations()
+    
   } catch (error: any) {
     console.error('Consultation create error:', error)
     consultationMessage.value = error.data?.message || error.message || 'Failed to create consultation'
@@ -649,17 +1118,45 @@ onMounted(() => {
   margin: 0;
 }
 
-.list-state {
-  padding: 2rem;
-  background: white;
-  border-radius: 8px;
-  text-align: center;
-  color: #6b7280;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+.list {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 1rem;
+}
+
+.list-item {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.15s ease-in-out;
+}
+
+.list-item:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.list-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.list-item-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.list-item-subtitle {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.list-item-details {
+  font-size: 0.8125rem;
+  color: #9ca3af;
 }
 
 .list-state.error {
@@ -935,6 +1432,8 @@ onMounted(() => {
   border: 2px solid #e5e7eb;
   border-radius: 6px;
   font-size: 0.875rem;
+  background: white;
+  color: #374151;
   transition: all 0.15s;
 }
 
@@ -1077,5 +1576,416 @@ onMounted(() => {
   gap: 1rem;
   justify-content: flex-end;
   margin-top: 1.5rem;
+}
+
+/* Dropdown styles */
+.dropdown-container {
+  position: relative;
+}
+
+.dropdown-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: white;
+  color: #374151;
+  transition: all 0.15s;
+}
+
+.dropdown-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-top: 2px;
+}
+
+.dropdown-item {
+  padding: 0.75rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background-color 0.15s ease-in-out;
+  color: #374151; /* Ensure text is visible */
+  background: white; /* Ensure background is white */
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-item:hover {
+  background: #f9fafb;
+}
+
+.dropdown-item.loading,
+.dropdown-item.no-results {
+  color: #6b7280;
+  font-style: italic;
+  cursor: default;
+}
+
+.dropdown-item.no-results:hover {
+  background: white;
+}
+
+.specialist-name {
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.specialist-email {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+
+.specialist-bio {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.specialist-status {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.specialist-status.available {
+  color: #059669;
+}
+
+.specialist-status:not(.available) {
+  color: #dc2626;
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: white;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.debug-info {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-family: monospace;
+  background: #f9fafb;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+/* Simple Tabs Styling */
+.simple-tabs {
+  margin-top: 1rem;
+}
+
+.tab-buttons {
+  display: flex;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 1.5rem;
+}
+
+.tab-button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px 6px 0 0;
+  transition: all 0.2s ease;
+}
+
+.tab-button:hover {
+  color: #374151;
+  background: #f9fafb;
+}
+
+.tab-button.active {
+  color: #667eea;
+  background: white;
+  border-bottom: 2px solid #667eea;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.tab-content {
+  padding: 1.5rem 0;
+}
+
+/* Consultation Tabs Styling */
+.consultation-tabs {
+  margin-top: 1rem;
+}
+
+.consultation-tabs .p-tabview-panels {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.consultation-tabs .p-tabview-panel {
+  padding: 1.5rem 0;
+  border: none;
+  background: transparent;
+}
+
+.consultation-tabs .p-tabview-nav {
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 1.5rem;
+}
+
+.consultation-tabs .p-tabview-nav-link {
+  border: none;
+  border-radius: 6px 6px 0 0;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  color: #6b7280;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.consultation-tabs .p-tabview-nav-link:hover {
+  color: #374151;
+  background: #f9fafb;
+}
+
+.consultation-tabs .p-tabview-nav-link:not(.p-disabled).p-highlight {
+  color: #667eea;
+  background: white;
+  border-bottom: 2px solid #667eea;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Custom Tabs Styling */
+.tabs-header {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 1.5rem;
+}
+
+.tab-btn {
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #6b7280;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  bottom: -2px;
+}
+
+.tab-btn:hover {
+  color: #374151;
+  background: #f9fafb;
+}
+
+.tab-btn.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+  background: white;
+}
+
+.tab-panel {
+  padding: 1.5rem 0;
+}
+
+/* Ensure form headings are visible and spaced */
+.form h4 {
+  color: #1f2937;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+/* Consultation List Styling */
+.consultation-list {
+  margin-top: 1rem;
+}
+
+.consultation-item {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  transition: box-shadow 0.2s ease;
+}
+
+.consultation-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.consultation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.consultation-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.consultation-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.consultation-status.requested {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.consultation-status.confirmed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.consultation-status.inprogress {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.consultation-status.completed {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.consultation-status.cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.consultation-details {
+  color: #6b7280;
+  font-size: 0.875rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #9ca3af;
+  font-size: 0.95rem;
+}
+
+.empty-state .empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+  color: #374151;
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+  color: #6b7280;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* Dropdown styling for booking form */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 1000;
+  width: 100%;
+}
+
+.dropdown-menu {
+  max-height: inherit;
+  overflow-y: auto;
+}
+
+.dropdown-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  color: #374151;
+}
+
+.dropdown-item:hover {
+  background: #f9fafb;
+}
+
+/* Native input styling */
+.form-field input[type="date"],
+.form-field input[type="time"],
+.form-field input[type="number"],
+.form-field input[type="text"],
+.form-field input[type="email"],
+.form-field input[type="tel"] {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-family: inherit;
+  background-color: #ffffff;
+  color: #1f2937;
+}
+
+.form-field input[type="date"]:focus,
+.form-field input[type="time"]:focus,
+.form-field input[type="number"]:focus,
+.form-field input[type="text"]:focus,
+.form-field input[type="email"]:focus,
+.form-field input[type="tel"]:focus {
+  border-color: #3b82f6;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-field input[type="date"]::placeholder,
+.form-field input[type="time"]::placeholder,
+.form-field input[type="number"]::placeholder {
+  color: #9ca3af;
 }
 </style>

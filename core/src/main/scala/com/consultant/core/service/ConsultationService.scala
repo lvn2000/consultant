@@ -32,7 +32,8 @@ class ConsultationService(
             case Some(categoryRate) if !specialist.isAvailable =>
               IO.pure(Left(DomainError.SpecialistNotAvailable(specialist.id)))
             case Some(categoryRate) =>
-              val price = if (request.isFree) BigDecimal(0) else calculatePrice(categoryRate.hourlyRate, request.duration)
+              val price =
+                if (request.isFree) BigDecimal(0) else calculatePrice(categoryRate.hourlyRate, request.duration)
               for
                 consultation <- consultationRepo.create(request, price)
                 _ <- notificationService.sendEmail(
