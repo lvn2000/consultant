@@ -77,7 +77,9 @@ const profileForm = ref({
   name: '',
   email: '',
   phone: '',
-  isAvailable: true
+  bio: '',
+  isAvailable: true,
+  categoryRates: []
 })
 const profileUpdating = ref(false)
 const profileUpdateMessage = ref('')
@@ -99,7 +101,9 @@ const loadProfile = async () => {
       name: specialist.name || '',
       email: specialist.email || '',
       phone: specialist.phone || '',
-      isAvailable: specialist.isAvailable ?? true
+      bio: specialist.bio || '',
+      isAvailable: specialist.isAvailable ?? true,
+      categoryRates: specialist.categoryRates || []
     }
   } catch (error: any) {
     profileError.value = error.message || 'Failed to load profile'

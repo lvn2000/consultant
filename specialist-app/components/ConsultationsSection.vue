@@ -359,8 +359,8 @@ const formatDateTime = (dateString: string) => {
       second: '2-digit',
       hour12: false
     })
-  } catch (e) {
-    return dateString || 'N/A'
+  } catch (e: any) {
+    return 'N/A'
   }
 }
 

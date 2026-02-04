@@ -11,27 +11,49 @@
     <div class="list-state" v-if="ratesLoading">Loading rates...</div>
     <div class="list-state error" v-else-if="ratesError">{{ ratesError }}</div>
 
-    <div class="table" v-else-if="rates.length > 0">
+    <div class="table" v-else-if="paginatedRates.length > 0">
       <div class="table-header rates-table">
         <span>Category</span>
         <span>Hourly Rate</span>
         <span>Experience (years)</span>
         <span>Actions</span>
       </div>
-      <div v-for="rate in rates" :key="rate.categoryId" class="table-row rates-table">
+      <div v-for="rate in paginatedRates" :key="rate.categoryId" class="table-row rates-table">
         <span>{{ getCategoryName(rate.categoryId) }}</span>
         <span>${{ rate.hourlyRate }}</span>
         <span>{{ rate.experienceYears }}</span>
         <span class="row-actions">
-          <button type="button" class="btn" @click="startEditRate(rate)">Update</button>
+          <button type="button" class="btn" @click="startEditRate(rate)">Select</button>
           <button type="button" class="btn danger" @click="removeRate(rate.categoryId)">Delete</button>
         </span>
       </div>
     </div>
+
+    <!-- Pagination -->
+    <div v-if="ratePagination.totalPages > 1" class="pagination">
+      <button 
+        class="pagination-btn" 
+        :disabled="ratePagination.currentPage === 1"
+        @click="goToRatePage(ratePagination.currentPage - 1)"
+      >
+        Previous
+      </button>
+      <span class="pagination-info">
+        Page {{ ratePagination.currentPage }} of {{ ratePagination.totalPages }}
+        ({{ ratePagination.totalCount }} total)
+      </span>
+      <button 
+        class="pagination-btn" 
+        :disabled="ratePagination.currentPage === ratePagination.totalPages"
+        @click="goToRatePage(ratePagination.currentPage + 1)"
+      >
+        Next
+      </button>
+    </div>
     <div v-else class="list-state">No rates configured yet.</div>
 
     <!-- Rate Form -->
-    <form class="form" @submit.prevent="saveRate">
+    <form ref="rateFormRef" class="form" @submit.prevent="saveRate">
       <h3>{{ editingRateId ? 'Update Rate' : 'Add New Rate' }}</h3>
       <div class="form-grid">
         <div class="form-field">
@@ -69,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
 import { $fetch } from 'ofetch'
 
@@ -78,7 +100,10 @@ const config = useRuntimeConfig()
 const ratesLoading = ref(false)
 const ratesError = ref('')
 const rates = ref<any[]>([])
+const currentRatePage = ref(1)
+const itemsPerPage = 5
 const categories = ref<any[]>([])
+const rateFormRef = ref<HTMLFormElement | null>(null)
 const rateForm = ref({
   categoryId: '',
   hourlyRate: 0,
@@ -92,6 +117,7 @@ const rateSuccess = ref(false)
 const loadRates = async () => {
   ratesLoading.value = true
   ratesError.value = ''
+  currentRatePage.value = 1
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
@@ -117,6 +143,16 @@ const startEditRate = (rate: any) => {
     hourlyRate: rate.hourlyRate,
     experienceYears: rate.experienceYears
   }
+  // Scroll to form and focus
+  nextTick(() => {
+    if (rateFormRef.value) {
+      rateFormRef.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const firstInput = rateFormRef.value.querySelector('input, select') as HTMLInputElement | HTMLSelectElement
+      if (firstInput) {
+        setTimeout(() => firstInput.focus(), 300)
+      }
+    }
+  })
 }
 
 const cancelEditRate = () => {
@@ -220,6 +256,29 @@ const isDuplicateCategory = computed(() => {
   if (!rateForm.value.categoryId || editingRateId.value) return false
   return rates.value.some(r => r.categoryId === rateForm.value.categoryId)
 })
+
+const ratePagination = computed(() => {
+  const total = rates.value.length
+  const totalPages = Math.ceil(total / itemsPerPage)
+  return {
+    currentPage: currentRatePage.value,
+    totalPages: totalPages || 1,
+    totalCount: total
+  }
+})
+
+const paginatedRates = computed(() => {
+  const start = (currentRatePage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return rates.value.slice(start, end)
+})
+
+const goToRatePage = (page: number) => {
+  const totalPages = ratePagination.value.totalPages
+  if (page >= 1 && page <= totalPages) {
+    currentRatePage.value = page
+  }
+}
 
 onMounted(() => {
   loadRates()
@@ -435,5 +494,40 @@ defineExpose({
   background: #fee2e2;
   color: #dc2626;
   border-left: 4px solid #dc2626;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.pagination-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #1f2937;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 </style>
