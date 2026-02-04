@@ -15,3 +15,5 @@ enum DomainError:
   case SpecialistNotAvailable(id: SpecialistId)
   case ValidationError(message: String)
   case InvalidCredentials
+  case DuplicateCategoryRate(categoryId: String)
+  case DatabaseError(message: String)

@@ -12,10 +12,11 @@ trait UserRepository:
   def create(request: CreateUserRequest): IO[User]
   def findById(id: UserId): IO[Option[User]]
   def findByEmail(email: String): IO[Option[User]]
+  def findByLogin(login: String): IO[Option[User]]
   def update(user: User): IO[User]
   def delete(id: UserId): IO[Unit]
   def list(offset: Int, limit: Int): IO[List[User]]
-  def login(email: String, password: String): IO[Option[User]]
+  def login(login: String, password: String): IO[Option[User]]
 
 trait SpecialistRepository:
   def create(request: CreateSpecialistRequest): IO[Specialist]
@@ -78,3 +79,11 @@ trait ConnectionTypeRepository:
   def findByName(name: String): IO[Option[ConnectionType]]
   def update(connectionType: ConnectionType): IO[ConnectionType]
   def delete(id: ConnectionTypeId): IO[Unit]
+trait AvailabilityRepository:
+  def create(specialistId: SpecialistId, request: CreateAvailabilityRequest): IO[SpecialistAvailability]
+  def findById(id: UUID): IO[Option[SpecialistAvailability]]
+  def findBySpecialist(specialistId: SpecialistId): IO[List[SpecialistAvailability]]
+  def findBySpecialistAndDay(specialistId: SpecialistId, dayOfWeek: Int): IO[List[SpecialistAvailability]]
+  def update(availability: SpecialistAvailability): IO[SpecialistAvailability]
+  def delete(id: UUID): IO[Unit]
+  def deleteBySpecialist(specialistId: SpecialistId): IO[Unit]

@@ -20,6 +20,9 @@ npm run preview
 # Type check
 npm run type-check
 
+# Lint and fix code style issues
+npm run lint:fix
+
 # Run tests
 npm run test
 ```

@@ -46,14 +46,11 @@ export default defineNuxtConfig({
     }
   },
 
-  css: ['~/assets/css/main.css'],
-
-  primevue: {
-    options: {
-      ripple: true,
-      theme: {
-        preset: 'Aura'
-      }
+  nitro: {
+    devServer: {
+      watch: ['./pages', './components', './composables']
     }
-  }
+  },
+
+  css: ['~/assets/css/main.css']
 })

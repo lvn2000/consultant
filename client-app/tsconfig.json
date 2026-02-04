@@ -11,6 +11,9 @@
     "isolatedModules": true,
     "types": [
       "vitest/globals"
-    ]
+    ],
+    "paths": {
+      "~/*": ["./*"]
+    }
   }
 }

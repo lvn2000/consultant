@@ -57,6 +57,22 @@ class ConsultationService(
   ): IO[Either[DomainError, Unit]] =
     consultationRepo.updateStatus(id, status).map(Right(_))
 
+  def approveConsultation(
+    id: ConsultationId,
+    duration: Int
+  ): IO[Either[DomainError, Unit]] =
+    for
+      consultationOpt <- consultationRepo.findById(id)
+      result <- consultationOpt match
+        case Some(consultation) =>
+          val updated = consultation.copy(
+            status = ConsultationStatus.Scheduled,
+            duration = Some(duration)
+          )
+          consultationRepo.update(updated).map(_ => Right(()))
+        case None => IO.pure(Left(DomainError.ConsultationNotFound(id)))
+    yield result
+
   def addReview(
     id: ConsultationId,
     rating: Int,
@@ -99,7 +115,7 @@ class ConsultationService(
   private def calculatePrice(hourlyRate: BigDecimal, duration: Option[Int]): BigDecimal =
     duration match
       case Some(minutes) => (hourlyRate * minutes) / 60
-      case None          => hourlyRate // Default to 1 hour
+      case None          => hourlyRate // Default to 1 hour if duration not yet set
 
   private def calculateNewRating(
     currentRating: Option[BigDecimal],

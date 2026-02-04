@@ -6,7 +6,7 @@ import types.*
 
 // Consultation statuses
 enum ConsultationStatus:
-  case Requested, Confirmed, InProgress, Completed, Cancelled
+  case Requested, Scheduled, InProgress, Completed, Missed, Cancelled
 
 // Consultation domain model
 case class Consultation(
@@ -16,8 +16,8 @@ case class Consultation(
   categoryId: CategoryId,
   description: String,
   status: ConsultationStatus,
-  scheduledAt: Option[Instant],
-  duration: Option[Int], // in minutes
+  scheduledAt: Instant,
+  duration: Option[Int], // in minutes - set by specialist when approving
   price: BigDecimal,
   rating: Option[Int], // 1-5
   review: Option[String],
@@ -30,6 +30,6 @@ case class CreateConsultationRequest(
   specialistId: SpecialistId,
   categoryId: CategoryId,
   description: String,
-  scheduledAt: Option[Instant],
-  duration: Option[Int]
+  scheduledAt: Instant,
+  duration: Option[Int] = None // Client doesn't set duration, specialist will set it
 )

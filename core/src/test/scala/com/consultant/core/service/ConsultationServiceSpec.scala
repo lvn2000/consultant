@@ -7,9 +7,54 @@ import cats.effect.IO
 import com.consultant.core.domain._
 import com.consultant.core.ports._
 import cats.effect.unsafe.implicits.global
+import java.time.Instant
 
 class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory {
-  "createConsultation" should "return error if specialist not found" in {
+
+  private def createMockUser(id: java.util.UUID, email: String): User =
+    User(
+      id = id,
+      login = "userlogin",
+      email = email,
+      name = "User Name",
+      phone = None,
+      role = security.UserRole.Client,
+      countryId = Some(java.util.UUID.randomUUID()),
+      languages = Set(java.util.UUID.randomUUID()),
+      createdAt = Instant.now(),
+      updatedAt = Instant.now()
+    )
+
+  private def createMockSpecialist(
+    id: java.util.UUID,
+    email: String,
+    categoryId: java.util.UUID,
+    isAvailable: Boolean = true
+  ): Specialist =
+    Specialist(
+      id = id,
+      email = email,
+      name = "Specialist Name",
+      phone = "+1234567890",
+      bio = "Specialist bio",
+      categoryRates = List(
+        SpecialistCategoryRate(
+          categoryId = categoryId,
+          hourlyRate = BigDecimal("50.00"),
+          experienceYears = 5,
+          rating = None,
+          totalConsultations = 0
+        )
+      ),
+      isAvailable = isAvailable,
+      connections = List(),
+      countryId = Some(java.util.UUID.randomUUID()),
+      languages = Set(java.util.UUID.randomUUID()),
+      createdAt = Instant.now(),
+      updatedAt = Instant.now()
+    )
+
+  "createConsultation" should "return error if user not found" in {
     val consultationRepo    = mock[ConsultationRepository]
     val specialistRepo      = mock[SpecialistRepository]
     val userRepo            = mock[UserRepository]
@@ -18,31 +63,209 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
     val userId              = java.util.UUID.randomUUID()
     val specialistId        = java.util.UUID.randomUUID()
     val categoryId          = java.util.UUID.randomUUID()
-    val req                 = CreateConsultationRequest(userId, specialistId, categoryId, "desc", None, None)
-    userRepo.findById
-      .expects(req.userId)
-      .returning(
-        IO.pure(
-          Some(
-            com.consultant.core.domain.User(
-              id = userId,
-              login = "userlogin",
-              email = "user@example.com",
-              name = "User",
-              phone = None,
-              role = com.consultant.core.domain.security.UserRole.Client,
-              countryId = Some(java.util.UUID.randomUUID()),
-              languages = Set(java.util.UUID.randomUUID()),
-              createdAt = java.time.Instant.now(),
-              updatedAt = java.time.Instant.now()
-            )
-          )
-        )
-      )
+    val req                 = CreateConsultationRequest(userId, specialistId, categoryId, "desc", Instant.now())
+
+    userRepo.findById.expects(req.userId).returning(IO.pure(None))
     specialistRepo.findById.expects(req.specialistId).returning(IO.pure(None))
     val result = service.createConsultation(req).unsafeRunSync()
+
+    result.shouldBe(Left(DomainError.UserNotFound(req.userId)))
+  }
+
+  it should "return error if specialist not found" in {
+    val consultationRepo    = mock[ConsultationRepository]
+    val specialistRepo      = mock[SpecialistRepository]
+    val userRepo            = mock[UserRepository]
+    val notificationService = mock[NotificationService]
+    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
+    val userId              = java.util.UUID.randomUUID()
+    val specialistId        = java.util.UUID.randomUUID()
+    val categoryId          = java.util.UUID.randomUUID()
+    val req                 = CreateConsultationRequest(userId, specialistId, categoryId, "desc", Instant.now())
+    val user                = createMockUser(userId, "user@example.com")
+
+    userRepo.findById.expects(req.userId).returning(IO.pure(Some(user)))
+    specialistRepo.findById.expects(req.specialistId).returning(IO.pure(None))
+    val result = service.createConsultation(req).unsafeRunSync()
+
     result.shouldBe(Left(DomainError.SpecialistNotFound(req.specialistId)))
   }
 
-  // Add more tests for successful creation, user not found, notification, etc.
+  it should "return error if specialist is not available for category" in {
+    val consultationRepo    = mock[ConsultationRepository]
+    val specialistRepo      = mock[SpecialistRepository]
+    val userRepo            = mock[UserRepository]
+    val notificationService = mock[NotificationService]
+    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
+    val userId              = java.util.UUID.randomUUID()
+    val specialistId        = java.util.UUID.randomUUID()
+    val categoryId          = java.util.UUID.randomUUID()
+    val otherCategoryId     = java.util.UUID.randomUUID()
+    val req                 = CreateConsultationRequest(userId, specialistId, categoryId, "desc", Instant.now())
+    val user                = createMockUser(userId, "user@example.com")
+    val specialist          = createMockSpecialist(specialistId, "specialist@example.com", otherCategoryId)
+
+    userRepo.findById.expects(req.userId).returning(IO.pure(Some(user)))
+    specialistRepo.findById.expects(req.specialistId).returning(IO.pure(Some(specialist)))
+    val result = service.createConsultation(req).unsafeRunSync()
+
+    result.isLeft shouldBe true
+    result.left.toOption.get match
+      case DomainError.ValidationError(msg) => msg.contains("not available for category") shouldBe true
+      case _                                => fail("Expected ValidationError")
+  }
+
+  it should "return error if specialist is not available" in {
+    val consultationRepo    = mock[ConsultationRepository]
+    val specialistRepo      = mock[SpecialistRepository]
+    val userRepo            = mock[UserRepository]
+    val notificationService = mock[NotificationService]
+    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
+    val userId              = java.util.UUID.randomUUID()
+    val specialistId        = java.util.UUID.randomUUID()
+    val categoryId          = java.util.UUID.randomUUID()
+    val req                 = CreateConsultationRequest(userId, specialistId, categoryId, "desc", Instant.now())
+    val user                = createMockUser(userId, "user@example.com")
+    val specialist = createMockSpecialist(specialistId, "specialist@example.com", categoryId, isAvailable = false)
+
+    userRepo.findById.expects(req.userId).returning(IO.pure(Some(user)))
+    specialistRepo.findById.expects(req.specialistId).returning(IO.pure(Some(specialist)))
+    val result = service.createConsultation(req).unsafeRunSync()
+
+    result.shouldBe(Left(DomainError.SpecialistNotAvailable(specialistId)))
+  }
+
+  it should "successfully create consultation" in {
+    val consultationRepo    = mock[ConsultationRepository]
+    val specialistRepo      = mock[SpecialistRepository]
+    val userRepo            = mock[UserRepository]
+    val notificationService = mock[NotificationService]
+    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
+    val userId              = java.util.UUID.randomUUID()
+    val specialistId        = java.util.UUID.randomUUID()
+    val categoryId          = java.util.UUID.randomUUID()
+    val consultationId      = java.util.UUID.randomUUID()
+    val req                 = CreateConsultationRequest(userId, specialistId, categoryId, "desc", Instant.now())
+    val user                = createMockUser(userId, "user@example.com")
+    val specialist          = createMockSpecialist(specialistId, "specialist@example.com", categoryId)
+    val createdConsultation = Consultation(
+      id = consultationId,
+      userId = userId,
+      specialistId = specialistId,
+      categoryId = categoryId,
+      description = "desc",
+      status = ConsultationStatus.Requested,
+      scheduledAt = req.scheduledAt,
+      duration = None,
+      price = BigDecimal("50.00"),
+      rating = None,
+      review = None,
+      createdAt = Instant.now(),
+      updatedAt = Instant.now()
+    )
+
+    userRepo.findById.expects(req.userId).returning(IO.pure(Some(user)))
+    specialistRepo.findById.expects(req.specialistId).returning(IO.pure(Some(specialist)))
+    consultationRepo.create
+      .expects(req, BigDecimal("50.00"))
+      .returning(IO.pure(createdConsultation))
+    notificationService.sendEmail
+      .expects(user.email, "Consultation Request Created", *)
+      .returning(IO.unit)
+
+    val result = service.createConsultation(req).unsafeRunSync()
+
+    result.isRight shouldBe true
+    result.toOption.get.id shouldBe consultationId
+  }
+
+  "getConsultation" should "return consultation if found" in {
+    val consultationRepo    = mock[ConsultationRepository]
+    val specialistRepo      = mock[SpecialistRepository]
+    val userRepo            = mock[UserRepository]
+    val notificationService = mock[NotificationService]
+    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
+    val consultationId      = java.util.UUID.randomUUID()
+    val consultation = Consultation(
+      id = consultationId,
+      userId = java.util.UUID.randomUUID(),
+      specialistId = java.util.UUID.randomUUID(),
+      categoryId = java.util.UUID.randomUUID(),
+      description = "desc",
+      status = ConsultationStatus.Requested,
+      scheduledAt = Instant.now(),
+      duration = None,
+      price = BigDecimal("50.00"),
+      rating = None,
+      review = None,
+      createdAt = Instant.now(),
+      updatedAt = Instant.now()
+    )
+
+    consultationRepo.findById.expects(consultationId).returning(IO.pure(Some(consultation)))
+    val result = service.getConsultation(consultationId).unsafeRunSync()
+
+    result.shouldBe(Right(consultation))
+  }
+
+  it should "return error if consultation not found" in {
+    val consultationRepo    = mock[ConsultationRepository]
+    val specialistRepo      = mock[SpecialistRepository]
+    val userRepo            = mock[UserRepository]
+    val notificationService = mock[NotificationService]
+    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
+    val consultationId      = java.util.UUID.randomUUID()
+
+    consultationRepo.findById.expects(consultationId).returning(IO.pure(None))
+    val result = service.getConsultation(consultationId).unsafeRunSync()
+
+    result.shouldBe(Left(DomainError.ConsultationNotFound(consultationId)))
+  }
+
+  "approveConsultation" should "successfully approve consultation with duration" in {
+    val consultationRepo    = mock[ConsultationRepository]
+    val specialistRepo      = mock[SpecialistRepository]
+    val userRepo            = mock[UserRepository]
+    val notificationService = mock[NotificationService]
+    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
+    val consultationId      = java.util.UUID.randomUUID()
+    val consultation = Consultation(
+      id = consultationId,
+      userId = java.util.UUID.randomUUID(),
+      specialistId = java.util.UUID.randomUUID(),
+      categoryId = java.util.UUID.randomUUID(),
+      description = "desc",
+      status = ConsultationStatus.Requested,
+      scheduledAt = Instant.now(),
+      duration = None,
+      price = BigDecimal("50.00"),
+      rating = None,
+      review = None,
+      createdAt = Instant.now(),
+      updatedAt = Instant.now()
+    )
+
+    consultationRepo.findById.expects(consultationId).returning(IO.pure(Some(consultation)))
+    consultationRepo.update
+      .expects(*)
+      .returning(IO.pure(consultation.copy(status = ConsultationStatus.Scheduled, duration = Some(60))))
+
+    val result = service.approveConsultation(consultationId, 60).unsafeRunSync()
+
+    result.shouldBe(Right(()))
+  }
+
+  it should "return error if consultation not found when approving" in {
+    val consultationRepo    = mock[ConsultationRepository]
+    val specialistRepo      = mock[SpecialistRepository]
+    val userRepo            = mock[UserRepository]
+    val notificationService = mock[NotificationService]
+    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
+    val consultationId      = java.util.UUID.randomUUID()
+
+    consultationRepo.findById.expects(consultationId).returning(IO.pure(None))
+    val result = service.approveConsultation(consultationId, 60).unsafeRunSync()
+
+    result.shouldBe(Left(DomainError.ConsultationNotFound(consultationId)))
+  }
 }

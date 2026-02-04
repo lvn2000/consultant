@@ -11,8 +11,8 @@ case class CreateConsultationDto(
   specialistId: UUID,
   categoryId: UUID,
   description: String,
-  scheduledAt: Option[Instant],
-  duration: Option[Int]
+  scheduledAt: Instant,
+  duration: Option[Int] = None // Client doesn't set duration
 ) derives Codec.AsObject
 
 case class ConsultationDto(
@@ -22,7 +22,7 @@ case class ConsultationDto(
   categoryId: UUID,
   description: String,
   status: String,
-  scheduledAt: Option[Instant],
+  scheduledAt: Instant,
   duration: Option[Int],
   price: BigDecimal,
   rating: Option[Int],
@@ -34,4 +34,13 @@ case class ConsultationDto(
 case class AddReviewDto(
   rating: Int,
   review: String
+) derives Codec.AsObject
+
+case class UpdateConsultationStatusDto(
+  status: String
+) derives Codec.AsObject
+
+case class ApproveConsultationDto(
+  status: String,
+  duration: Int
 ) derives Codec.AsObject
