@@ -1,5 +1,11 @@
 <template>
   <div class="section">
+    <div class="section-header">
+      <div class="header-content">
+        <h2><span class="icon">👤</span>My Profile</h2>
+        <p class="header-subtitle">Manage your personal information and account settings</p>
+      </div>
+    </div>
     <div v-if="profileLoading" class="list-state">Loading profile...</div>
     <div v-else-if="profileError" class="list-state error">{{ profileError }}</div>
     <div v-else class="form">
@@ -122,6 +128,38 @@ defineExpose({
 <style scoped>
 .section {
   margin-top: 2rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  gap: 1.5rem;
+}
+
+.header-content {
+  flex: 1;
+}
+
+.section-header h2 {
+  color: #1f2937;
+  margin: 0 0 0.35rem 0;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-subtitle {
+  color: #6b7280;
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.icon {
+  font-size: 1.5rem;
 }
 
 .list-state {

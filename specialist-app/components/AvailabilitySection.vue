@@ -1,7 +1,10 @@
 <template>
   <section class="section">
     <div class="section-header">
-      <h2>My Availability</h2>
+      <div class="header-content">
+        <h2><span class="icon">📅</span>My Availability</h2>
+        <p class="header-subtitle">Define your working hours and time slots for consultations</p>
+      </div>
       <button type="button" class="btn" @click="loadAvailability">Refresh</button>
     </div>
 
@@ -218,11 +221,31 @@ defineExpose({
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+  gap: 1.5rem;
+}
+
+.header-content {
+  flex: 1;
 }
 
 .section-header h2 {
   color: #1f2937;
+  margin: 0 0 0.35rem 0;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-subtitle {
+  color: #6b7280;
   margin: 0;
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.icon {
+  font-size: 1.5rem;
 }
 
 .list-state {
