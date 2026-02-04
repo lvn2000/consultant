@@ -1,7 +1,10 @@
 <template>
   <section class="section">
     <div class="section-header">
-      <h2>My Rates</h2>
+      <div class="header-content">
+        <h2><span class="icon">💰</span>My Rates</h2>
+        <p class="header-subtitle">Set your hourly rates for different expertise categories</p>
+      </div>
       <button type="button" class="btn" @click="loadRates">Refresh</button>
     </div>
 
@@ -35,7 +38,7 @@
           <label for="rate-category">Category</label>
           <select id="rate-category" v-model="rateForm.categoryId" required :disabled="!!editingRateId">
             <option value="">Select category</option>
-            <option v-for="category in availableCategories" :key="category.id" :value="category.id">
+            <option v-for="category in (editingRateId ? categories : availableCategories)" :key="category.id" :value="category.id">
               {{ category.name }}
             </option>
           </select>
@@ -108,12 +111,12 @@ const loadRates = async () => {
 }
 
 const startEditRate = (rate: any) => {
+  editingRateId.value = rate.categoryId
   rateForm.value = {
     categoryId: rate.categoryId,
     hourlyRate: rate.hourlyRate,
     experienceYears: rate.experienceYears
   }
-  editingRateId.value = rate.categoryId
 }
 
 const cancelEditRate = () => {
@@ -237,11 +240,31 @@ defineExpose({
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+  gap: 1.5rem;
+}
+
+.header-content {
+  flex: 1;
 }
 
 .section-header h2 {
   color: #1f2937;
+  margin: 0 0 0.35rem 0;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-subtitle {
+  color: #6b7280;
   margin: 0;
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.icon {
+  font-size: 1.5rem;
 }
 
 .list-state {

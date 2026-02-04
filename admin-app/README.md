@@ -23,6 +23,15 @@ npm run build
 
 # Preview production build
 npm run preview
+
+# Lint files
+npm run lint
+
+# Fix linting issues
+npm run lint:fix
+
+# Type check TypeScript files
+npm run type-check
 ```
 
 ## Environment Variables

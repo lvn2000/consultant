@@ -14,7 +14,14 @@
     </nav>
     
     <div class="content">
-      <h1>Client Dashboard</h1>
+      <div class="welcome-header">
+        <div class="welcome-content">
+          <h1 class="welcome-title">
+            <span class="wave">👋</span> Welcome back!
+          </h1>
+          <p class="welcome-subtitle">Browse specialists, manage your connections, and book consultations</p>
+        </div>
+      </div>
 
       <!-- Profile Section -->
       <ProfileSection 
@@ -31,7 +38,12 @@
 
       <!-- Consultations Section -->
       <div v-if="selectedMenu === 'consultations'" class="section">
-        <h3>My Consultations</h3>
+        <div class="section-header">
+          <div class="header-content">
+            <h2><span class="icon">📞</span>My Consultations</h2>
+            <p class="header-subtitle">Browse specialists and book consultations</p>
+          </div>
+        </div>
         
         <!-- Tabs for View and Book -->
         <div class="tabs-header">
@@ -264,13 +276,85 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-.content h1 {
+.welcome-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2.5rem;
+  border-radius: 12px;
   margin-bottom: 2rem;
-  color: #1f2937;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.15);
+}
+
+.welcome-content {
+  color: white;
+}
+
+.welcome-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.wave {
+  display: inline-block;
+  animation: wave 2.5s ease-in-out infinite;
+}
+
+@keyframes wave {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(14deg);
+  }
+  75% {
+    transform: rotate(-14deg);
+  }
+}
+
+.welcome-subtitle {
+  margin: 0;
+  font-size: 1rem;
+  opacity: 0.95;
+  font-weight: 400;
 }
 
 .section {
   margin-top: 2rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  gap: 1.5rem;
+}
+
+.header-content {
+  flex: 1;
+}
+
+.section-header h2 {
+  color: #1f2937;
+  margin: 0 0 0.35rem 0;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-subtitle {
+  color: #6b7280;
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.icon {
+  font-size: 1.5rem;
 }
 
 .section h3 {
