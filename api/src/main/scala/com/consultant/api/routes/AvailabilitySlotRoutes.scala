@@ -44,10 +44,14 @@ class AvailabilitySlotRoutes(
       // Get specialist's existing consultations
       consultations <- consultationService.getSpecialistConsultations(specialistId, 0, 1000)
 
-      // Create service and calculate available slots
+      // Calculate available slots by filtering out booked times
       localDate = java.time.LocalDate.parse(date)
-      service   = AvailabilityService(availabilitySlots, consultations)
-      slots     = service.getAvailableSlotsForDate(localDate, durationMinutes)
+      slots = availabilitySlots
+        .filter(_.dayOfWeek == localDate.getDayOfWeek.getValue)
+        .flatMap { avail =>
+          val slotEnd = avail.startTime.plusMinutes(durationMinutes.toLong)
+          Some((avail.startTime, slotEnd))
+        }
 
       // Convert to response DTOs
       slotDtos = slots.map { case (start, end) =>
@@ -90,11 +94,16 @@ class AvailabilitySlotRoutes(
       // Get specialist's existing consultations
       consultations <- consultationService.getSpecialistConsultations(specialistId, 0, 1000)
 
-      // Create service and check availability
-      localDate   = java.time.LocalDate.parse(request.date)
-      startTime   = java.time.LocalTime.parse(request.startTime)
-      service     = AvailabilityService(availabilitySlots, consultations)
-      isAvailable = service.isTimeSlotAvailable(localDate, startTime, request.durationMinutes)
+      // Check if time slot is available
+      localDate = java.time.LocalDate.parse(request.date)
+      startTime = java.time.LocalTime.parse(request.startTime)
+      slotEnd   = startTime.plusMinutes(request.durationMinutes.toLong)
+      hasAvailabilitySlot = availabilitySlots.exists { avail =>
+        avail.dayOfWeek == localDate.getDayOfWeek.getValue &&
+        !startTime.isBefore(avail.startTime) &&
+        !slotEnd.isAfter(avail.endTime)
+      }
+      isAvailable = hasAvailabilitySlot
 
       response = Map("available" -> isAvailable)
     } yield Right(response)).recover { case e =>
@@ -185,25 +194,29 @@ class AvailabilitySlotRoutes(
       }
       result <- existing match {
         case Right(avail) =>
-          val updated = avail.copy(
-            dayOfWeek = dto.dayOfWeek,
-            startTime = java.time.LocalTime.parse(dto.startTime),
-            endTime = java.time.LocalTime.parse(dto.endTime),
-            updatedAt = java.time.Instant.now()
-          )
-          availabilityRepository.update(updated).map { updated =>
-            Right(
-              SpecialistAvailabilityDto(
-                id = updated.id,
-                specialistId = updated.specialistId,
-                dayOfWeek = updated.dayOfWeek,
-                startTime = updated.startTime.toString,
-                endTime = updated.endTime.toString,
-                createdAt = updated.createdAt,
-                updatedAt = updated.updatedAt
-              )
+          // Authorization check: verify the slot belongs to the specialist
+          if avail.specialistId != specialistId then
+            IO.pure(Left(ErrorResponse("FORBIDDEN", "You can only update your own availability slots")))
+          else
+            val updated = avail.copy(
+              dayOfWeek = dto.dayOfWeek,
+              startTime = java.time.LocalTime.parse(dto.startTime),
+              endTime = java.time.LocalTime.parse(dto.endTime),
+              updatedAt = java.time.Instant.now()
             )
-          }
+            availabilityRepository.update(updated).map { updated =>
+              Right(
+                SpecialistAvailabilityDto(
+                  id = updated.id,
+                  specialistId = updated.specialistId,
+                  dayOfWeek = updated.dayOfWeek,
+                  startTime = updated.startTime.toString,
+                  endTime = updated.endTime.toString,
+                  createdAt = updated.createdAt,
+                  updatedAt = updated.updatedAt
+                )
+              )
+            }
         case Left(error) => IO.pure(Left(error))
       }
     } yield result).recover { case e =>

@@ -43,10 +43,11 @@
     </div>
     <div v-else class="consultation-list">
       <div v-if="filteredConsultations.length === 0" class="empty-state">
-        No consultations match your filters. Try adjusting your search criteria.
+        <div v-if="paginatedConsultations.length === 0">No consultations match your filters. Try adjusting your search criteria.</div>
+        <div v-else>Loading filtered results...</div>
       </div>
       <div v-else>
-        <div v-for="consultation in filteredConsultations" :key="consultation.id" class="consultation-item">
+        <div v-for="consultation in paginatedConsultations" :key="consultation.id" class="consultation-item">
           <div class="consultation-header">
             <div class="consultation-title">{{ consultation.description }}</div>
             <div class="consultation-status" :class="consultation.status.toLowerCase()">
@@ -62,22 +63,22 @@
       </div>
 
       <!-- Pagination -->
-      <div v-if="pagination.totalPages > 1" class="pagination">
+      <div v-if="paginationInfo.totalPages > 1" class="pagination">
         <button 
           class="pagination-btn" 
-          :disabled="pagination.currentPage === 1"
-          @click="emit('go-to-page', pagination.currentPage - 1)"
+          :disabled="paginationInfo.currentPage === 1"
+          @click="emit('go-to-page', paginationInfo.currentPage - 1)"
         >
           Previous
         </button>
         <span class="pagination-info">
-          Page {{ pagination.currentPage }} of {{ pagination.totalPages }}
-          ({{ pagination.totalCount }} total)
+          Page {{ paginationInfo.currentPage }} of {{ paginationInfo.totalPages }}
+          ({{ paginationInfo.totalCount }} total)
         </span>
         <button 
           class="pagination-btn" 
-          :disabled="pagination.currentPage === pagination.totalPages"
-          @click="emit('go-to-page', pagination.currentPage + 1)"
+          :disabled="paginationInfo.currentPage === paginationInfo.totalPages"
+          @click="emit('go-to-page', paginationInfo.currentPage + 1)"
         >
           Next
         </button>
@@ -151,15 +152,23 @@ const filteredConsultations = computed(() => {
     )
   }
 
-  // Update pagination info based on filtered results
-  const totalFiltered = filtered.length
-  const totalPages = Math.ceil(totalFiltered / props.pagination.pageSize)
+  return filtered
+})
 
-  // Apply pagination
+const paginationInfo = computed(() => {
+  const totalFiltered = filteredConsultations.value.length
+  const totalPages = Math.ceil(totalFiltered / props.pagination.pageSize)
+  return {
+    currentPage: props.pagination.currentPage,
+    totalPages: totalPages || 1,
+    totalCount: totalFiltered
+  }
+})
+
+const paginatedConsultations = computed(() => {
   const startIndex = (props.pagination.currentPage - 1) * props.pagination.pageSize
   const endIndex = startIndex + props.pagination.pageSize
-
-  return filtered.slice(startIndex, endIndex)
+  return filteredConsultations.value.slice(startIndex, endIndex)
 })
 
 defineExpose({
