@@ -173,3 +173,11 @@ object DtoMappers:
       case DomainError.SpecialistNotAvailable(id) => ErrorResponse("UNAVAILABLE", s"Specialist not available: $id")
       case DomainError.ValidationError(msg)       => ErrorResponse("VALIDATION_ERROR", msg)
       case DomainError.InvalidCredentials         => ErrorResponse("UNAUTHORIZED", "Invalid credentials")
+      case DomainError.DuplicateCategoryRate(catId) =>
+        ErrorResponse(
+          "CONFLICT",
+          s"This category has already been added for this specialist (Category: $catId). Each specialist can only have one rate per category."
+        )
+      case DomainError.DatabaseError(msg) =>
+        System.err.println(s"Database error: $msg")
+        ErrorResponse("DATABASE_ERROR", "A database error occurred. Please try again later.")
