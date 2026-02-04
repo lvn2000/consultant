@@ -66,7 +66,7 @@
       </div>
     </div>
 
-    <form class="form" v-if="selectedSpecialistId" @submit.prevent>
+    <form ref="specialistFormRef" class="form" v-if="selectedSpecialistId" @submit.prevent>
       <div class="form-header">
         <h3>Specialist Details</h3>
         <span class="form-subtitle" v-if="specialistForm.name">{{ specialistForm.name }}</span>
@@ -195,7 +195,7 @@
               </div>
             </div>
 
-            <div class="form-grid">
+            <div ref="connectionFormRef" class="form-grid">
               <div class="form-field">
                 <label for="specialist-connection-type">Connection Type</label>
                 <select id="specialist-connection-type" v-model="connectionForm.connectionTypeId">
@@ -257,7 +257,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch, nextTick } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
 import { $fetch } from 'ofetch'
 
@@ -321,6 +321,8 @@ const specialistConnectionsError = ref('')
 const selectedConnectionId = ref<string | null>(null)
 const connectionActionMessage = ref('')
 const specialistDetailsTab = ref<'general' | 'categoryRates' | 'connections'>('general')
+const specialistFormRef = ref<HTMLFormElement | null>(null)
+const connectionFormRef = ref<HTMLDivElement | null>(null)
 
 const specialistForm = ref({
   name: '',
@@ -514,6 +516,16 @@ const startEditSpecialist = (specialist: Specialist) => {
   resetConnectionForm()
   loadSpecialistConnections()
   specialistDetailsTab.value = 'general'
+  // Scroll to form and focus
+  nextTick(() => {
+    if (specialistFormRef.value) {
+      specialistFormRef.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const firstInput = specialistFormRef.value.querySelector('input') as HTMLInputElement
+      if (firstInput) {
+        setTimeout(() => firstInput.focus(), 300)
+      }
+    }
+  })
 }
 
 const startEditConnection = (connection: SpecialistConnection) => {
@@ -523,6 +535,16 @@ const startEditConnection = (connection: SpecialistConnection) => {
     connectionValue: connection.connectionValue,
   }
   connectionActionMessage.value = ''
+  // Scroll to form and focus
+  nextTick(() => {
+    if (connectionFormRef.value) {
+      connectionFormRef.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const firstInput = connectionFormRef.value.querySelector('select, input') as HTMLInputElement | HTMLSelectElement
+      if (firstInput) {
+        setTimeout(() => firstInput.focus(), 300)
+      }
+    }
+  })
 }
 
 const addCategoryRate = () => {

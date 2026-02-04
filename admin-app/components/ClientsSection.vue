@@ -60,7 +60,7 @@
       </div>
     </div>
 
-    <form class="form" @submit.prevent>
+    <form ref="clientFormRef" class="form" @submit.prevent>
       <div class="form-grid">
         <div class="form-field">
           <label for="client-name">Name</label>
@@ -93,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, nextTick } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
 import { $fetch } from 'ofetch'
 
@@ -117,6 +117,7 @@ const clientActionMessage = ref('')
 const clientCurrentPage = ref(1)
 const clientPageSize = ref(20)
 const clientsSearchQuery = ref('')
+const clientFormRef = ref<HTMLFormElement | null>(null)
 const clientForm = ref({
   name: '',
   email: '',
@@ -215,6 +216,16 @@ const startEditClient = (client: Client) => {
     phone: client.phone,
   }
   clientActionMessage.value = ''
+  // Scroll to form and focus
+  nextTick(() => {
+    if (clientFormRef.value) {
+      clientFormRef.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const firstInput = clientFormRef.value.querySelector('input') as HTMLInputElement
+      if (firstInput) {
+        setTimeout(() => firstInput.focus(), 300)
+      }
+    }
+  })
 }
 
 const resetClientForm = () => {
