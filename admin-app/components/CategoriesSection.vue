@@ -58,7 +58,7 @@
       </div>
     </div>
 
-    <form class="form" @submit.prevent>
+    <form ref="categoryFormRef" class="form" @submit.prevent>
       <div class="form-grid">
         <div class="form-field">
           <label for="category-name">Name</label>
@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, nextTick } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
 import { $fetch } from 'ofetch'
 
@@ -130,6 +130,7 @@ const categoryActionMessage = ref('')
 const categoryCurrentPage = ref(1)
 const categoryPageSize = ref(20)
 const categoriesSearchQuery = ref('')
+const categoryFormRef = ref<HTMLFormElement | null>(null)
 const categoryForm = ref({
   name: '',
   description: '',
@@ -229,6 +230,16 @@ const startEditCategory = (category: Category) => {
     parentId: category.parentId ?? '',
   }
   categoryActionMessage.value = ''
+  // Scroll to form and focus
+  nextTick(() => {
+    if (categoryFormRef.value) {
+      categoryFormRef.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const firstInput = categoryFormRef.value.querySelector('input') as HTMLInputElement
+      if (firstInput) {
+        setTimeout(() => firstInput.focus(), 300)
+      }
+    }
+  })
 }
 
 const resetCategoryForm = () => {

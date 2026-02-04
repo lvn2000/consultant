@@ -24,7 +24,7 @@
       </div>
     </div>
 
-    <form class="form" @submit.prevent>
+    <form ref="connectionTypeFormRef" class="form" @submit.prevent>
       <div class="form-grid">
         <div class="form-field">
           <label for="connection-type-name">Name</label>
@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, nextTick } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
 import { $fetch } from 'ofetch'
 
@@ -79,6 +79,7 @@ const connectionTypesLoading = ref(false)
 const connectionTypesError = ref('')
 const selectedConnectionTypeId = ref<string | null>(null)
 const connectionTypeActionMessage = ref('')
+const connectionTypeFormRef = ref<HTMLFormElement | null>(null)
 const connectionTypeForm = ref({
   name: '',
   description: '',
@@ -121,6 +122,16 @@ const startEditConnectionType = (type: ConnectionType) => {
     description: type.description ?? '',
   }
   connectionTypeActionMessage.value = ''
+  // Scroll to form and focus
+  nextTick(() => {
+    if (connectionTypeFormRef.value) {
+      connectionTypeFormRef.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const firstInput = connectionTypeFormRef.value.querySelector('input') as HTMLInputElement
+      if (firstInput) {
+        setTimeout(() => firstInput.focus(), 300)
+      }
+    }
+  })
 }
 
 const resetConnectionTypeForm = () => {
