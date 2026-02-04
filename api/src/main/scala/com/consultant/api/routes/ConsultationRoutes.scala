@@ -94,8 +94,12 @@ class ConsultationRoutes(consultationService: ConsultationService):
             consultationOpt <- consultationService.getConsultation(id)
             result <- consultationOpt match
               case Right(consultation) =>
-                // Authorization: Allow if user is the client who created the consultation or if user is admin/specialist
-                if consultation.userId.toString == userId || userRole == "Admin" || userRole == "Specialist" then
+                // Authorization: user must be the client OR the assigned specialist OR an admin
+                val isClient             = consultation.userId.toString == userId
+                val isAssignedSpecialist = consultation.specialistId.toString == userId
+                val isAdmin              = userRole == "Admin"
+
+                if isClient || isAssignedSpecialist || isAdmin then
                   consultationService.updateConsultationStatus(id, status).map {
                     case Right(())   => Right(toConsultationDto(consultation.copy(status = status)))
                     case Left(error) => Left(toErrorResponse(error))
@@ -116,7 +120,7 @@ class ConsultationRoutes(consultationService: ConsultationService):
     .errorOut(jsonBody[ErrorResponse])
 
   val approveConsultation = approveConsultationEndpoint.serverLogic { (id, userIdOpt, userRoleOpt, dto) =>
-    // Authorization check: only specialists and admins can approve consultations
+    // Authorization check: only the assigned specialist or admin can approve consultations
     (userIdOpt, userRoleOpt) match
       case (None, _) | (_, None) =>
         IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing authentication headers")))
@@ -125,13 +129,25 @@ class ConsultationRoutes(consultationService: ConsultationService):
           IO.pure(Left(ErrorResponse("FORBIDDEN", "Only specialists and admins can approve consultations")))
         else
           for
-            result          <- consultationService.approveConsultation(id, dto.duration)
             consultationOpt <- consultationService.getConsultation(id)
-            response <- (result, consultationOpt) match
-              case (Right(()), Right(consultation)) =>
-                IO.pure(Right(toConsultationDto(consultation)))
-              case (Left(error), _) => IO.pure(Left(toErrorResponse(error)))
-              case (_, Left(error)) => IO.pure(Left(toErrorResponse(error)))
+            response <- consultationOpt match
+              case Right(consultation) =>
+                // Authorization: Only the assigned specialist or admin can approve
+                val isAssignedSpecialist = consultation.specialistId.toString == userId
+                val isAdmin              = userRole == "Admin"
+
+                if isAssignedSpecialist || isAdmin then
+                  for
+                    result                 <- consultationService.approveConsultation(id, dto.duration)
+                    updatedConsultationOpt <- consultationService.getConsultation(id)
+                    finalResponse <- (result, updatedConsultationOpt) match
+                      case (Right(()), Right(updatedConsultation)) =>
+                        IO.pure(Right(toConsultationDto(updatedConsultation)))
+                      case (Left(error), _) => IO.pure(Left(toErrorResponse(error)))
+                      case (_, Left(error)) => IO.pure(Left(toErrorResponse(error)))
+                  yield finalResponse
+                else IO.pure(Left(ErrorResponse("FORBIDDEN", "You are not assigned to this consultation")))
+              case Left(error) => IO.pure(Left(toErrorResponse(error)))
           yield response
   }
 

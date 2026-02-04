@@ -178,4 +178,6 @@ object DtoMappers:
           "CONFLICT",
           s"This category has already been added for this specialist (Category: $catId). Each specialist can only have one rate per category."
         )
-      case DomainError.DatabaseError(msg) => ErrorResponse("DATABASE_ERROR", msg)
+      case DomainError.DatabaseError(msg) =>
+        System.err.println(s"Database error: $msg")
+        ErrorResponse("DATABASE_ERROR", "A database error occurred. Please try again later.")
