@@ -209,10 +209,10 @@ class ConsultationService(
   ): IO[Unit] =
     val oldStatus = consultation.status
 
-    // Build notification list based on available entities and transition type
-    // This allows sending to whichever party is available instead of requiring both
+    // Build notification list based on available entities and transition type.
+    // Note: for some transitions (such as approval), notifications are only sent when both user and specialist are available.
     val notificationsToSend: List[NotificationToSend] = (oldStatus, newStatus) match
-      // User requested, specialist approves - sends to both if available
+      // User requested, specialist approves - sends to both only when both user and specialist are available
       case (ConsultationStatus.Requested, ConsultationStatus.Scheduled) =>
         val notifications = scala.collection.mutable.ListBuffer[NotificationToSend]()
 
