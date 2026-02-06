@@ -15,7 +15,7 @@ import sttp.tapir.server.http4s.Http4sServerInterpreter
 import com.consultant.data.config.{ DatabaseConfig, DbConfig }
 import com.consultant.data.repository.*
 import com.consultant.core.service.*
-import com.consultant.core.ports.AvailabilityRepository
+import com.consultant.core.ports.{ AvailabilityRepository, NotificationPreferenceRepository }
 import com.consultant.api.routes.*
 import com.consultant.infrastructure.config.AppConfig
 import com.consultant.infrastructure.local.MockNotificationService
@@ -32,19 +32,22 @@ object Server extends IOApp:
             consultationService,
             categoryService,
             connectionService,
-            availabilityRepository
+            availabilityRepository,
+            notificationPreferenceRepository
           ) =>
-        val userRoutes         = UserRoutes(userService)
-        val specialistRoutes   = SpecialistRoutes(specialistService)
-        val consultationRoutes = ConsultationRoutes(consultationService)
-        val categoryRoutes     = CategoryRoutes(categoryService)
-        val connectionRoutes   = ConnectionRoutes(connectionService)
-        val availabilityRoutes = AvailabilitySlotRoutes(consultationService, availabilityRepository)
+        val userRoutes                   = UserRoutes(userService)
+        val specialistRoutes             = SpecialistRoutes(specialistService)
+        val consultationRoutes           = ConsultationRoutes(consultationService)
+        val categoryRoutes               = CategoryRoutes(categoryService)
+        val connectionRoutes             = ConnectionRoutes(connectionService)
+        val availabilityRoutes           = AvailabilitySlotRoutes(consultationService, availabilityRepository)
+        val notificationPreferenceRoutes = NotificationPreferenceRoutes(notificationPreferenceRepository)
 
         // Swagger documentation
         val allEndpoints = userRoutes.endpoints ++ specialistRoutes.endpoints ++
           consultationRoutes.endpoints ++ categoryRoutes.endpoints ++ connectionRoutes.endpoints ++
           availabilityRoutes.endpoints
+        // Note: notificationPreferenceRoutes not included in swagger docs as they're defined differently
 
         val docEndpoints = SwaggerInterpreter()
           .fromServerEndpoints(allEndpoints, "Consultant API", "1.0.0")
@@ -59,9 +62,10 @@ object Server extends IOApp:
         val apiRoutes = Router(
           "/api/users" -> (connectionRoutes.clientConnectionRoutes <+> userRoutes.routes),
           "/api/specialists" -> (availabilityRoutes.routes <+> connectionRoutes.specialistConnectionRoutes <+> specialistRoutes.routes),
-          "/api/consultations"    -> consultationRoutes.routes,
-          "/api/categories"       -> categoryRoutes.routes,
-          "/api/connection-types" -> connectionRoutes.connectionTypeRoutes
+          "/api/consultations"            -> consultationRoutes.routes,
+          "/api/categories"               -> categoryRoutes.routes,
+          "/api/connection-types"         -> connectionRoutes.connectionTypeRoutes,
+          "/api/notification-preferences" -> notificationPreferenceRoutes.routes
         )
 
         // swaggerRoutes already serve under /docs by default; do not double-prefix in Router
@@ -81,7 +85,7 @@ object Server extends IOApp:
           .use { _ =>
             // Keep startup logs concise to avoid noisy console output
             IO.println(
-              s"Server up at http://${config.server.host}:${config.server.port} | Swagger: /docs | Endpoints: ${allEndpoints.size}"
+              s"Server up at http://${config.server.host}:${config.server.port} | Swagger: /docs | Endpoints: ${allEndpoints.size + 2}"
             ) >> IO.never
           }
           .as(ExitCode.Success)
@@ -96,7 +100,8 @@ object Server extends IOApp:
       ConsultationService,
       CategoryService,
       ConnectionService,
-      AvailabilityRepository
+      AvailabilityRepository,
+      NotificationPreferenceRepository
     )
   ] =
     for
@@ -119,26 +124,28 @@ object Server extends IOApp:
       xa <- DatabaseConfig.makeTransactor[IO](dbConfig)
 
       // Repositories
-      userRepo           = PostgresUserRepository(xa)
-      sessionRepo        = PostgresSessionRepository(xa)
-      connectionTypeRepo = PostgresConnectionTypeRepository(xa)
-      connectionRepo     = PostgresConnectionRepository(xa)
-      specialistRepo     = PostgresSpecialistRepository(xa, connectionRepo)
-      categoryRepo       = PostgresCategoryRepository(xa)
-      consultationRepo   = PostgresConsultationRepository(xa)
-      availabilityRepo   = PostgresAvailabilityRepository(xa)
+      userRepo                   = PostgresUserRepository(xa)
+      sessionRepo                = PostgresSessionRepository(xa)
+      connectionTypeRepo         = PostgresConnectionTypeRepository(xa)
+      connectionRepo             = PostgresConnectionRepository(xa)
+      specialistRepo             = PostgresSpecialistRepository(xa, connectionRepo)
+      categoryRepo               = PostgresCategoryRepository(xa)
+      consultationRepo           = PostgresConsultationRepository(xa)
+      availabilityRepo           = PostgresAvailabilityRepository(xa)
+      notificationPreferenceRepo = PostgresNotificationPreferenceRepository(xa)
 
       // Infrastructure services
       notificationService = MockNotificationService()
 
       // Services
-      userService       = UserService(userRepo, sessionRepo)
+      userService       = UserService(userRepo, sessionRepo, Some(notificationPreferenceRepo))
       specialistService = SpecialistService(specialistRepo, categoryRepo)
       consultationService = ConsultationService(
         consultationRepo,
         specialistRepo,
         userRepo,
-        notificationService
+        notificationService,
+        notificationPreferenceRepo
       )
       categoryService   = CategoryService(categoryRepo)
       connectionService = ConnectionService(connectionRepo, connectionTypeRepo, specialistRepo)
@@ -149,5 +156,6 @@ object Server extends IOApp:
       consultationService,
       categoryService,
       connectionService,
-      availabilityRepo
+      availabilityRepo,
+      notificationPreferenceRepo
     )

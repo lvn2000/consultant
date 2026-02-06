@@ -9,7 +9,11 @@ import java.time.Instant
 import org.mindrot.jbcrypt.BCrypt
 import scala.concurrent.duration.*
 
-class UserService(userRepo: UserRepository, sessionRepo: SessionRepository):
+class UserService(
+  userRepo: UserRepository,
+  sessionRepo: SessionRepository,
+  notificationPreferenceRepo: Option[NotificationPreferenceRepository] = None
+):
 
   case class LoginResult(user: User, session: UserSession)
 
@@ -22,7 +26,14 @@ class UserService(userRepo: UserRepository, sessionRepo: SessionRepository):
         case Some(_) => IO.pure(Left(DomainError.EmailAlreadyExists(request.email)))
         case None =>
           if !isValidEmail(request.email) then IO.pure(Left(DomainError.InvalidEmail(request.email)))
-          else userRepo.create(request).map(Right(_))
+          else
+            for
+              user <- userRepo.create(request)
+              // Create default notification preferences if repo is available
+              _ <- notificationPreferenceRepo match
+                case Some(repo) => repo.createDefaults(user.id)
+                case None       => IO.unit
+            yield Right(user)
     yield result
 
   def getUser(id: UserId): IO[Either[DomainError, User]] =

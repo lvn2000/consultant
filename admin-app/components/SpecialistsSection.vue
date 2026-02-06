@@ -98,6 +98,14 @@
           >
             Connections
           </button>
+          <button
+            type="button"
+            class="tab"
+            :class="{ active: specialistDetailsTab === 'notifications' }"
+            @click="specialistDetailsTab = 'notifications'"
+          >
+            Notifications
+          </button>
         </div>
 
         <div v-if="specialistDetailsTab === 'general'" class="details-panel">
@@ -235,6 +243,40 @@
             <p v-if="connectionActionMessage" class="form-message">{{ connectionActionMessage }}</p>
           </div>
         </div>
+
+        <div v-else-if="specialistDetailsTab === 'notifications'" class="details-panel">
+          <p v-if="!selectedSpecialistId" class="muted">
+            Select a specialist to manage notification preferences.
+          </p>
+          <div v-else class="notifications-manager">
+            <div class="list-state" v-if="notificationsLoading">Loading notification preferences...</div>
+            <div class="list-state error" v-else-if="notificationsError">
+              {{ notificationsError }}
+            </div>
+
+            <div v-else class="notifications-list">
+              <div v-for="pref in specialistNotifications" :key="pref.id" class="notification-item">
+                <div class="notification-label">
+                  <span class="notification-name">{{ formatNotificationType(pref.notificationType) }}</span>
+                  <span class="notification-description">{{ getNotificationDescription(pref.notificationType) }}</span>
+                </div>
+                <label class="toggle-switch">
+                  <input 
+                    type="checkbox" 
+                    v-model="pref.emailEnabled"
+                    @change="updateNotificationPreference(pref)"
+                    :disabled="updatingNotificationId === pref.id"
+                  />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div v-if="notificationUpdateMessage" :class="['form-message', notificationUpdateSuccess ? 'success' : 'error']">
+              {{ notificationUpdateMessage }}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="form-actions">
@@ -320,9 +362,15 @@ const specialistConnectionsLoading = ref(false)
 const specialistConnectionsError = ref('')
 const selectedConnectionId = ref<string | null>(null)
 const connectionActionMessage = ref('')
-const specialistDetailsTab = ref<'general' | 'categoryRates' | 'connections'>('general')
+const specialistDetailsTab = ref<'general' | 'categoryRates' | 'connections' | 'notifications'>('general')
 const specialistFormRef = ref<HTMLFormElement | null>(null)
 const connectionFormRef = ref<HTMLDivElement | null>(null)
+const specialistNotifications = ref<any[]>([])
+const notificationsLoading = ref(false)
+const notificationsError = ref('')
+const notificationUpdateMessage = ref('')
+const notificationUpdateSuccess = ref(false)
+const updatingNotificationId = ref<string | null>(null)
 
 const specialistForm = ref({
   name: '',
@@ -439,11 +487,91 @@ const loadSpecialistConnections = async () => {
   }
 }
 
+const loadSpecialistNotifications = async () => {
+  if (!selectedSpecialistId.value) {
+    specialistNotifications.value = []
+    return
+  }
+  notificationsLoading.value = true
+  notificationsError.value = ''
+  try {
+    console.log('Loading notifications for specialist:', selectedSpecialistId.value)
+    const data = await $fetch<any>(`${config.public.apiBase}/notification-preferences`, {
+      method: 'GET',
+      headers: {
+        'X-User-Id': selectedSpecialistId.value
+      }
+    })
+    console.log('Loaded notifications:', data)
+    // Extract preferences array from response object
+    specialistNotifications.value = data.preferences || []
+  } catch (error: any) {
+    console.error('Error loading notifications:', error)
+    specialistNotifications.value = []
+    notificationsError.value = error?.message || 'Failed to load notification preferences'
+  } finally {
+    notificationsLoading.value = false
+  }
+}
+
+const formatNotificationType = (type: string): string => {
+  return type
+    .split(/(?=[A-Z])/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+const getNotificationDescription = (type: string): string => {
+  const descriptions: Record<string, string> = {
+    'ConsultationApproved': 'When specialist approves your request',
+    'ConsultationDeclined': 'When specialist declines your request',
+    'ConsultationCompleted': 'When a consultation is completed',
+    'ConsultationMissed': 'When a consultation is marked as missed',
+    'ConsultationCancelled': 'When a consultation is cancelled'
+  }
+  return descriptions[type] || 'Notification preference'
+}
+
+const updateNotificationPreference = async (pref: any) => {
+  if (!selectedSpecialistId.value) {
+    notificationUpdateMessage.value = 'Select a specialist to update preferences.'
+    notificationUpdateSuccess.value = false
+    return
+  }
+  updatingNotificationId.value = pref.id
+  notificationUpdateMessage.value = ''
+  try {
+    await $fetch(`${config.public.apiBase}/notification-preferences/${pref.notificationType}`, {
+      method: 'PUT',
+      body: {
+        emailEnabled: pref.emailEnabled,
+        smsEnabled: pref.smsEnabled || false
+      },
+      headers: {
+        'X-User-Id': selectedSpecialistId.value
+      }
+    })
+    notificationUpdateMessage.value = 'Notification preference updated successfully.'
+    notificationUpdateSuccess.value = true
+  } catch (error) {
+    notificationUpdateMessage.value = 'Failed to update notification preference.'
+    notificationUpdateSuccess.value = false
+  } finally {
+    updatingNotificationId.value = null
+  }
+}
+
 watch(
   () => specialistDetailsTab.value,
-  async newTab => {
+  async (newTab) => {
+    console.log('Tab changed to:', newTab, 'selectedSpecialistId:', selectedSpecialistId.value)
     if (newTab === 'connections' && selectedSpecialistId.value) {
+      console.log('Loading connections...')
       await loadSpecialistConnections()
+    }
+    if (newTab === 'notifications' && selectedSpecialistId.value) {
+      console.log('Loading notifications...')
+      await loadSpecialistNotifications()
     }
   }
 )
@@ -491,6 +619,7 @@ const resetSpecialistForm = () => {
   }
   selectedSpecialistId.value = null
   specialistConnections.value = []
+  specialistNotifications.value = []
   specialistDetailsTab.value = 'general'
 }
 
@@ -515,6 +644,7 @@ const startEditSpecialist = (specialist: Specialist) => {
   specialistActionMessage.value = ''
   resetConnectionForm()
   loadSpecialistConnections()
+  loadSpecialistNotifications()
   specialistDetailsTab.value = 'general'
   // Scroll to form and focus
   nextTick(() => {
@@ -1083,5 +1213,211 @@ onMounted(() => {
 .muted {
   color: #6b7280;
   font-size: 0.9rem;
+}
+
+.notifications-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.notification-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.notification-item:hover {
+  background: #f3f4f6;
+}
+
+.notification-label {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.notification-name {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9rem;
+  margin-bottom: 0.15rem;
+}
+
+.notification-description {
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+/* Toggle Switch Styles */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.3s;
+  border-radius: 26px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: '';
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: #4f46e5;
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+}
+
+input:disabled + .toggle-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-message.success {
+  background: #dcfce7;
+  color: #166534;
+  border-left: 4px solid #22c55e;
+}
+
+.form-message.error {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-left: 4px solid #dc2626;
+}
+
+.notifications-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.notification-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.notification-item:hover {
+  background: #f3f4f6;
+}
+
+.notification-label {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.notification-name {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9rem;
+  margin-bottom: 0.15rem;
+}
+
+.notification-description {
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+/* Toggle Switch Styles */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.3s;
+  border-radius: 26px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: '';
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: #4f46e5;
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+}
+
+input:disabled + .toggle-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

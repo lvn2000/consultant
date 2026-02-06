@@ -55,15 +55,22 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
     )
 
   "createConsultation" should "return error if user not found" in {
-    val consultationRepo    = mock[ConsultationRepository]
-    val specialistRepo      = mock[SpecialistRepository]
-    val userRepo            = mock[UserRepository]
-    val notificationService = mock[NotificationService]
-    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
-    val userId              = java.util.UUID.randomUUID()
-    val specialistId        = java.util.UUID.randomUUID()
-    val categoryId          = java.util.UUID.randomUUID()
-    val req                 = CreateConsultationRequest(userId, specialistId, categoryId, "desc", Instant.now())
+    val consultationRepo           = mock[ConsultationRepository]
+    val specialistRepo             = mock[SpecialistRepository]
+    val userRepo                   = mock[UserRepository]
+    val notificationService        = mock[NotificationService]
+    val notificationPreferenceRepo = mock[NotificationPreferenceRepository]
+    val service = new ConsultationService(
+      consultationRepo,
+      specialistRepo,
+      userRepo,
+      notificationService,
+      notificationPreferenceRepo
+    )
+    val userId       = java.util.UUID.randomUUID()
+    val specialistId = java.util.UUID.randomUUID()
+    val categoryId   = java.util.UUID.randomUUID()
+    val req          = CreateConsultationRequest(userId, specialistId, categoryId, "desc", Instant.now())
 
     userRepo.findById.expects(req.userId).returning(IO.pure(None))
     specialistRepo.findById.expects(req.specialistId).returning(IO.pure(None))
@@ -73,16 +80,23 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
   }
 
   it should "return error if specialist not found" in {
-    val consultationRepo    = mock[ConsultationRepository]
-    val specialistRepo      = mock[SpecialistRepository]
-    val userRepo            = mock[UserRepository]
-    val notificationService = mock[NotificationService]
-    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
-    val userId              = java.util.UUID.randomUUID()
-    val specialistId        = java.util.UUID.randomUUID()
-    val categoryId          = java.util.UUID.randomUUID()
-    val req                 = CreateConsultationRequest(userId, specialistId, categoryId, "desc", Instant.now())
-    val user                = createMockUser(userId, "user@example.com")
+    val consultationRepo           = mock[ConsultationRepository]
+    val specialistRepo             = mock[SpecialistRepository]
+    val userRepo                   = mock[UserRepository]
+    val notificationService        = mock[NotificationService]
+    val notificationPreferenceRepo = mock[NotificationPreferenceRepository]
+    val service = new ConsultationService(
+      consultationRepo,
+      specialistRepo,
+      userRepo,
+      notificationService,
+      notificationPreferenceRepo
+    )
+    val userId       = java.util.UUID.randomUUID()
+    val specialistId = java.util.UUID.randomUUID()
+    val categoryId   = java.util.UUID.randomUUID()
+    val req          = CreateConsultationRequest(userId, specialistId, categoryId, "desc", Instant.now())
+    val user         = createMockUser(userId, "user@example.com")
 
     userRepo.findById.expects(req.userId).returning(IO.pure(Some(user)))
     specialistRepo.findById.expects(req.specialistId).returning(IO.pure(None))
@@ -92,18 +106,25 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
   }
 
   it should "return error if specialist is not available for category" in {
-    val consultationRepo    = mock[ConsultationRepository]
-    val specialistRepo      = mock[SpecialistRepository]
-    val userRepo            = mock[UserRepository]
-    val notificationService = mock[NotificationService]
-    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
-    val userId              = java.util.UUID.randomUUID()
-    val specialistId        = java.util.UUID.randomUUID()
-    val categoryId          = java.util.UUID.randomUUID()
-    val otherCategoryId     = java.util.UUID.randomUUID()
-    val req                 = CreateConsultationRequest(userId, specialistId, categoryId, "desc", Instant.now())
-    val user                = createMockUser(userId, "user@example.com")
-    val specialist          = createMockSpecialist(specialistId, "specialist@example.com", otherCategoryId)
+    val consultationRepo           = mock[ConsultationRepository]
+    val specialistRepo             = mock[SpecialistRepository]
+    val userRepo                   = mock[UserRepository]
+    val notificationService        = mock[NotificationService]
+    val notificationPreferenceRepo = mock[NotificationPreferenceRepository]
+    val service = new ConsultationService(
+      consultationRepo,
+      specialistRepo,
+      userRepo,
+      notificationService,
+      notificationPreferenceRepo
+    )
+    val userId          = java.util.UUID.randomUUID()
+    val specialistId    = java.util.UUID.randomUUID()
+    val categoryId      = java.util.UUID.randomUUID()
+    val otherCategoryId = java.util.UUID.randomUUID()
+    val req             = CreateConsultationRequest(userId, specialistId, categoryId, "desc", Instant.now())
+    val user            = createMockUser(userId, "user@example.com")
+    val specialist      = createMockSpecialist(specialistId, "specialist@example.com", otherCategoryId)
 
     userRepo.findById.expects(req.userId).returning(IO.pure(Some(user)))
     specialistRepo.findById.expects(req.specialistId).returning(IO.pure(Some(specialist)))
@@ -116,17 +137,24 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
   }
 
   it should "return error if specialist is not available" in {
-    val consultationRepo    = mock[ConsultationRepository]
-    val specialistRepo      = mock[SpecialistRepository]
-    val userRepo            = mock[UserRepository]
-    val notificationService = mock[NotificationService]
-    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
-    val userId              = java.util.UUID.randomUUID()
-    val specialistId        = java.util.UUID.randomUUID()
-    val categoryId          = java.util.UUID.randomUUID()
-    val req                 = CreateConsultationRequest(userId, specialistId, categoryId, "desc", Instant.now())
-    val user                = createMockUser(userId, "user@example.com")
-    val specialist = createMockSpecialist(specialistId, "specialist@example.com", categoryId, isAvailable = false)
+    val consultationRepo           = mock[ConsultationRepository]
+    val specialistRepo             = mock[SpecialistRepository]
+    val userRepo                   = mock[UserRepository]
+    val notificationService        = mock[NotificationService]
+    val notificationPreferenceRepo = mock[NotificationPreferenceRepository]
+    val service = new ConsultationService(
+      consultationRepo,
+      specialistRepo,
+      userRepo,
+      notificationService,
+      notificationPreferenceRepo
+    )
+    val userId       = java.util.UUID.randomUUID()
+    val specialistId = java.util.UUID.randomUUID()
+    val categoryId   = java.util.UUID.randomUUID()
+    val req          = CreateConsultationRequest(userId, specialistId, categoryId, "desc", Instant.now())
+    val user         = createMockUser(userId, "user@example.com")
+    val specialist   = createMockSpecialist(specialistId, "specialist@example.com", categoryId, isAvailable = false)
 
     userRepo.findById.expects(req.userId).returning(IO.pure(Some(user)))
     specialistRepo.findById.expects(req.specialistId).returning(IO.pure(Some(specialist)))
@@ -136,18 +164,25 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
   }
 
   it should "successfully create consultation" in {
-    val consultationRepo    = mock[ConsultationRepository]
-    val specialistRepo      = mock[SpecialistRepository]
-    val userRepo            = mock[UserRepository]
-    val notificationService = mock[NotificationService]
-    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
-    val userId              = java.util.UUID.randomUUID()
-    val specialistId        = java.util.UUID.randomUUID()
-    val categoryId          = java.util.UUID.randomUUID()
-    val consultationId      = java.util.UUID.randomUUID()
-    val req                 = CreateConsultationRequest(userId, specialistId, categoryId, "desc", Instant.now())
-    val user                = createMockUser(userId, "user@example.com")
-    val specialist          = createMockSpecialist(specialistId, "specialist@example.com", categoryId)
+    val consultationRepo           = mock[ConsultationRepository]
+    val specialistRepo             = mock[SpecialistRepository]
+    val userRepo                   = mock[UserRepository]
+    val notificationService        = mock[NotificationService]
+    val notificationPreferenceRepo = mock[NotificationPreferenceRepository]
+    val service = new ConsultationService(
+      consultationRepo,
+      specialistRepo,
+      userRepo,
+      notificationService,
+      notificationPreferenceRepo
+    )
+    val userId         = java.util.UUID.randomUUID()
+    val specialistId   = java.util.UUID.randomUUID()
+    val categoryId     = java.util.UUID.randomUUID()
+    val consultationId = java.util.UUID.randomUUID()
+    val req            = CreateConsultationRequest(userId, specialistId, categoryId, "desc", Instant.now())
+    val user           = createMockUser(userId, "user@example.com")
+    val specialist     = createMockSpecialist(specialistId, "specialist@example.com", categoryId)
     val createdConsultation = Consultation(
       id = consultationId,
       userId = userId,
@@ -180,12 +215,19 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
   }
 
   "getConsultation" should "return consultation if found" in {
-    val consultationRepo    = mock[ConsultationRepository]
-    val specialistRepo      = mock[SpecialistRepository]
-    val userRepo            = mock[UserRepository]
-    val notificationService = mock[NotificationService]
-    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
-    val consultationId      = java.util.UUID.randomUUID()
+    val consultationRepo           = mock[ConsultationRepository]
+    val specialistRepo             = mock[SpecialistRepository]
+    val userRepo                   = mock[UserRepository]
+    val notificationService        = mock[NotificationService]
+    val notificationPreferenceRepo = mock[NotificationPreferenceRepository]
+    val service = new ConsultationService(
+      consultationRepo,
+      specialistRepo,
+      userRepo,
+      notificationService,
+      notificationPreferenceRepo
+    )
+    val consultationId = java.util.UUID.randomUUID()
     val consultation = Consultation(
       id = consultationId,
       userId = java.util.UUID.randomUUID(),
@@ -209,12 +251,19 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
   }
 
   it should "return error if consultation not found" in {
-    val consultationRepo    = mock[ConsultationRepository]
-    val specialistRepo      = mock[SpecialistRepository]
-    val userRepo            = mock[UserRepository]
-    val notificationService = mock[NotificationService]
-    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
-    val consultationId      = java.util.UUID.randomUUID()
+    val consultationRepo           = mock[ConsultationRepository]
+    val specialistRepo             = mock[SpecialistRepository]
+    val userRepo                   = mock[UserRepository]
+    val notificationService        = mock[NotificationService]
+    val notificationPreferenceRepo = mock[NotificationPreferenceRepository]
+    val service = new ConsultationService(
+      consultationRepo,
+      specialistRepo,
+      userRepo,
+      notificationService,
+      notificationPreferenceRepo
+    )
+    val consultationId = java.util.UUID.randomUUID()
 
     consultationRepo.findById.expects(consultationId).returning(IO.pure(None))
     val result = service.getConsultation(consultationId).unsafeRunSync()
@@ -223,17 +272,29 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
   }
 
   "approveConsultation" should "successfully approve consultation with duration" in {
-    val consultationRepo    = mock[ConsultationRepository]
-    val specialistRepo      = mock[SpecialistRepository]
-    val userRepo            = mock[UserRepository]
-    val notificationService = mock[NotificationService]
-    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
-    val consultationId      = java.util.UUID.randomUUID()
+    val consultationRepo           = mock[ConsultationRepository]
+    val specialistRepo             = mock[SpecialistRepository]
+    val userRepo                   = mock[UserRepository]
+    val notificationService        = mock[NotificationService]
+    val notificationPreferenceRepo = mock[NotificationPreferenceRepository]
+    val service = new ConsultationService(
+      consultationRepo,
+      specialistRepo,
+      userRepo,
+      notificationService,
+      notificationPreferenceRepo
+    )
+    val consultationId = java.util.UUID.randomUUID()
+    val userId         = java.util.UUID.randomUUID()
+    val specialistId   = java.util.UUID.randomUUID()
+    val categoryId     = java.util.UUID.randomUUID()
+    val user           = createMockUser(userId, "user@example.com")
+    val specialist     = createMockSpecialist(specialistId, "specialist@example.com", categoryId)
     val consultation = Consultation(
       id = consultationId,
-      userId = java.util.UUID.randomUUID(),
-      specialistId = java.util.UUID.randomUUID(),
-      categoryId = java.util.UUID.randomUUID(),
+      userId = userId,
+      specialistId = specialistId,
+      categoryId = categoryId,
       description = "desc",
       status = ConsultationStatus.Requested,
       scheduledAt = Instant.now(),
@@ -249,6 +310,31 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
     consultationRepo.update
       .expects(*)
       .returning(IO.pure(consultation.copy(status = ConsultationStatus.Scheduled, duration = Some(60))))
+    userRepo.findById.expects(userId).returning(IO.pure(Some(user)))
+    specialistRepo.findById.expects(specialistId).returning(IO.pure(Some(specialist)))
+    notificationPreferenceRepo.findByUserAndType
+      .expects(userId, NotificationType.ConsultationApproved)
+      .returning(
+        IO.pure(
+          Some(
+            NotificationPreference(
+              java.util.UUID.randomUUID(),
+              userId,
+              NotificationType.ConsultationApproved,
+              emailEnabled = true,
+              smsEnabled = false,
+              Instant.now(),
+              Instant.now()
+            )
+          )
+        )
+      )
+    notificationService.sendEmail
+      .expects(user.email, "Consultation Approved", *)
+      .returning(IO.unit)
+    notificationService.sendEmail
+      .expects(specialist.email, "New Consultation Scheduled", *)
+      .returning(IO.unit)
 
     val result = service.approveConsultation(consultationId, 60).unsafeRunSync()
 
@@ -256,12 +342,19 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
   }
 
   it should "return error if consultation not found when approving" in {
-    val consultationRepo    = mock[ConsultationRepository]
-    val specialistRepo      = mock[SpecialistRepository]
-    val userRepo            = mock[UserRepository]
-    val notificationService = mock[NotificationService]
-    val service             = new ConsultationService(consultationRepo, specialistRepo, userRepo, notificationService)
-    val consultationId      = java.util.UUID.randomUUID()
+    val consultationRepo           = mock[ConsultationRepository]
+    val specialistRepo             = mock[SpecialistRepository]
+    val userRepo                   = mock[UserRepository]
+    val notificationService        = mock[NotificationService]
+    val notificationPreferenceRepo = mock[NotificationPreferenceRepository]
+    val service = new ConsultationService(
+      consultationRepo,
+      specialistRepo,
+      userRepo,
+      notificationService,
+      notificationPreferenceRepo
+    )
+    val consultationId = java.util.UUID.randomUUID()
 
     consultationRepo.findById.expects(consultationId).returning(IO.pure(None))
     val result = service.approveConsultation(consultationId, 60).unsafeRunSync()

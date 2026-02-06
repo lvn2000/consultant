@@ -4,6 +4,7 @@
       <div class="menu-title">Client Menu</div>
       <ul>
         <li :class="{ active: selectedMenu === 'profile' }" @click="selectMenu('profile')">Profile</li>
+        <li :class="{ active: selectedMenu === 'notifications' }" @click="selectMenu('notifications')">Notifications</li>
         <li :class="{ active: selectedMenu === 'connections' }" @click="selectMenu('connections')">My Connections</li>
         <li :class="{ active: selectedMenu === 'consultations' }" @click="selectMenu('consultations')">My Consultations</li>
       </ul>
@@ -28,6 +29,12 @@
         v-if="selectedMenu === 'profile'"
         ref="profileSectionRef"
         @remove-account="showRemoveAccountConfirm = true"
+      />
+
+      <!-- Notifications Section -->
+      <NotificationsSection 
+        v-if="selectedMenu === 'notifications'"
+        ref="notificationsSectionRef"
       />
 
       <!-- Connections Section -->
@@ -96,6 +103,7 @@ import { useRouter } from 'vue-router'
 import { useRuntimeConfig } from 'nuxt/app'
 import { $fetch } from 'ofetch'
 import ProfileSection from '~/components/ProfileSection.vue'
+import NotificationsSection from '~/components/NotificationsSection.vue'
 import ConnectionsSection from '~/components/ConnectionsSection.vue'
 import ConsultationsViewTab from '~/components/ConsultationsViewTab.vue'
 import ConsultationsBookTab from '~/components/ConsultationsBookTab.vue'
@@ -110,6 +118,7 @@ const showRemoveAccountConfirm = ref(false)
 
 // Component refs
 const profileSectionRef = ref<any>(null)
+const notificationsSectionRef = ref<any>(null)
 const connectionsSectionRef = ref<any>(null)
 
 // Consultations state
@@ -134,6 +143,9 @@ const selectMenu = (menu: string) => {
   selectedMenu.value = menu
   if (menu === 'profile') {
     profileSectionRef.value?.loadProfile()
+  }
+  if (menu === 'notifications') {
+    notificationsSectionRef.value?.loadNotificationPreferences()
   }
   if (menu === 'connections') {
     connectionsSectionRef.value?.loadConnections()
