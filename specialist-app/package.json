@@ -25,8 +25,8 @@
     "@primevue/nuxt-module": "^4.2.6",
     "nuxt": "^4.2.2",
     "pinia": "^2.3.0",
-    "primevue": "^4.2.6",
     "primeicons": "^7.0.0",
+    "primevue": "^4.2.6",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },

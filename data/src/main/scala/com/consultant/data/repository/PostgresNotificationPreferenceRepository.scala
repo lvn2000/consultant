@@ -30,6 +30,7 @@ class PostgresNotificationPreferenceRepository(xa: Transactor[IO]) extends Notif
 
   // Create default preferences for a user (all enabled by default)
   // Uses a single atomic transaction with ON CONFLICT DO NOTHING for idempotency
+  // Returns the actual persisted state to ensure consistency regardless of conflicts or concurrent calls
   override def createDefaults(userId: UserId): IO[List[NotificationPreference]] =
     val defaults = NotificationPreference.defaultPreferences(userId)
 
@@ -42,7 +43,11 @@ class PostgresNotificationPreferenceRepository(xa: Transactor[IO]) extends Notif
       """.update.run
     }
 
-    inserts.transact(xa).map(_ => defaults)
+    // After inserts, fetch actual persisted state to ensure returned values match DB
+    for
+      _         <- inserts.transact(xa)
+      persisted <- findByUser(userId)
+    yield persisted
 
   // Get preference for a specific notification type
   override def findByUserAndType(

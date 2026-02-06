@@ -35,7 +35,7 @@ case class UpdateNotificationPreferenceRequest(
   smsEnabled: Boolean
 )
 
-// Default preferences for a user (all notifications enabled)
+// Default preferences for a user (email enabled for all notification types, SMS disabled)
 object NotificationPreference:
   def defaultPreferences(userId: UserId): List[NotificationPreference] =
     val now = Instant.now()

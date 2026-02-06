@@ -125,6 +125,7 @@
                     v-model="pref.emailEnabled"
                     @change="updateNotificationPreference(pref)"
                     :disabled="updatingNotificationId === pref.id"
+                    :aria-label="`${formatNotificationType(pref.notificationType)}: ${getNotificationDescription(pref.notificationType)}`"
                   />
                   <span class="toggle-slider"></span>
                 </label>
@@ -404,6 +405,8 @@ const updateNotificationPreference = async (pref: any) => {
   } catch (error) {
     notificationUpdateMessage.value = 'Failed to update notification preference.'
     notificationUpdateSuccess.value = false
+    // Reload preferences to sync UI with actual persisted state
+    await loadClientNotifications()
   } finally {
     updatingNotificationId.value = null
   }

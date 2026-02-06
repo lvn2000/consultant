@@ -21,6 +21,7 @@
               v-model="pref.emailEnabled"
               @change="updateNotificationPreference(pref)"
               :disabled="updatingNotificationId === pref.id"
+              :aria-label="`${formatNotificationType(pref.notificationType)} email notifications`"
             />
             <span class="toggle-slider"></span>
           </label>
