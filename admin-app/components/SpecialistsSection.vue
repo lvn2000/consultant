@@ -495,14 +495,12 @@ const loadSpecialistNotifications = async () => {
   notificationsLoading.value = true
   notificationsError.value = ''
   try {
-    console.log('Loading notifications for specialist:', selectedSpecialistId.value)
     const data = await $fetch<any>(`${config.public.apiBase}/notification-preferences`, {
       method: 'GET',
       headers: {
         'X-User-Id': selectedSpecialistId.value
       }
     })
-    console.log('Loaded notifications:', data)
     // Extract preferences array from response object
     specialistNotifications.value = data.preferences || []
   } catch (error: any) {
@@ -564,13 +562,10 @@ const updateNotificationPreference = async (pref: any) => {
 watch(
   () => specialistDetailsTab.value,
   async (newTab) => {
-    console.log('Tab changed to:', newTab, 'selectedSpecialistId:', selectedSpecialistId.value)
     if (newTab === 'connections' && selectedSpecialistId.value) {
-      console.log('Loading connections...')
       await loadSpecialistConnections()
     }
     if (newTab === 'notifications' && selectedSpecialistId.value) {
-      console.log('Loading notifications...')
       await loadSpecialistNotifications()
     }
   }
