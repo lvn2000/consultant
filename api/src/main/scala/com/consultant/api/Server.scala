@@ -85,7 +85,7 @@ object Server extends IOApp:
           .use { _ =>
             // Keep startup logs concise to avoid noisy console output
             IO.println(
-              s"Server up at http://${config.server.host}:${config.server.port} | Swagger: /docs | Endpoints: ${allEndpoints.size + 2}"
+              s"Server up at http://${config.server.host}:${config.server.port} | Swagger: /docs | Documented endpoints: ${allEndpoints.size}"
             ) >> IO.never
           }
           .as(ExitCode.Success)
