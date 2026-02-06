@@ -42,11 +42,18 @@ class PostgresNotificationPreferenceRepository(xa: Transactor[IO]) extends Notif
         """.update
     }
 
-    // Execute all inserts in a single transaction
-    insertStatements
-      .traverse(_.run)
-      .transact(xa)
-      .map(_ => defaults)
+    // Execute all inserts in a single transaction and return the actual state from the database
+    val insertAndQuery = for {
+      _ <- insertStatements.traverse(_.run)
+      result <- sql"""
+        SELECT id, user_id, notification_type, email_enabled, sms_enabled, created_at, updated_at
+        FROM notification_preferences
+        WHERE user_id = $userId
+        ORDER BY notification_type
+      """.query[NotificationPreference].to[List]
+    } yield result
+
+    insertAndQuery.transact(xa)
 
   // Get preference for a specific notification type
   override def findByUserAndType(
