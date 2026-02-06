@@ -6,6 +6,9 @@
         <li :class="{ active: selectedMenu === 'profile' }" @click="selectMenu('profile')">
           Profile
         </li>
+        <li :class="{ active: selectedMenu === 'notifications' }" @click="selectMenu('notifications')">
+          Notifications
+        </li>
         <li :class="{ active: selectedMenu === 'rates' }" @click="selectMenu('rates')">
           My Rates
         </li>
@@ -63,6 +66,12 @@
         v-if="selectedMenu === 'consultations'"
         ref="consultationsSectionRef"
       />
+
+      <!-- Notifications Section -->
+      <NotificationsSection 
+        v-if="selectedMenu === 'notifications'"
+        ref="notificationsSectionRef"
+      />
     </div>
   </div>
 </template>
@@ -77,6 +86,7 @@ import RatesSection from '~/components/RatesSection.vue'
 import AvailabilitySection from '~/components/AvailabilitySection.vue'
 import ConnectionsSection from '~/components/ConnectionsSection.vue'
 import ConsultationsSection from '~/components/ConsultationsSection.vue'
+import NotificationsSection from '~/components/NotificationsSection.vue'
 
 const router = useRouter()
 const config = useRuntimeConfig()
@@ -90,6 +100,7 @@ const ratesSectionRef = ref<any>(null)
 const availabilitySectionRef = ref<any>(null)
 const connectionsSectionRef = ref<any>(null)
 const consultationsSectionRef = ref<any>(null)
+const notificationsSectionRef = ref<any>(null)
 
 const selectMenu = (menu: string) => {
   selectedMenu.value = menu
@@ -98,6 +109,7 @@ const selectMenu = (menu: string) => {
   if (menu === 'availability') availabilitySectionRef.value?.loadAvailability()
   if (menu === 'connections') connectionsSectionRef.value?.loadConnections()
   if (menu === 'consultations') consultationsSectionRef.value?.loadConsultations()
+  if (menu === 'notifications') notificationsSectionRef.value?.loadNotificationPreferences()
 }
 
 const logout = async () => {

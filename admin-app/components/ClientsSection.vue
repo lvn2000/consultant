@@ -61,7 +61,85 @@
     </div>
 
     <form ref="clientFormRef" class="form" @submit.prevent>
-      <div class="form-grid">
+      <div class="form-header" v-if="selectedClientId">
+        <h3>Client Details</h3>
+        <span class="form-subtitle" v-if="clientForm.name">{{ clientForm.name }}</span>
+      </div>
+
+      <div class="form-field form-field--full" v-if="selectedClientId">
+        <div class="details-tabs">
+          <button
+            type="button"
+            class="tab"
+            :class="{ active: clientDetailsTab === 'general' }"
+            @click="clientDetailsTab = 'general'"
+          >
+            General
+          </button>
+          <button
+            type="button"
+            class="tab"
+            :class="{ active: clientDetailsTab === 'notifications' }"
+            @click="clientDetailsTab = 'notifications'"
+          >
+            Notifications
+          </button>
+        </div>
+
+        <div v-if="clientDetailsTab === 'general'" class="details-panel">
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="client-name">Name</label>
+              <input id="client-name" v-model="clientForm.name" type="text" placeholder="John Doe" />
+            </div>
+            <div class="form-field">
+              <label for="client-email">Email</label>
+              <input id="client-email" v-model="clientForm.email" type="email" placeholder="john@example.com" />
+            </div>
+            <div class="form-field">
+              <label for="client-phone">Phone</label>
+              <input id="client-phone" v-model="clientForm.phone" type="tel" placeholder="+1234567890" />
+            </div>
+          </div>
+        </div>
+
+        <div v-else-if="clientDetailsTab === 'notifications'" class="details-panel">
+          <p v-if="!selectedClientId" class="muted">
+            Select a client to manage notification preferences.
+          </p>
+          <div v-else class="notifications-manager">
+            <div class="list-state" v-if="notificationsLoading">Loading notification preferences...</div>
+            <div class="list-state error" v-else-if="notificationsError">
+              {{ notificationsError }}
+            </div>
+
+            <div v-else class="notifications-list">
+              <div v-for="pref in clientNotifications" :key="pref.id" class="notification-item">
+                <div class="notification-label">
+                  <span class="notification-name">{{ formatNotificationType(pref.notificationType) }}</span>
+                  <span class="notification-description">{{ getNotificationDescription(pref.notificationType) }}</span>
+                </div>
+                <label class="toggle-switch">
+                  <input 
+                    type="checkbox" 
+                    v-model="pref.emailEnabled"
+                    @change="updateNotificationPreference(pref)"
+                    :disabled="updatingNotificationId === pref.id"
+                    :aria-label="`${formatNotificationType(pref.notificationType)}: ${getNotificationDescription(pref.notificationType)}`"
+                  />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div v-if="notificationUpdateMessage" :class="['form-message', notificationUpdateSuccess ? 'success' : 'error']">
+              {{ notificationUpdateMessage }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="form-grid">
         <div class="form-field">
           <label for="client-name">Name</label>
           <input id="client-name" v-model="clientForm.name" type="text" placeholder="John Doe" />
@@ -93,7 +171,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, nextTick } from 'vue'
+import { computed, onMounted, ref, nextTick, watch } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
 import { $fetch } from 'ofetch'
 
@@ -118,6 +196,13 @@ const clientCurrentPage = ref(1)
 const clientPageSize = ref(20)
 const clientsSearchQuery = ref('')
 const clientFormRef = ref<HTMLFormElement | null>(null)
+const clientDetailsTab = ref<'general' | 'notifications'>('general')
+const clientNotifications = ref<any[]>([])
+const notificationsLoading = ref(false)
+const notificationsError = ref('')
+const notificationUpdateMessage = ref('')
+const notificationUpdateSuccess = ref(false)
+const updatingNotificationId = ref<string | null>(null)
 const clientForm = ref({
   name: '',
   email: '',
@@ -216,6 +301,8 @@ const startEditClient = (client: Client) => {
     phone: client.phone,
   }
   clientActionMessage.value = ''
+  clientDetailsTab.value = 'general'
+  loadClientNotifications()
   // Scroll to form and focus
   nextTick(() => {
     if (clientFormRef.value) {
@@ -236,7 +323,103 @@ const resetClientForm = () => {
     phone: '',
   }
   clientActionMessage.value = ''
+  clientDetailsTab.value = 'general'
+  clientNotifications.value = []
 }
+
+const loadClientNotifications = async () => {
+  if (!selectedClientId.value) {
+    clientNotifications.value = []
+    return
+  }
+  notificationsLoading.value = true
+  notificationsError.value = ''
+  try {
+    const sessionId = sessionStorage.getItem('sessionId')
+    if (!sessionId) {
+      notificationsError.value = 'Session not found - please log in again'
+      return
+    }
+    const data = await $fetch<any>(`${config.public.apiBase}/notification-preferences`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${sessionId}`,
+        'X-User-Id': selectedClientId.value
+      }
+    })
+    clientNotifications.value = data.preferences || []
+  } catch (error: any) {
+    clientNotifications.value = []
+    notificationsError.value = error?.message || 'Failed to load notification preferences'
+  } finally {
+    notificationsLoading.value = false
+  }
+}
+
+const formatNotificationType = (type: string): string => {
+  return type
+    .split(/(?=[A-Z])/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+const getNotificationDescription = (type: string): string => {
+  const descriptions: Record<string, string> = {
+    'ConsultationApproved': 'When specialist approves your request',
+    'ConsultationDeclined': 'When specialist declines your request',
+    'ConsultationCompleted': 'When a consultation is completed',
+    'ConsultationMissed': 'When a consultation is marked as missed',
+    'ConsultationCancelled': 'When a consultation is cancelled'
+  }
+  return descriptions[type] || 'Notification preference'
+}
+
+const updateNotificationPreference = async (pref: any) => {
+  if (!selectedClientId.value) {
+    notificationUpdateMessage.value = 'Select a client to update preferences.'
+    notificationUpdateSuccess.value = false
+    return
+  }
+  updatingNotificationId.value = pref.id
+  notificationUpdateMessage.value = ''
+  try {
+    const sessionId = sessionStorage.getItem('sessionId')
+    if (!sessionId) {
+      notificationUpdateMessage.value = 'Session not found - please log in again'
+      notificationUpdateSuccess.value = false
+      return
+    }
+    await $fetch(`${config.public.apiBase}/notification-preferences/${pref.notificationType}`, {
+      method: 'PUT',
+      body: {
+        emailEnabled: pref.emailEnabled,
+        smsEnabled: pref.smsEnabled || false
+      },
+      headers: {
+        'Authorization': `Bearer ${sessionId}`,
+        'X-User-Id': selectedClientId.value
+      }
+    })
+    notificationUpdateMessage.value = 'Notification preference updated successfully.'
+    notificationUpdateSuccess.value = true
+  } catch (error) {
+    notificationUpdateMessage.value = 'Failed to update notification preference.'
+    notificationUpdateSuccess.value = false
+    // Reload preferences to sync UI with actual persisted state
+    await loadClientNotifications()
+  } finally {
+    updatingNotificationId.value = null
+  }
+}
+
+watch(
+  () => clientDetailsTab.value,
+  async (newTab) => {
+    if (newTab === 'notifications' && selectedClientId.value) {
+      await loadClientNotifications()
+    }
+  }
+)
 
 const addClient = async () => {
   if (!clientForm.value.name || !clientForm.value.email || !clientForm.value.phone) {
@@ -548,5 +731,171 @@ onMounted(() => {
 .muted {
   color: #6b7280;
   font-size: 0.9rem;
+}
+
+.form-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 1rem;
+}
+
+.form-header h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.form-subtitle {
+  font-size: 1rem;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.form-field--full {
+  grid-column: 1 / -1;
+}
+
+.details-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.tab {
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid #cbd5f5;
+  background: #ffffff;
+  color: #1f2937;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.tab.active {
+  background: #4f46e5;
+  color: #ffffff;
+  border-color: #4f46e5;
+}
+
+.details-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: #f8fafc;
+}
+
+.notifications-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.notification-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.notification-item:hover {
+  background: #f3f4f6;
+}
+
+.notification-label {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.notification-name {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9rem;
+  margin-bottom: 0.15rem;
+}
+
+.notification-description {
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+/* Toggle Switch Styles */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.3s;
+  border-radius: 26px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: '';
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: #4f46e5;
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+}
+
+input:disabled + .toggle-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-message.success {
+  background: #dcfce7;
+  color: #166534;
+  border-left: 4px solid #22c55e;
+}
+
+.form-message.error {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-left: 4px solid #dc2626;
 }
 </style>
