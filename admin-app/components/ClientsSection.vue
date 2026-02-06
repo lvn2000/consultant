@@ -334,9 +334,15 @@ const loadClientNotifications = async () => {
   notificationsLoading.value = true
   notificationsError.value = ''
   try {
+    const sessionId = sessionStorage.getItem('sessionId')
+    if (!sessionId) {
+      notificationsError.value = 'Session not found - please log in again'
+      return
+    }
     const data = await $fetch<any>(`${config.public.apiBase}/notification-preferences`, {
       method: 'GET',
       headers: {
+        'Authorization': `Bearer ${sessionId}`,
         'X-User-Id': selectedClientId.value
       }
     })
@@ -376,6 +382,12 @@ const updateNotificationPreference = async (pref: any) => {
   updatingNotificationId.value = pref.id
   notificationUpdateMessage.value = ''
   try {
+    const sessionId = sessionStorage.getItem('sessionId')
+    if (!sessionId) {
+      notificationUpdateMessage.value = 'Session not found - please log in again'
+      notificationUpdateSuccess.value = false
+      return
+    }
     await $fetch(`${config.public.apiBase}/notification-preferences/${pref.notificationType}`, {
       method: 'PUT',
       body: {
@@ -383,6 +395,7 @@ const updateNotificationPreference = async (pref: any) => {
         smsEnabled: pref.smsEnabled || false
       },
       headers: {
+        'Authorization': `Bearer ${sessionId}`,
         'X-User-Id': selectedClientId.value
       }
     })

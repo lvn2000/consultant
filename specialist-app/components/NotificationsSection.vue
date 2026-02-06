@@ -55,13 +55,19 @@ const loadNotificationPreferences = async () => {
   notificationsError.value = ''
   try {
     const userId = sessionStorage.getItem('userId')
+    const sessionId = sessionStorage.getItem('sessionId')
     if (!userId) {
       notificationsError.value = 'User ID not found'
+      return
+    }
+    if (!sessionId) {
+      notificationsError.value = 'Session not found - please log in again'
       return
     }
     
     const response = await $fetch(`${config.public.apiBase}/notification-preferences`, {
       headers: {
+        'Authorization': `Bearer ${sessionId}`,
         'X-User-Id': userId
       }
     })
@@ -82,14 +88,20 @@ const updateNotificationPreference = async (preference: any) => {
   
   try {
     const userId = sessionStorage.getItem('userId')
+    const sessionId = sessionStorage.getItem('sessionId')
     if (!userId) {
       notificationUpdateMessage.value = 'User ID not found'
+      return
+    }
+    if (!sessionId) {
+      notificationUpdateMessage.value = 'Session not found - please log in again'
       return
     }
     
     await $fetch(`${config.public.apiBase}/notification-preferences/${preference.notificationType}`, {
       method: 'PUT',
       headers: {
+        'Authorization': `Bearer ${sessionId}`,
         'X-User-Id': userId
       },
       body: {

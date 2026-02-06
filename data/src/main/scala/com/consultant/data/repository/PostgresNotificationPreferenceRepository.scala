@@ -29,17 +29,20 @@ class PostgresNotificationPreferenceRepository(xa: Transactor[IO]) extends Notif
   import NotificationPreferenceMetaInstances.*
 
   // Create default preferences for a user (all enabled by default)
+  // Uses a single atomic transaction with ON CONFLICT DO NOTHING for idempotency
   override def createDefaults(userId: UserId): IO[List[NotificationPreference]] =
     val defaults = NotificationPreference.defaultPreferences(userId)
-
-    defaults.map { pref =>
+    
+    // Execute all inserts in a single transaction, idempotent via ON CONFLICT
+    val inserts = defaults.traverse { pref =>
       sql"""
-          INSERT INTO notification_preferences (id, user_id, notification_type, email_enabled, sms_enabled, created_at, updated_at)
-          VALUES (${pref.id}, ${pref.userId}, ${pref.notificationType.toString}, ${pref.emailEnabled}, ${pref.smsEnabled}, ${pref.createdAt}, ${pref.updatedAt})
-        """.update.run
-        .transact(xa)
-    }.sequence
-      .map(_ => defaults)
+        INSERT INTO notification_preferences (id, user_id, notification_type, email_enabled, sms_enabled, created_at, updated_at)
+        VALUES (${pref.id}, ${pref.userId}, ${pref.notificationType.toString}, ${pref.emailEnabled}, ${pref.smsEnabled}, ${pref.createdAt}, ${pref.updatedAt})
+        ON CONFLICT (user_id, notification_type) DO NOTHING
+      """.update.run
+    }
+    
+    inserts.transact(xa).map(_ => defaults)
 
   // Get preference for a specific notification type
   override def findByUserAndType(
@@ -63,15 +66,21 @@ class PostgresNotificationPreferenceRepository(xa: Transactor[IO]) extends Notif
 
   // Update a preference
   override def update(preference: NotificationPreference): IO[NotificationPreference] =
+    val now = Instant.now()
     sql"""
       UPDATE notification_preferences
       SET email_enabled = ${preference.emailEnabled},
           sms_enabled = ${preference.smsEnabled},
-          updated_at = ${Instant.now()}
+          updated_at = $now
       WHERE id = ${preference.id}
     """.update.run
       .transact(xa)
-      .map(_ => preference.copy(updatedAt = Instant.now()))
+      .flatMap { affectedRows =>
+        if affectedRows == 0 then
+          IO.raiseError(new IllegalArgumentException(s"NotificationPreference with id ${preference.id} not found"))
+        else
+          IO.pure(preference.copy(updatedAt = now))
+      }
 
   // Delete all preferences for a user
   override def deleteByUser(userId: UserId): IO[Unit] =

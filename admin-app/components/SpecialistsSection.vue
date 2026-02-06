@@ -495,10 +495,16 @@ const loadSpecialistNotifications = async () => {
   notificationsLoading.value = true
   notificationsError.value = ''
   try {
+    const sessionId = sessionStorage.getItem('sessionId')
+    if (!sessionId) {
+      notificationsError.value = 'Session not found - please log in again'
+      return
+    }
     console.log('Loading notifications for specialist:', selectedSpecialistId.value)
     const data = await $fetch<any>(`${config.public.apiBase}/notification-preferences`, {
       method: 'GET',
       headers: {
+        'Authorization': `Bearer ${sessionId}`,
         'X-User-Id': selectedSpecialistId.value
       }
     })
@@ -541,6 +547,12 @@ const updateNotificationPreference = async (pref: any) => {
   updatingNotificationId.value = pref.id
   notificationUpdateMessage.value = ''
   try {
+    const sessionId = sessionStorage.getItem('sessionId')
+    if (!sessionId) {
+      notificationUpdateMessage.value = 'Session not found - please log in again'
+      notificationUpdateSuccess.value = false
+      return
+    }
     await $fetch(`${config.public.apiBase}/notification-preferences/${pref.notificationType}`, {
       method: 'PUT',
       body: {
@@ -548,6 +560,7 @@ const updateNotificationPreference = async (pref: any) => {
         smsEnabled: pref.smsEnabled || false
       },
       headers: {
+        'Authorization': `Bearer ${sessionId}`,
         'X-User-Id': selectedSpecialistId.value
       }
     })
@@ -1322,102 +1335,5 @@ input:disabled + .toggle-slider {
   background: #fee2e2;
   color: #b91c1c;
   border-left: 4px solid #dc2626;
-}
-
-.notifications-manager {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.notifications-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.notification-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  transition: background-color 0.2s;
-}
-
-.notification-item:hover {
-  background: #f3f4f6;
-}
-
-.notification-label {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-}
-
-.notification-name {
-  font-weight: 600;
-  color: #1f2937;
-  font-size: 0.9rem;
-  margin-bottom: 0.15rem;
-}
-
-.notification-description {
-  color: #6b7280;
-  font-size: 0.8rem;
-}
-
-/* Toggle Switch Styles */
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 26px;
-  flex-shrink: 0;
-}
-
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.toggle-slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  transition: 0.3s;
-  border-radius: 26px;
-}
-
-.toggle-slider:before {
-  position: absolute;
-  content: '';
-  height: 20px;
-  width: 20px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: 0.3s;
-  border-radius: 50%;
-}
-
-input:checked + .toggle-slider {
-  background-color: #4f46e5;
-}
-
-input:checked + .toggle-slider:before {
-  transform: translateX(24px);
-}
-
-input:disabled + .toggle-slider {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 </style>

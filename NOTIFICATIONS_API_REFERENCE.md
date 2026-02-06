@@ -11,12 +11,12 @@
 curl -X POST http://localhost:8090/api/consultations \
   -H "Content-Type: application/json" \
   -d '{
-    \"userId\": \"550e8400-e29b-41d4-a716-446655440000\",
-    \"specialistId\": \"550e8400-e29b-41d4-a716-446655440001\",
-    \"categoryId\": \"550e8400-e29b-41d4-a716-446655440002\",
-    \"description\": \"Need help with career planning\",
-    \"scheduledAt\": \"2026-02-15T14:00:00Z\",
-    \"duration\": 60
+    "userId": "550e8400-e29b-41d4-a716-446655440000",
+    "specialistId": "550e8400-e29b-41d4-a716-446655440001",
+    "categoryId": "550e8400-e29b-41d4-a716-446655440002",
+    "description": "Need help with career planning",
+    "scheduledAt": "2026-02-15T14:00:00Z",
+    "duration": 60
   }'
 ```
 
@@ -36,8 +36,8 @@ curl -X PUT http://localhost:8090/api/consultations/550e8400-e29b-41d4-a716-4466
   -H "X-User-Id: 550e8400-e29b-41d4-a716-446655440001" \
   -H "X-User-Role: Specialist" \
   -d '{
-    \"status\": \"Scheduled\",
-    \"duration\": 60
+    "status": "Scheduled",
+    "duration": 60
   }'
 ```
 
@@ -62,7 +62,7 @@ curl -X PUT http://localhost:8090/api/consultations/550e8400-e29b-41d4-a716-4466
   -H "X-User-Id: 550e8400-e29b-41d4-a716-446655440000" \
   -H "X-User-Role: Client" \
   -d '{
-    \"status\": \"Completed\"
+    "status": "Completed"
   }'
 ```
 
@@ -76,7 +76,7 @@ curl -X PUT http://localhost:8090/api/consultations/550e8400-e29b-41d4-a716-4466
   -H "X-User-Id: 550e8400-e29b-41d4-a716-446655440001" \
   -H "X-User-Role: Specialist" \
   -d '{
-    \"status\": \"Missed\"
+    "status": "Missed"
   }'
 ```
 
@@ -90,7 +90,7 @@ curl -X PUT http://localhost:8090/api/consultations/550e8400-e29b-41d4-a716-4466
   -H "X-User-Id: 550e8400-e29b-41d4-a716-446655440001" \
   -H "X-User-Role: Specialist" \
   -d '{
-    \"status\": \"Cancelled\"
+    "status": "Cancelled"
   }'
 ```
 
@@ -117,19 +117,19 @@ All endpoints return the updated consultation DTO:
 
 ```json
 {
-  \"id\": \"550e8400-e29b-41d4-a716-446655440003\",
-  \"userId\": \"550e8400-e29b-41d4-a716-446655440000\",
-  \"specialistId\": \"550e8400-e29b-41d4-a716-446655440001\",
-  \"categoryId\": \"550e8400-e29b-41d4-a716-446655440002\",
-  \"description\": \"Need help with career planning\",
-  \"status\": \"Scheduled\",
-  \"scheduledAt\": \"2026-02-15T14:00:00Z\",
-  \"duration\": 60,
-  \"price\": \"150.00\",
-  \"rating\": null,
-  \"review\": null,
-  \"createdAt\": \"2026-02-01T10:30:00Z\",
-  \"updatedAt\": \"2026-02-04T23:11:00Z\"
+  "id": "550e8400-e29b-41d4-a716-446655440003",
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "specialistId": "550e8400-e29b-41d4-a716-446655440001",
+  "categoryId": "550e8400-e29b-41d4-a716-446655440002",
+  "description": "Need help with career planning",
+  "status": "Scheduled",
+  "scheduledAt": "2026-02-15T14:00:00Z",
+  "duration": 60,
+  "price": "150.00",
+  "rating": null,
+  "review": null,
+  "createdAt": "2026-02-01T10:30:00Z",
+  "updatedAt": "2026-02-04T23:11:00Z"
 }
 ```
 
@@ -140,36 +140,36 @@ All endpoints return the updated consultation DTO:
 ### Consultation Not Found
 ```json
 {
-  \"status\": \"ERROR\",
-  \"message\": \"Consultation not found\",
-  \"code\": \"CONSULTATION_NOT_FOUND\"
+  "status": "ERROR",
+  "message": "Consultation not found",
+  "code": "CONSULTATION_NOT_FOUND"
 }
 ```
 
 ### Missing Authentication Headers
 ```json
 {
-  \"status\": \"UNAUTHORIZED\",
-  \"message\": \"Missing authentication headers\",
-  \"code\": \"UNAUTHORIZED\"
+  "status": "UNAUTHORIZED",
+  "message": "Missing authentication headers",
+  "code": "UNAUTHORIZED"
 }
 ```
 
 ### Insufficient Permissions
 ```json
 {
-  \"status\": \"FORBIDDEN\",
-  \"message\": \"You don't have permission to update this consultation\",
-  \"code\": \"FORBIDDEN\"
+  "status": "FORBIDDEN",
+  "message": "You don't have permission to update this consultation",
+  "code": "FORBIDDEN"
 }
 ```
 
 ### Invalid Status Value
 ```json
 {
-  \"status\": \"VALIDATION_ERROR\",
-  \"message\": \"Invalid status\",
-  \"code\": \"VALIDATION_ERROR\"
+  "status": "VALIDATION_ERROR",
+  "message": "Invalid status",
+  "code": "VALIDATION_ERROR"
 }
 ```
 
@@ -239,12 +239,12 @@ curl -X GET http://localhost:8090/api/consultations/550e8400-e29b-41d4-a716-4466
 
 ### List User's Consultations
 ```bash
-curl -X GET \"http://localhost:8090/api/consultations/user/550e8400-e29b-41d4-a716-446655440000?offset=0&limit=20\"
+curl -X GET "http://localhost:8090/api/consultations/user/550e8400-e29b-41d4-a716-446655440000?offset=0&limit=20"
 ```
 
 ### List Specialist's Consultations
 ```bash
-curl -X GET \"http://localhost:8090/api/consultations/specialist/550e8400-e29b-41d4-a716-446655440001?offset=0&limit=20\"
+curl -X GET "http://localhost:8090/api/consultations/specialist/550e8400-e29b-41d4-a716-446655440001?offset=0&limit=20"
 ```
 
 ---
@@ -285,16 +285,16 @@ curl -X GET \"http://localhost:8090/api/consultations/specialist/550e8400-e29b-4
 import requests
 
 data = {
-    \"userId\": \"550e8400-e29b-41d4-a716-446655440000\",
-    \"specialistId\": \"550e8400-e29b-41d4-a716-446655440001\",
-    \"categoryId\": \"550e8400-e29b-41d4-a716-446655440002\",
-    \"description\": \"Need help\",
-    \"scheduledAt\": \"2026-02-15T14:00:00Z\",
-    \"duration\": 60
+    "userId": "550e8400-e29b-41d4-a716-446655440000",
+    "specialistId": "550e8400-e29b-41d4-a716-446655440001",
+    "categoryId": "550e8400-e29b-41d4-a716-446655440002",
+    "description": "Need help",
+    "scheduledAt": "2026-02-15T14:00:00Z",
+    "duration": 60
 }
 
 response = requests.post(
-    \"http://localhost:8090/api/consultations\",
+    "http://localhost:8090/api/consultations",
     json=data
 )
 print(response.json())
@@ -303,17 +303,17 @@ print(response.json())
 ### JavaScript/Fetch
 ```javascript
 const data = {
-  userId: \"550e8400-e29b-41d4-a716-446655440000\",
-  specialistId: \"550e8400-e29b-41d4-a716-446655440001\",
-  categoryId: \"550e8400-e29b-41d4-a716-446655440002\",
-  description: \"Need help\",
-  scheduledAt: \"2026-02-15T14:00:00Z\",
+  userId: "550e8400-e29b-41d4-a716-446655440000",
+  specialistId: "550e8400-e29b-41d4-a716-446655440001",
+  categoryId: "550e8400-e29b-41d4-a716-446655440002",
+  description: "Need help",
+  scheduledAt: "2026-02-15T14:00:00Z",
   duration: 60
 };
 
-fetch(\"http://localhost:8090/api/consultations\", {
-  method: \"POST\",
-  headers: { \"Content-Type\": \"application/json\" },
+fetch("http://localhost:8090/api/consultations", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify(data)
 })
 .then(r => r.json())
