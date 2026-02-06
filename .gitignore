@@ -73,3 +73,4 @@ node_modules/
 test_login.sh
 *.pid
 .tmp/
+sbt/

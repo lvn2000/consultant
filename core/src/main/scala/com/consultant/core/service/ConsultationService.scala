@@ -154,7 +154,7 @@ class ConsultationService(
     val oldStatus = consultation.status
     (userOpt, specialistOpt) match
       case (Some(user), Some(specialist)) =>
-        val notificationsToSend: List[(String, String, String, NotificationType)] = (oldStatus, newStatus) match
+        val notificationsToSend: List[(RecipientType, String, String, String, NotificationType)] = (oldStatus, newStatus) match
           // User requested, specialist approves
           case (ConsultationStatus.Requested, ConsultationStatus.Scheduled) =>
             val userSubject = "Consultation Approved"
@@ -185,8 +185,8 @@ class ConsultationService(
                                     |Consultant Team
               """.stripMargin
             List(
-              (user.email, userSubject, userBody, NotificationType.ConsultationApproved),
-              (specialist.email, specialistSubject, specialistBody, NotificationType.ConsultationApproved)
+              (RecipientType.User, user.email, userSubject, userBody, NotificationType.ConsultationApproved),
+              (RecipientType.Specialist, specialist.email, specialistSubject, specialistBody, NotificationType.ConsultationApproved)
             )
 
           // User requested, specialist declines
@@ -203,7 +203,7 @@ class ConsultationService(
                               |Consultant Team
               """.stripMargin
             List(
-              (user.email, userSubject, userBody, NotificationType.ConsultationDeclined)
+              (RecipientType.User, user.email, userSubject, userBody, NotificationType.ConsultationDeclined)
             )
 
           // Scheduled consultation marked as completed
@@ -229,8 +229,8 @@ class ConsultationService(
                                     |Consultant Team
               """.stripMargin
             List(
-              (user.email, userSubject, userBody, NotificationType.ConsultationCompleted),
-              (specialist.email, specialistSubject, specialistBody, NotificationType.ConsultationCompleted)
+              (RecipientType.User, user.email, userSubject, userBody, NotificationType.ConsultationCompleted),
+              (RecipientType.Specialist, specialist.email, specialistSubject, specialistBody, NotificationType.ConsultationCompleted)
             )
 
           // Scheduled consultation marked as missed
@@ -258,8 +258,8 @@ class ConsultationService(
                  |Consultant Team
               """.stripMargin
             List(
-              (user.email, userSubject, userBody, NotificationType.ConsultationMissed),
-              (specialist.email, specialistSubject, specialistBody, NotificationType.ConsultationMissed)
+              (RecipientType.User, user.email, userSubject, userBody, NotificationType.ConsultationMissed),
+              (RecipientType.Specialist, specialist.email, specialistSubject, specialistBody, NotificationType.ConsultationMissed)
             )
 
           // Scheduled consultation cancelled
@@ -287,8 +287,8 @@ class ConsultationService(
                  |Consultant Team
               """.stripMargin
             List(
-              (user.email, userSubject, userBody, NotificationType.ConsultationCancelled),
-              (specialist.email, specialistSubject, specialistBody, NotificationType.ConsultationCancelled)
+              (RecipientType.User, user.email, userSubject, userBody, NotificationType.ConsultationCancelled),
+              (RecipientType.Specialist, specialist.email, specialistSubject, specialistBody, NotificationType.ConsultationCancelled)
             )
 
           // In progress to other statuses
@@ -305,7 +305,7 @@ class ConsultationService(
                               |Consultant Team
               """.stripMargin
             List(
-              (user.email, userSubject, userBody, NotificationType.ConsultationCompleted)
+              (RecipientType.User, user.email, userSubject, userBody, NotificationType.ConsultationCompleted)
             )
 
           // Default: no notification for other transitions
@@ -313,22 +313,23 @@ class ConsultationService(
 
         // Check preferences and send only if enabled
         val emailsToSend: List[IO[Unit]] = notificationsToSend.flatMap {
-          case (email, subject, body, notificationType) =>
-            if email == user.email then
-              // For user notifications, check user preferences
-              List(
-                notificationPreferenceRepo
-                  .findByUserAndType(user.id, notificationType)
-                  .flatMap {
-                    case Some(pref) if pref.emailEnabled =>
-                      notificationService.sendEmail(email, subject, body)
-                    case _ => IO.unit
-                  }
-              )
-            else
-              // For specialist notifications, always send (specialists don't have preferences yet)
-              // In future, can add specialist preferences similarly
-              List(notificationService.sendEmail(email, subject, body))
+          case (recipientType, email, subject, body, notificationType) =>
+            recipientType match
+              case RecipientType.User =>
+                // For user notifications, check user preferences
+                List(
+                  notificationPreferenceRepo
+                    .findByUserAndType(user.id, notificationType)
+                    .flatMap {
+                      case Some(pref) if pref.emailEnabled =>
+                        notificationService.sendEmail(email, subject, body)
+                      case _ => IO.unit
+                    }
+                )
+              case RecipientType.Specialist =>
+                // For specialist notifications, always send (specialists don't have preferences yet)
+                // In future, can add specialist preferences similarly
+                List(notificationService.sendEmail(email, subject, body))
         }
 
         emailsToSend.sequence.void

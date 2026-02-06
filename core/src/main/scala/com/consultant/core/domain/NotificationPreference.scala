@@ -4,6 +4,11 @@ import java.time.Instant
 import java.util.UUID
 import types.*
 
+// Recipient type for notifications
+enum RecipientType:
+  case User
+  case Specialist
+
 // Notification preference types
 enum NotificationType:
   case ConsultationApproved
