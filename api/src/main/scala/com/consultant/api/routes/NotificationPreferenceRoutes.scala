@@ -51,12 +51,12 @@ class NotificationPreferenceRoutes(
               // Session has expired
               IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Session expired")))
             case Some(session) =>
-              // Check if requester owns the preferences being accessed
-              if session.userId != requestedUserId then
+              // Check if requester is authorized to access the preferences (owner or admin)
+              if session.userId != requestedUserId && session.role != UserRole.Admin then
                 // Caller requesting another user's preferences without proper authorization
                 IO.pure(Left(ErrorResponse("FORBIDDEN", "Not authorized to access these preferences")))
               else
-                // Session valid and user is authenticated, proceed with access
+                // Session valid and user is authorized, proceed with access
                 notificationPreferenceRepo
                   .findByUser(requestedUserId)
                   .flatMap { preferences =>
