@@ -43,13 +43,10 @@ object Server extends IOApp:
         val availabilityRoutes           = AvailabilitySlotRoutes(consultationService, availabilityRepository)
         val notificationPreferenceRoutes = NotificationPreferenceRoutes(notificationPreferenceRepository)
 
-        // Swagger documentation
+        // Swagger documentation - include all endpoints
         val allEndpoints = userRoutes.endpoints ++ specialistRoutes.endpoints ++
           consultationRoutes.endpoints ++ categoryRoutes.endpoints ++ connectionRoutes.endpoints ++
-          availabilityRoutes.endpoints
-        // Notification preference routes are handled separately (have custom auth headers)
-        // Count computed dynamically to prevent drift when endpoints change
-        val notificationEndpointCount = notificationPreferenceRoutes.endpoints.size
+          availabilityRoutes.endpoints ++ notificationPreferenceRoutes.endpoints
 
         val docEndpoints = SwaggerInterpreter()
           .fromServerEndpoints(allEndpoints, "Consultant API", "1.0.0")
@@ -88,7 +85,7 @@ object Server extends IOApp:
             // Keep startup logs concise to avoid noisy console output
             IO.println(
               s"Server up at http://${config.server.host}:${config.server.port} | Swagger: /docs | " +
-              s"Total endpoints: ${allEndpoints.size + notificationEndpointCount}"
+                s"Total endpoints: ${allEndpoints.size}"
             ) >> IO.never
           }
           .as(ExitCode.Success)
