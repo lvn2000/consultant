@@ -225,7 +225,7 @@ class ConsultationService(
                               |Your consultation request with ${specialist.name} has been approved and scheduled!
                               |
                               |Date & Time: ${consultation.scheduledAt}
-                              |Duration: ${consultation.duration.getOrElse("TBD")} minutes
+                              |Duration: ${consultation.duration.fold("TBD")(_.toString)} minutes
                               |
                               |Please make sure you are available at the scheduled time.
                               |
@@ -250,7 +250,7 @@ class ConsultationService(
                                     |You have approved a consultation with ${user.name}.
                                     |
                                     |Date & Time: ${consultation.scheduledAt}
-                                    |Duration: ${consultation.duration.getOrElse("TBD")} minutes
+                                    |Duration: ${consultation.duration.fold("TBD")(_.toString)} minutes
                                     |Category: ${consultation.categoryId}
                                     |
                                     |Best regards,
