@@ -29,16 +29,23 @@ class PostgresNotificationPreferenceRepository(xa: Transactor[IO]) extends Notif
   import NotificationPreferenceMetaInstances.*
 
   // Create default preferences for a user (all enabled by default)
+  // Uses ON CONFLICT to make the operation idempotent and a single transaction for atomicity
   override def createDefaults(userId: UserId): IO[List[NotificationPreference]] =
     val defaults = NotificationPreference.defaultPreferences(userId)
 
-    defaults.map { pref =>
+    // Build a bulk insert with ON CONFLICT clause for idempotency
+    val insertStatements = defaults.map { pref =>
       sql"""
           INSERT INTO notification_preferences (id, user_id, notification_type, email_enabled, sms_enabled, created_at, updated_at)
           VALUES (${pref.id}, ${pref.userId}, ${pref.notificationType.toString}, ${pref.emailEnabled}, ${pref.smsEnabled}, ${pref.createdAt}, ${pref.updatedAt})
-        """.update.run
-        .transact(xa)
-    }.sequence
+          ON CONFLICT (user_id, notification_type) DO NOTHING
+        """.update
+    }
+
+    // Execute all inserts in a single transaction
+    insertStatements
+      .traverse(_.run)
+      .transact(xa)
       .map(_ => defaults)
 
   // Get preference for a specific notification type
