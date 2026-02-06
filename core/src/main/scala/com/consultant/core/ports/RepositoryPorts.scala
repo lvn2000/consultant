@@ -87,3 +87,18 @@ trait AvailabilityRepository:
   def update(availability: SpecialistAvailability): IO[SpecialistAvailability]
   def delete(id: UUID): IO[Unit]
   def deleteBySpecialist(specialistId: SpecialistId): IO[Unit]
+
+trait NotificationPreferenceRepository:
+  // Create default preferences for a user
+  def createDefaults(userId: UserId): IO[List[NotificationPreference]]
+  // Get preference for a specific notification type
+  def findByUserAndType(
+    userId: UserId,
+    notificationType: NotificationType
+  ): IO[Option[NotificationPreference]]
+  // Get all preferences for a user
+  def findByUser(userId: UserId): IO[List[NotificationPreference]]
+  // Update a preference
+  def update(preference: NotificationPreference): IO[NotificationPreference]
+  // Delete all preferences for a user (when user is deleted)
+  def deleteByUser(userId: UserId): IO[Unit]
