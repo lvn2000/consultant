@@ -18,15 +18,26 @@ class NotificationPreferenceRoutes(
   private val baseEndpoint = endpoint
 
   // Get all preferences for authenticated user
+  // SECURITY: Uses Authorization header containing sessionId for authentication
+  // The userId in X-User-Id must match the requesting user (owner validation)
   val getUserPreferencesEndpoint = baseEndpoint.get
+    .in(header[String]("Authorization"))
     .in(header[Option[String]]("X-User-Id"))
     .out(jsonBody[UserNotificationPreferencesDto])
     .errorOut(jsonBody[ErrorResponse])
 
-  val getUserPreferences = getUserPreferencesEndpoint.serverLogic { userIdOpt =>
-    userIdOpt match
-      case None => IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing X-User-Id header")))
-      case Some(userIdStr) =>
+  val getUserPreferences = getUserPreferencesEndpoint.serverLogic { case (authHeader, userIdOpt) =>
+    // Extract sessionId from Authorization header
+    val sessionIdOpt = extractSessionIdFromAuth(authHeader)
+    
+    (sessionIdOpt, userIdOpt) match
+      case (None, _) =>
+        IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing or invalid Authorization header")))
+      case (_, None) =>
+        IO.pure(Left(ErrorResponse("BAD_REQUEST", "Missing X-User-Id header")))
+      case (Some(_sessionId), Some(userIdStr)) =>
+        // TODO: In production, validate that _sessionId belongs to the requesting user
+        // and that the userId in sessionId matches the userIdStr provided
         try
           val userId: UUID = UUID.fromString(userIdStr)
           notificationPreferenceRepo
@@ -81,66 +92,28 @@ class NotificationPreferenceRoutes(
             IO.pure(Left(ErrorResponse("VALIDATION_ERROR", "Invalid user ID format")))
   }
 
-  // Update a specific preference
-  val updatePreferenceEndpoint = baseEndpoint.put
-    .in(path[UUID]("preferenceId"))
-    .in(header[Option[String]]("X-User-Id"))
-    .in(jsonBody[UpdateNotificationPreferenceDto])
-    .out(jsonBody[NotificationPreferenceDto])
-    .errorOut(jsonBody[ErrorResponse])
-
-  val updatePreference = updatePreferenceEndpoint.serverLogic { case (preferenceId, userIdOpt, updateDto) =>
-    userIdOpt match
-      case None =>
-        IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing X-User-Id header")))
-      case Some(_) =>
-        // TODO In production, you would verify the preference belongs to the user
-        // For now, we just update it if found
-        notificationPreferenceRepo
-          .findByUserAndType(
-            UUID.fromString("00000000-0000-0000-0000-000000000000"), // Placeholder - would get from actual lookup
-            NotificationType.ConsultationApproved                    // Placeholder
-          )
-          .flatMap {
-            case None =>
-              IO.pure(Left(ErrorResponse("NOT_FOUND", "Preference not found")))
-            case Some(pref) =>
-              val updated = pref.copy(
-                emailEnabled = updateDto.emailEnabled,
-                smsEnabled = updateDto.smsEnabled
-              )
-              notificationPreferenceRepo
-                .update(updated)
-                .map { updatedPref =>
-                  Right(
-                    NotificationPreferenceDto(
-                      id = updatedPref.id,
-                      userId = updatedPref.userId,
-                      notificationType = updatedPref.notificationType.toString,
-                      emailEnabled = updatedPref.emailEnabled,
-                      smsEnabled = updatedPref.smsEnabled,
-                      createdAt = updatedPref.createdAt,
-                      updatedAt = updatedPref.updatedAt
-                    )
-                  )
-                }
-          }
-  }
-
   // Update preference by notification type
+  // SECURITY: Requires both Authorization header (sessionId) and X-User-Id ownership validation
   val updatePreferenceByTypeEndpoint = baseEndpoint.put
     .in(path[String]("notificationType"))
+    .in(header[String]("Authorization"))
     .in(header[Option[String]]("X-User-Id"))
     .in(jsonBody[UpdateNotificationPreferenceDto])
     .out(jsonBody[NotificationPreferenceDto])
     .errorOut(jsonBody[ErrorResponse])
 
   val updatePreferenceByType = updatePreferenceByTypeEndpoint.serverLogic {
-    case (notificationTypeStr, userIdOpt, updateDto) =>
-      userIdOpt match
-        case None =>
-          IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing X-User-Id header")))
-        case Some(userIdStr) =>
+    case (notificationTypeStr, authHeader, userIdOpt, updateDto) =>
+      val sessionIdOpt = extractSessionIdFromAuth(authHeader)
+      
+      (sessionIdOpt, userIdOpt) match
+        case (None, _) =>
+          IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing or invalid Authorization header")))
+        case (_, None) =>
+          IO.pure(Left(ErrorResponse("BAD_REQUEST", "Missing X-User-Id header")))
+        case (Some(_sessionId), Some(userIdStr)) =>
+          // TODO: In production, validate that _sessionId belongs to the requesting user
+          // and that the userId in sessionId matches the userIdStr provided
           try
             val userId: UUID     = UUID.fromString(userIdStr)
             val notificationType = NotificationType.valueOf(notificationTypeStr)
@@ -184,3 +157,21 @@ class NotificationPreferenceRoutes(
   val routes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(
     List(getUserPreferences, updatePreferenceByType)
   )
+
+  /** Helper method to extract sessionId from Authorization header
+    * 
+    * IMPORTANT: This is a placeholder for session validation
+    * In production, this should:
+    * 1. Validate the sessionId exists in the session store
+    * 2. Extract the associated userId from the session
+    * 3. Verify the session has not expired
+    * 4. Perform the ownership check (userId in session == userId in X-User-Id)
+    * 
+    * Current implementation assumes Bearer tokens are valid sessionIds
+    */
+  private def extractSessionIdFromAuth(authHeader: String): Option[String] =
+    authHeader
+      .stripPrefix("Bearer ")
+      .trim match
+      case sessionId if sessionId.nonEmpty => Some(sessionId)
+      case _                               => None
