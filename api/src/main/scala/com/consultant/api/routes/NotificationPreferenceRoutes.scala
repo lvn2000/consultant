@@ -8,7 +8,6 @@ import sttp.tapir.generic.auto.*
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 import com.consultant.api.dto.*
 import com.consultant.core.domain.*
-import com.consultant.core.domain.security.UserRole
 import com.consultant.core.ports.NotificationPreferenceRepository
 import com.consultant.core.ports.SessionRepository
 import java.util.UUID
