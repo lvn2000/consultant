@@ -8,11 +8,14 @@ import sttp.tapir.generic.auto.*
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 import com.consultant.api.dto.*
 import com.consultant.core.domain.*
+import com.consultant.core.domain.security.UserRole
 import com.consultant.core.ports.NotificationPreferenceRepository
+import com.consultant.core.ports.SessionRepository
 import java.util.UUID
 
 class NotificationPreferenceRoutes(
-  notificationPreferenceRepo: NotificationPreferenceRepository
+  notificationPreferenceRepo: NotificationPreferenceRepository,
+  sessionRepo: SessionRepository
 ):
 
   private val baseEndpoint = endpoint
@@ -36,74 +39,72 @@ class NotificationPreferenceRoutes(
       case (_, None) =>
         IO.pure(Left(ErrorResponse("BAD_REQUEST", "Missing X-User-Id header")))
       case (Some(sessionId), Some(userIdStr)) =>
-        // CRITICAL SECURITY: Must validate that sessionId is owned by the requesting user
-        // and that the userId from session matches userIdStr (X-User-Id header)
-        // This prevents unauthorized access to other users' preferences
-        // TODO: Implement session validation:
-        //   1. Look up sessionId in SessionRepository to get actual userId
-        //   2. Compare actual userId with userIdStr from X-User-Id header
-        //   3. Return 403 Forbidden if they don't match
-        //   4. Check session hasn't expired
         try
-          val userId: UUID = UUID.fromString(userIdStr)
+          val requestedUserId: UUID = UUID.fromString(userIdStr)
 
-          // PLACEHOLDER: Once SessionRepository is available, replace with:
-          // sessionRepo.findById(sessionId).flatMap {
-          //   case Some(session) if session.userId.toString == userIdStr =>
-          //     ... perform operation ...
-          //   case Some(session) =>
-          //     IO.pure(Left(ErrorResponse("FORBIDDEN", "User not authorized to access these preferences")))
-          //   case None =>
-          //     IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Session not found or expired")))
-          // }
-
-          notificationPreferenceRepo
-            .findByUser(userId)
-            .flatMap { preferences =>
-              // If no preferences exist, create defaults
-              if preferences.isEmpty then
-                notificationPreferenceRepo
-                  .createDefaults(userId)
-                  .map { createdPrefs =>
-                    val dtos = createdPrefs.map { pref =>
-                      NotificationPreferenceDto(
-                        id = pref.id,
-                        userId = pref.userId,
-                        notificationType = pref.notificationType.toString,
-                        emailEnabled = pref.emailEnabled,
-                        smsEnabled = pref.smsEnabled,
-                        createdAt = pref.createdAt,
-                        updatedAt = pref.updatedAt
-                      )
-                    }
-                    Right(
-                      UserNotificationPreferencesDto(
-                        userId = userId,
-                        preferences = dtos
-                      )
-                    )
-                  }
+          // Validate session ownership: session userId must match requested userId
+          sessionRepo.findById(sessionId).flatMap {
+            case None =>
+              // Session not found or expired
+              IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Session not found or expired")))
+            case Some(session) if session.expiresAt.isBefore(java.time.Instant.now()) =>
+              // Session has expired
+              IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Session expired")))
+            case Some(session) =>
+              // Check if requester owns the preferences being accessed
+              if session.userId != requestedUserId then
+                // Caller requesting another user's preferences without proper authorization
+                IO.pure(Left(ErrorResponse("FORBIDDEN", "Not authorized to access these preferences")))
               else
-                val dtos = preferences.map { pref =>
-                  NotificationPreferenceDto(
-                    id = pref.id,
-                    userId = pref.userId,
-                    notificationType = pref.notificationType.toString,
-                    emailEnabled = pref.emailEnabled,
-                    smsEnabled = pref.smsEnabled,
-                    createdAt = pref.createdAt,
-                    updatedAt = pref.updatedAt
-                  )
-                }
-                IO.pure(
-                  Right(
-                    UserNotificationPreferencesDto(
-                      userId = userId,
-                      preferences = dtos
-                    )
-                  )
-                )
-            }
+                // Session valid and user is authenticated, proceed with access
+                notificationPreferenceRepo
+                  .findByUser(requestedUserId)
+                  .flatMap { preferences =>
+                    // If no preferences exist, create defaults
+                    if preferences.isEmpty then
+                      notificationPreferenceRepo
+                        .createDefaults(requestedUserId)
+                        .map { createdPrefs =>
+                          val dtos = createdPrefs.map { pref =>
+                            NotificationPreferenceDto(
+                              id = pref.id,
+                              userId = pref.userId,
+                              notificationType = pref.notificationType.toString,
+                              emailEnabled = pref.emailEnabled,
+                              smsEnabled = pref.smsEnabled,
+                              createdAt = pref.createdAt,
+                              updatedAt = pref.updatedAt
+                            )
+                          }
+                          Right(
+                            UserNotificationPreferencesDto(
+                              userId = requestedUserId,
+                              preferences = dtos
+                            )
+                          )
+                        }
+                    else
+                      val dtos = preferences.map { pref =>
+                        NotificationPreferenceDto(
+                          id = pref.id,
+                          userId = pref.userId,
+                          notificationType = pref.notificationType.toString,
+                          emailEnabled = pref.emailEnabled,
+                          smsEnabled = pref.smsEnabled,
+                          createdAt = pref.createdAt,
+                          updatedAt = pref.updatedAt
+                        )
+                      }
+                      IO.pure(
+                        Right(
+                          UserNotificationPreferencesDto(
+                            userId = requestedUserId,
+                            preferences = dtos
+                          )
+                        )
+                      )
+                  }
+          }
         catch
           case _: IllegalArgumentException =>
             IO.pure(Left(ErrorResponse("VALIDATION_ERROR", "Invalid user ID format")))
@@ -129,54 +130,52 @@ class NotificationPreferenceRoutes(
         case (_, None) =>
           IO.pure(Left(ErrorResponse("BAD_REQUEST", "Missing X-User-Id header")))
         case (Some(sessionId), Some(userIdStr)) =>
-          // CRITICAL SECURITY: Must validate that sessionId is owned by the requesting user
-          // and that the userId from session matches userIdStr (X-User-Id header)
-          // This prevents unauthorized modification of other users' preferences
-          // TODO: Implement session validation:
-          //   1. Look up sessionId in SessionRepository to get actual userId
-          //   2. Compare actual userId with userIdStr from X-User-Id header
-          //   3. Return 403 Forbidden if they don't match
-          //   4. Check session hasn't expired
           try
-            val userId: UUID     = UUID.fromString(userIdStr)
-            val notificationType = NotificationType.valueOf(notificationTypeStr)
+            val requestedUserId: UUID = UUID.fromString(userIdStr)
+            val notificationType      = NotificationType.valueOf(notificationTypeStr)
 
-            // PLACEHOLDER: Once SessionRepository is available, replace with:
-            // sessionRepo.findById(sessionId).flatMap {
-            //   case Some(session) if session.userId.toString == userIdStr =>
-            //     ... perform operation ...
-            //   case Some(session) =>
-            //     IO.pure(Left(ErrorResponse("FORBIDDEN", "User not authorized to modify these preferences")))
-            //   case None =>
-            //     IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Session not found or expired")))
-            // }
-
-            notificationPreferenceRepo
-              .findByUserAndType(userId, notificationType)
-              .flatMap {
-                case None =>
-                  IO.pure(Left(ErrorResponse("NOT_FOUND", "Preference not found")))
-                case Some(pref) =>
-                  val updated = pref.copy(
-                    emailEnabled = updateDto.emailEnabled,
-                    smsEnabled = updateDto.smsEnabled
-                  )
+            // Validate session ownership: session userId must match requested userId
+            sessionRepo.findById(sessionId).flatMap {
+              case None =>
+                // Session not found or expired
+                IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Session not found or expired")))
+              case Some(session) if session.expiresAt.isBefore(java.time.Instant.now()) =>
+                // Session has expired
+                IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Session expired")))
+              case Some(session) =>
+                // Check if requester owns the preferences being modified
+                if session.userId != requestedUserId then
+                  // Caller modifying another user's preferences without proper authorization
+                  IO.pure(Left(ErrorResponse("FORBIDDEN", "Not authorized to modify these preferences")))
+                else
+                  // Session valid and user is authenticated, proceed with modification
                   notificationPreferenceRepo
-                    .update(updated)
-                    .map { updatedPref =>
-                      Right(
-                        NotificationPreferenceDto(
-                          id = updatedPref.id,
-                          userId = updatedPref.userId,
-                          notificationType = updatedPref.notificationType.toString,
-                          emailEnabled = updatedPref.emailEnabled,
-                          smsEnabled = updatedPref.smsEnabled,
-                          createdAt = updatedPref.createdAt,
-                          updatedAt = updatedPref.updatedAt
+                    .findByUserAndType(requestedUserId, notificationType)
+                    .flatMap {
+                      case None =>
+                        IO.pure(Left(ErrorResponse("NOT_FOUND", "Preference not found")))
+                      case Some(pref) =>
+                        val updated = pref.copy(
+                          emailEnabled = updateDto.emailEnabled,
+                          smsEnabled = updateDto.smsEnabled
                         )
-                      )
+                        notificationPreferenceRepo
+                          .update(updated)
+                          .map { updatedPref =>
+                            Right(
+                              NotificationPreferenceDto(
+                                id = updatedPref.id,
+                                userId = updatedPref.userId,
+                                notificationType = updatedPref.notificationType.toString,
+                                emailEnabled = updatedPref.emailEnabled,
+                                smsEnabled = updatedPref.smsEnabled,
+                                createdAt = updatedPref.createdAt,
+                                updatedAt = updatedPref.updatedAt
+                              )
+                            )
+                          }
                     }
-              }
+            }
           catch
             case _: IllegalArgumentException =>
               IO.pure(Left(ErrorResponse("VALIDATION_ERROR", "Invalid notification type or user ID")))
@@ -195,18 +194,11 @@ class NotificationPreferenceRoutes(
    * Strictly parses the Authorization header to extract Bearer token. Only accepts headers in the format "Bearer
    * <token>" where token is non-empty. Rejects any other scheme (Basic, etc.) or malformed headers.
    *
-   * CRITICAL SECURITY WARNING: This method only performs basic format validation.
-   *
-   * In production, this MUST be replaced with proper session validation:
-   *   1. Look up sessionId in SessionRepository or similar persistent storage 2. Verify the session exists and hasn't
-   *      expired 3. Extract the actual userId associated with the session 4. Return None if session is invalid/expired
-   *      5. Caller must verify that the userId from session matches X-User-Id header 6. Return 403 Forbidden if userId
-   *      from session != userId in X-User-Id header
-   *
-   * WITHOUT this implementation, any bearer token value is accepted, allowing:
-   *   - Unauthorized access to read any user's preferences (by setting X-User-Id)
-   *   - Unauthorized modification of any user's preferences
-   *   - Auto-creation of default preferences for any user
+   * NOTE: Session validation is implemented in getUserPreferences and updatePreferenceByType endpoints. Each endpoint
+   * validates that:
+   *   1. The sessionId exists in SessionRepository 2. The session hasn't expired (expiresAt is in the future) 3. The
+   *      session's userId matches the X-User-Id header from the request 4. Returns 403 Forbidden if user attempts to
+   *      access/modify another user's preferences 5. Returns 401 Unauthorized if session is not found or has expired
    */
   private def extractSessionIdFromAuth(authHeader: String): Option[String] =
     authHeader.trim.split(" ", 2) match
