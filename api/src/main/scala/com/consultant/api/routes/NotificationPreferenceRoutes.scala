@@ -81,52 +81,6 @@ class NotificationPreferenceRoutes(
             IO.pure(Left(ErrorResponse("VALIDATION_ERROR", "Invalid user ID format")))
   }
 
-  // Update a specific preference
-  val updatePreferenceEndpoint = baseEndpoint.put
-    .in(path[UUID]("preferenceId"))
-    .in(header[Option[String]]("X-User-Id"))
-    .in(jsonBody[UpdateNotificationPreferenceDto])
-    .out(jsonBody[NotificationPreferenceDto])
-    .errorOut(jsonBody[ErrorResponse])
-
-  val updatePreference = updatePreferenceEndpoint.serverLogic { case (preferenceId, userIdOpt, updateDto) =>
-    userIdOpt match
-      case None =>
-        IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing X-User-Id header")))
-      case Some(_) =>
-        // TODO In production, you would verify the preference belongs to the user
-        // For now, we just update it if found
-        notificationPreferenceRepo
-          .findByUserAndType(
-            UUID.fromString("00000000-0000-0000-0000-000000000000"), // Placeholder - would get from actual lookup
-            NotificationType.ConsultationApproved                    // Placeholder
-          )
-          .flatMap {
-            case None =>
-              IO.pure(Left(ErrorResponse("NOT_FOUND", "Preference not found")))
-            case Some(pref) =>
-              val updated = pref.copy(
-                emailEnabled = updateDto.emailEnabled,
-                smsEnabled = updateDto.smsEnabled
-              )
-              notificationPreferenceRepo
-                .update(updated)
-                .map { updatedPref =>
-                  Right(
-                    NotificationPreferenceDto(
-                      id = updatedPref.id,
-                      userId = updatedPref.userId,
-                      notificationType = updatedPref.notificationType.toString,
-                      emailEnabled = updatedPref.emailEnabled,
-                      smsEnabled = updatedPref.smsEnabled,
-                      createdAt = updatedPref.createdAt,
-                      updatedAt = updatedPref.updatedAt
-                    )
-                  )
-                }
-          }
-  }
-
   // Update preference by notification type
   val updatePreferenceByTypeEndpoint = baseEndpoint.put
     .in(path[String]("notificationType"))
