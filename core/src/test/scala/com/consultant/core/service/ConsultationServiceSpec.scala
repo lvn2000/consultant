@@ -333,4 +333,46 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
     // Should succeed - notification triggers are correctly identified
     result.shouldBe(Right(()))
   }
+
+  it should "skip user/specialist fetches for non-triggering status transitions" in {
+    val consultationRepo           = mock[ConsultationRepository]
+    val specialistRepo             = mock[SpecialistRepository]
+    val userRepo                   = mock[UserRepository]
+    val notificationService        = mock[NotificationService]
+    val notificationPreferenceRepo = mock[NotificationPreferenceRepository]
+    val service = new ConsultationService(
+      consultationRepo,
+      specialistRepo,
+      userRepo,
+      notificationService,
+      notificationPreferenceRepo
+    )
+    val consultationId = java.util.UUID.randomUUID()
+    val consultation = Consultation(
+      id = consultationId,
+      userId = java.util.UUID.randomUUID(),
+      specialistId = java.util.UUID.randomUUID(),
+      categoryId = java.util.UUID.randomUUID(),
+      description = "desc",
+      status = ConsultationStatus.Completed,
+      scheduledAt = Instant.now(),
+      duration = Some(60),
+      price = BigDecimal("50.00"),
+      rating = None,
+      review = None,
+      createdAt = Instant.now(),
+      updatedAt = Instant.now()
+    )
+
+    consultationRepo.findById.expects(consultationId).returning(IO.pure(Some(consultation)))
+    consultationRepo.updateStatus.expects(consultationId, ConsultationStatus.Completed).returning(IO.unit)
+    // Should NOT fetch user/specialist for non-triggering transitions (Completed -> Completed is invalid but serves as non-triggering)
+    // Explicitly set no expectations for userRepo/specialistRepo to verify they are not called
+
+    val result = service.updateConsultationStatus(consultationId, ConsultationStatus.Completed).unsafeRunSync()
+
+    // Should succeed even without fetching user/specialist
+    result.shouldBe(Right(()))
+  }
+
 }

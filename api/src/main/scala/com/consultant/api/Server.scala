@@ -15,7 +15,7 @@ import sttp.tapir.server.http4s.Http4sServerInterpreter
 import com.consultant.data.config.{ DatabaseConfig, DbConfig }
 import com.consultant.data.repository.*
 import com.consultant.core.service.*
-import com.consultant.core.ports.{ AvailabilityRepository, NotificationPreferenceRepository }
+import com.consultant.core.ports.{ AvailabilityRepository, NotificationPreferenceRepository, SessionRepository }
 import com.consultant.api.routes.*
 import com.consultant.infrastructure.config.AppConfig
 import com.consultant.infrastructure.local.MockNotificationService
@@ -33,15 +33,17 @@ object Server extends IOApp:
             categoryService,
             connectionService,
             availabilityRepository,
-            notificationPreferenceRepository
+            notificationPreferenceRepository,
+            sessionRepository
           ) =>
-        val userRoutes                   = UserRoutes(userService)
-        val specialistRoutes             = SpecialistRoutes(specialistService)
-        val consultationRoutes           = ConsultationRoutes(consultationService)
-        val categoryRoutes               = CategoryRoutes(categoryService)
-        val connectionRoutes             = ConnectionRoutes(connectionService)
-        val availabilityRoutes           = AvailabilitySlotRoutes(consultationService, availabilityRepository)
-        val notificationPreferenceRoutes = NotificationPreferenceRoutes(notificationPreferenceRepository)
+        val userRoutes         = UserRoutes(userService)
+        val specialistRoutes   = SpecialistRoutes(specialistService)
+        val consultationRoutes = ConsultationRoutes(consultationService)
+        val categoryRoutes     = CategoryRoutes(categoryService)
+        val connectionRoutes   = ConnectionRoutes(connectionService)
+        val availabilityRoutes = AvailabilitySlotRoutes(consultationService, availabilityRepository)
+        val notificationPreferenceRoutes =
+          NotificationPreferenceRoutes(notificationPreferenceRepository, sessionRepository)
 
         // Swagger documentation - include all endpoints
         val allEndpoints = userRoutes.endpoints ++ specialistRoutes.endpoints ++
@@ -101,7 +103,8 @@ object Server extends IOApp:
       CategoryService,
       ConnectionService,
       AvailabilityRepository,
-      NotificationPreferenceRepository
+      NotificationPreferenceRepository,
+      SessionRepository
     )
   ] =
     for
@@ -157,5 +160,6 @@ object Server extends IOApp:
       categoryService,
       connectionService,
       availabilityRepo,
-      notificationPreferenceRepo
+      notificationPreferenceRepo,
+      sessionRepo
     )

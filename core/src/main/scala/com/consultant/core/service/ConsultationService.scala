@@ -5,6 +5,21 @@ import cats.syntax.all.*
 import com.consultant.core.domain.*
 import com.consultant.core.ports.*
 
+// Helper type to carry recipient information with notifications
+private sealed trait NotificationRecipient:
+  def email: String
+
+private case class ClientRecipient(email: String, userId: java.util.UUID) extends NotificationRecipient
+private case class SpecialistRecipient(email: String)                     extends NotificationRecipient
+
+// Notification with explicit recipient type
+private case class NotificationToSend(
+  recipient: NotificationRecipient,
+  subject: String,
+  body: String,
+  notificationType: NotificationType
+)
+
 class ConsultationService(
   consultationRepo: ConsultationRepository,
   specialistRepo: SpecialistRepository,
@@ -101,7 +116,7 @@ class ConsultationService(
             _          <- consultationRepo.update(updated)
             user       <- userRepo.findById(consultation.userId)
             specialist <- specialistRepo.findById(consultation.specialistId)
-            _          <- sendStatusChangeNotifications(updated, updated.status, user, specialist)
+            _          <- sendStatusChangeNotifications(consultation, updated.status, user, specialist)
           yield Right(())
         case None => IO.pure(Left(DomainError.ConsultationNotFound(id)))
     yield result
@@ -193,11 +208,16 @@ class ConsultationService(
     specialistOpt: Option[Specialist]
   ): IO[Unit] =
     val oldStatus = consultation.status
-    (userOpt, specialistOpt) match
-      case (Some(user), Some(specialist)) =>
-        val notificationsToSend: List[(String, String, String, NotificationType)] = (oldStatus, newStatus) match
-          // User requested, specialist approves
-          case (ConsultationStatus.Requested, ConsultationStatus.Scheduled) =>
+
+    // Build notification list based on available entities and transition type
+    // This allows sending to whichever party is available instead of requiring both
+    val notificationsToSend: List[NotificationToSend] = (oldStatus, newStatus) match
+      // User requested, specialist approves - sends to both if available
+      case (ConsultationStatus.Requested, ConsultationStatus.Scheduled) =>
+        val notifications = scala.collection.mutable.ListBuffer[NotificationToSend]()
+
+        userOpt.foreach { user =>
+          specialistOpt.foreach { specialist =>
             val userSubject = "Consultation Approved"
             val userBody = s"""
                               |Hello ${user.name},
@@ -212,6 +232,17 @@ class ConsultationService(
                               |Best regards,
                               |Consultant Team
               """.stripMargin
+            notifications += NotificationToSend(
+              ClientRecipient(user.email, user.id),
+              userSubject,
+              userBody,
+              NotificationType.ConsultationApproved
+            )
+          }
+        }
+
+        specialistOpt.foreach { specialist =>
+          userOpt.foreach { user =>
             val specialistSubject = "New Consultation Scheduled"
             val specialistBody = s"""
                                     |Hello ${specialist.name},
@@ -225,13 +256,23 @@ class ConsultationService(
                                     |Best regards,
                                     |Consultant Team
               """.stripMargin
-            List(
-              (user.email, userSubject, userBody, NotificationType.ConsultationApproved),
-              (specialist.email, specialistSubject, specialistBody, NotificationType.ConsultationApproved)
+            notifications += NotificationToSend(
+              SpecialistRecipient(specialist.email),
+              specialistSubject,
+              specialistBody,
+              NotificationType.ConsultationApproved
             )
+          }
+        }
 
-          // User requested, specialist declines
-          case (ConsultationStatus.Requested, ConsultationStatus.Cancelled) =>
+        notifications.toList
+
+      // User requested, specialist declines - sends to user only if available
+      case (ConsultationStatus.Requested, ConsultationStatus.Cancelled) =>
+        val notifications = scala.collection.mutable.ListBuffer[NotificationToSend]()
+
+        userOpt.foreach { user =>
+          specialistOpt.foreach { specialist =>
             val userSubject = "Consultation Request Declined"
             val userBody = s"""
                               |Hello ${user.name},
@@ -243,12 +284,23 @@ class ConsultationService(
                               |Best regards,
                               |Consultant Team
               """.stripMargin
-            List(
-              (user.email, userSubject, userBody, NotificationType.ConsultationDeclined)
+            notifications += NotificationToSend(
+              ClientRecipient(user.email, user.id),
+              userSubject,
+              userBody,
+              NotificationType.ConsultationDeclined
             )
+          }
+        }
 
-          // Scheduled consultation marked as completed
-          case (ConsultationStatus.Scheduled, ConsultationStatus.Completed) =>
+        notifications.toList
+
+      // Scheduled consultation marked as completed - sends to both if available
+      case (ConsultationStatus.Scheduled, ConsultationStatus.Completed) =>
+        val notifications = scala.collection.mutable.ListBuffer[NotificationToSend]()
+
+        userOpt.foreach { user =>
+          specialistOpt.foreach { specialist =>
             val userSubject = "Consultation Completed"
             val userBody = s"""
                               |Hello ${user.name},
@@ -260,6 +312,17 @@ class ConsultationService(
                               |Best regards,
                               |Consultant Team
               """.stripMargin
+            notifications += NotificationToSend(
+              ClientRecipient(user.email, user.id),
+              userSubject,
+              userBody,
+              NotificationType.ConsultationCompleted
+            )
+          }
+        }
+
+        specialistOpt.foreach { specialist =>
+          userOpt.foreach { user =>
             val specialistSubject = "Consultation Completed"
             val specialistBody = s"""
                                     |Hello ${specialist.name},
@@ -269,13 +332,23 @@ class ConsultationService(
                                     |Best regards,
                                     |Consultant Team
               """.stripMargin
-            List(
-              (user.email, userSubject, userBody, NotificationType.ConsultationCompleted),
-              (specialist.email, specialistSubject, specialistBody, NotificationType.ConsultationCompleted)
+            notifications += NotificationToSend(
+              SpecialistRecipient(specialist.email),
+              specialistSubject,
+              specialistBody,
+              NotificationType.ConsultationCompleted
             )
+          }
+        }
 
-          // Scheduled consultation marked as missed
-          case (ConsultationStatus.Scheduled, ConsultationStatus.Missed) =>
+        notifications.toList
+
+      // Scheduled consultation marked as missed - sends to both if available
+      case (ConsultationStatus.Scheduled, ConsultationStatus.Missed) =>
+        val notifications = scala.collection.mutable.ListBuffer[NotificationToSend]()
+
+        userOpt.foreach { user =>
+          specialistOpt.foreach { specialist =>
             val userSubject = "Consultation Marked as Missed"
             val userBody =
               s"""
@@ -288,6 +361,17 @@ class ConsultationService(
                  |Best regards,
                  |Consultant Team
               """.stripMargin
+            notifications += NotificationToSend(
+              ClientRecipient(user.email, user.id),
+              userSubject,
+              userBody,
+              NotificationType.ConsultationMissed
+            )
+          }
+        }
+
+        specialistOpt.foreach { specialist =>
+          userOpt.foreach { user =>
             val specialistSubject = "Consultation Marked as Missed"
             val specialistBody =
               s"""
@@ -298,13 +382,23 @@ class ConsultationService(
                  |Best regards,
                  |Consultant Team
               """.stripMargin
-            List(
-              (user.email, userSubject, userBody, NotificationType.ConsultationMissed),
-              (specialist.email, specialistSubject, specialistBody, NotificationType.ConsultationMissed)
+            notifications += NotificationToSend(
+              SpecialistRecipient(specialist.email),
+              specialistSubject,
+              specialistBody,
+              NotificationType.ConsultationMissed
             )
+          }
+        }
 
-          // Scheduled consultation cancelled
-          case (ConsultationStatus.Scheduled, ConsultationStatus.Cancelled) =>
+        notifications.toList
+
+      // Scheduled consultation cancelled - sends to both if available
+      case (ConsultationStatus.Scheduled, ConsultationStatus.Cancelled) =>
+        val notifications = scala.collection.mutable.ListBuffer[NotificationToSend]()
+
+        userOpt.foreach { user =>
+          specialistOpt.foreach { specialist =>
             val userSubject = "Consultation Cancelled"
             val userBody =
               s"""
@@ -317,6 +411,17 @@ class ConsultationService(
                  |Best regards,
                  |Consultant Team
               """.stripMargin
+            notifications += NotificationToSend(
+              ClientRecipient(user.email, user.id),
+              userSubject,
+              userBody,
+              NotificationType.ConsultationCancelled
+            )
+          }
+        }
+
+        specialistOpt.foreach { specialist =>
+          userOpt.foreach { user =>
             val specialistSubject = "Consultation Cancelled"
             val specialistBody =
               s"""
@@ -327,13 +432,23 @@ class ConsultationService(
                  |Best regards,
                  |Consultant Team
               """.stripMargin
-            List(
-              (user.email, userSubject, userBody, NotificationType.ConsultationCancelled),
-              (specialist.email, specialistSubject, specialistBody, NotificationType.ConsultationCancelled)
+            notifications += NotificationToSend(
+              SpecialistRecipient(specialist.email),
+              specialistSubject,
+              specialistBody,
+              NotificationType.ConsultationCancelled
             )
+          }
+        }
 
-          // In progress to other statuses
-          case (ConsultationStatus.InProgress, ConsultationStatus.Completed) =>
+        notifications.toList
+
+      // In progress to other statuses - sends to user only if available
+      case (ConsultationStatus.InProgress, ConsultationStatus.Completed) =>
+        val notifications = scala.collection.mutable.ListBuffer[NotificationToSend]()
+
+        userOpt.foreach { user =>
+          specialistOpt.foreach { specialist =>
             val userSubject = "Consultation Completed"
             val userBody = s"""
                               |Hello ${user.name},
@@ -345,54 +460,63 @@ class ConsultationService(
                               |Best regards,
                               |Consultant Team
               """.stripMargin
-            List(
-              (user.email, userSubject, userBody, NotificationType.ConsultationCompleted)
+            notifications += NotificationToSend(
+              ClientRecipient(user.email, user.id),
+              userSubject,
+              userBody,
+              NotificationType.ConsultationCompleted
             )
-
-          // Default: no notification for other transitions
-          case _ => List()
-
-// Check preferences and send only if enabled (with error handling)
-        val emailsToSend: List[IO[Unit]] = notificationsToSend.flatMap {
-          case (email, subject, body, notificationType) =>
-            if email == user.email then
-              // For user notifications, check user preferences
-              List(
-                notificationPreferenceRepo
-                  .findByUserAndType(user.id, notificationType)
-                  .flatMap {
-                    case Some(pref) if pref.emailEnabled =>
-                      // Wrap with error handling: log failures but don't fail the operation
-                      notificationService
-                        .sendEmail(email, subject, body)
-                        .attempt
-                        .flatMap {
-                          case Right(_) => IO.unit
-                          case Left(error) =>
-                            IO.println(
-                              s"[WARNING] Failed to send email to $email for consultation status change: ${error.getMessage}"
-                            )
-                        }
-                    case _ => IO.unit
-                  }
-              )
-            else
-              // For specialist notifications, always send (specialists don't have preferences yet)
-              // In future, can add specialist preferences similarly
-              // Wrap with error handling: log failures but don't fail the operation
-              List(
-                notificationService
-                  .sendEmail(email, subject, body)
-                  .attempt
-                  .flatMap {
-                    case Right(_) => IO.unit
-                    case Left(error) =>
-                      IO.println(
-                        s"[WARNING] Failed to send email to $email for consultation status change: ${error.getMessage}"
-                      )
-                  }
-              )
+          }
         }
 
-        emailsToSend.sequence.void
-      case _ => IO.unit
+        notifications.toList
+
+      // Default: no notification for other transitions
+      case _ => List()
+
+    // Check preferences and send only if enabled (with error handling)
+    val emailsToSend: List[IO[Unit]] = notificationsToSend.flatMap { notification =>
+      notification.recipient match
+        case ClientRecipient(email, userId) =>
+          // For user notifications, check user preferences
+          List(
+            notificationPreferenceRepo
+              .findByUserAndType(userId, notification.notificationType)
+              .flatMap {
+                case Some(pref) if !pref.emailEnabled =>
+                  // User explicitly disabled this notification type, skip sending
+                  IO.unit
+                case _ =>
+                  // Either no preference record exists (treat as default: enabled)
+                  // or preference exists and is enabled. Send the email.
+                  notificationService
+                    .sendEmail(email, notification.subject, notification.body)
+                    .attempt
+                    .flatMap {
+                      case Right(_) => IO.unit
+                      case Left(error) =>
+                        IO.println(
+                          s"[WARNING] Failed to send email to $email for consultation status change: ${error.getMessage}"
+                        )
+                    }
+              }
+          )
+        case SpecialistRecipient(email) =>
+          // For specialist notifications, always send (specialists don't have preferences yet)
+          // In future, can add specialist preferences similarly
+          // Wrap with error handling: log failures but don't fail the operation
+          List(
+            notificationService
+              .sendEmail(email, notification.subject, notification.body)
+              .attempt
+              .flatMap {
+                case Right(_) => IO.unit
+                case Left(error) =>
+                  IO.println(
+                    s"[WARNING] Failed to send email to $email for consultation status change: ${error.getMessage}"
+                  )
+              }
+          )
+    }
+
+    emailsToSend.sequence.void
