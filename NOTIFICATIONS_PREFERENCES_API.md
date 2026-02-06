@@ -17,7 +17,7 @@ These endpoints allow authenticated users to manage their notification preferenc
 - `Authorization` header: Bearer token (sessionId from login response)
 - `X-User-Id` header: UUID of the user whose preferences to retrieve
 
-**Description:** Retrieves all notification preferences for the specified user. If no preferences exist, they are automatically created with default values (all enabled).
+**Description:** Retrieves all notification preferences for the specified user. If no preferences exist, they are automatically created with default values (email notifications enabled, SMS disabled).
 
 ```bash
 curl -X GET http://localhost:8090/api/notification-preferences \
@@ -35,7 +35,7 @@ curl -X GET http://localhost:8090/api/notification-preferences \
       "userId": "550e8400-e29b-41d4-a716-446655440000",
       "notificationType": "ConsultationApproved",
       "emailEnabled": true,
-      "smsEnabled": true,
+      "smsEnabled": false,
       "createdAt": "2026-02-01T10:30:00Z",
       "updatedAt": "2026-02-01T10:30:00Z"
     },
@@ -44,7 +44,7 @@ curl -X GET http://localhost:8090/api/notification-preferences \
       "userId": "550e8400-e29b-41d4-a716-446655440000",
       "notificationType": "ConsultationDeclined",
       "emailEnabled": true,
-      "smsEnabled": true,
+      "smsEnabled": false,
       "createdAt": "2026-02-01T10:30:00Z",
       "updatedAt": "2026-02-01T10:30:00Z"
     },
@@ -53,7 +53,7 @@ curl -X GET http://localhost:8090/api/notification-preferences \
       "userId": "550e8400-e29b-41d4-a716-446655440000",
       "notificationType": "ConsultationCompleted",
       "emailEnabled": true,
-      "smsEnabled": true,
+      "smsEnabled": false,
       "createdAt": "2026-02-01T10:30:00Z",
       "updatedAt": "2026-02-01T10:30:00Z"
     },
@@ -62,7 +62,7 @@ curl -X GET http://localhost:8090/api/notification-preferences \
       "userId": "550e8400-e29b-41d4-a716-446655440000",
       "notificationType": "ConsultationMissed",
       "emailEnabled": true,
-      "smsEnabled": true,
+      "smsEnabled": false,
       "createdAt": "2026-02-01T10:30:00Z",
       "updatedAt": "2026-02-01T10:30:00Z"
     },
@@ -71,7 +71,7 @@ curl -X GET http://localhost:8090/api/notification-preferences \
       "userId": "550e8400-e29b-41d4-a716-446655440000",
       "notificationType": "ConsultationCancelled",
       "emailEnabled": true,
-      "smsEnabled": true,
+      "smsEnabled": false,
       "createdAt": "2026-02-01T10:30:00Z",
       "updatedAt": "2026-02-01T10:30:00Z"
     }
@@ -112,7 +112,7 @@ Missing X-User-Id header:
 ```json
 {
   "emailEnabled": false,
-  "smsEnabled": true
+  "smsEnabled": false
 }
 ```
 
@@ -125,7 +125,7 @@ curl -X PUT http://localhost:8090/api/notification-preferences/ConsultationAppro
   -H "Content-Type: application/json" \
   -d '{
     "emailEnabled": false,
-    "smsEnabled": true
+    "smsEnabled": false
   }'
 ```
 
@@ -136,7 +136,7 @@ curl -X PUT http://localhost:8090/api/notification-preferences/ConsultationAppro
   "userId": "550e8400-e29b-41d4-a716-446655440000",
   "notificationType": "ConsultationApproved",
   "emailEnabled": false,
-  "smsEnabled": true,
+  "smsEnabled": false,
   "createdAt": "2026-02-01T10:30:00Z",
   "updatedAt": "2026-02-04T15:45:00Z"
 }
@@ -182,11 +182,11 @@ The system supports the following notification types:
 
 | Type | Triggered When | Default |
 |------|--------|---------|
-| `ConsultationApproved` | Specialist approves a consultation request | Email & SMS enabled |
-| `ConsultationDeclined` | Specialist declines a consultation request | Email & SMS enabled |
-| `ConsultationCompleted` | Consultation is marked as completed | Email & SMS enabled |
-| `ConsultationMissed` | Consultation is marked as missed | Email & SMS enabled |
-| `ConsultationCancelled` | Consultation is cancelled | Email & SMS enabled |
+| `ConsultationApproved` | Specialist approves a consultation request | Email enabled, SMS disabled |
+| `ConsultationDeclined` | Specialist declines a consultation request | Email enabled, SMS disabled |
+| `ConsultationCompleted` | Consultation is marked as completed | Email enabled, SMS disabled |
+| `ConsultationMissed` | Consultation is marked as missed | Email enabled, SMS disabled |
+| `ConsultationCancelled` | Consultation is cancelled | Email enabled, SMS disabled |
 
 ---
 
@@ -238,7 +238,7 @@ print(response.json())
 response = requests.put(
     "http://localhost:8090/api/notification-preferences/ConsultationApproved",
     headers=headers,
-    json={"emailEnabled": False, "smsEnabled": True}
+    json={"emailEnabled": False, "smsEnabled": False}
 )
 print(response.json())
 ```
@@ -270,7 +270,7 @@ fetch("http://localhost:8090/api/notification-preferences/ConsultationApproved",
   },
   body: JSON.stringify({
     emailEnabled: false,
-    smsEnabled: true
+    smsEnabled: false
   })
 })
 .then(r => r.json())
@@ -319,238 +319,3 @@ fetch("http://localhost:8090/api/notification-preferences", {
 5. **Monitor failed requests**
    - Log authentication failures
    - Alert users if their session expires
-
-
-### Endpoint 1: Get All Preferences
-
-**Endpoint:** `GET /api/notification-preferences`
-
-**Authentication:** Required (Bearer token in Authorization header)
-
-**Description:** Retrieves all notification preferences for the authenticated user. If no preferences exist, they are automatically created with default values (all enabled).
-
-```bash
-curl -X GET http://localhost:8090/api/notification-preferences \
-  -H "Authorization: Bearer 550e8400-e29b-41d4-a716-446655440000"
-```
-
-**Response:**
-```json
-{
-  "userId": "550e8400-e29b-41d4-a716-446655440000",
-  "preferences": [
-    {
-      "id": "660e8400-e29b-41d4-a716-446655440001",
-      "userId": "550e8400-e29b-41d4-a716-446655440000",
-      "notificationType": "ConsultationApproved",
-      "emailEnabled": true,
-      "smsEnabled": true,
-      "createdAt": "2026-02-01T10:30:00Z",
-      "updatedAt": "2026-02-01T10:30:00Z"
-    },
-    {
-      "id": "660e8400-e29b-41d4-a716-446655440002",
-      "userId": "550e8400-e29b-41d4-a716-446655440000",
-      "notificationType": "ConsultationDeclined",
-      "emailEnabled": true,
-      "smsEnabled": true,
-      "createdAt": "2026-02-01T10:30:00Z",
-      "updatedAt": "2026-02-01T10:30:00Z"
-    },
-    {
-      "id": "660e8400-e29b-41d4-a716-446655440003",
-      "userId": "550e8400-e29b-41d4-a716-446655440000",
-      "notificationType": "ConsultationCompleted",
-      "emailEnabled": true,
-      "smsEnabled": true,
-      "createdAt": "2026-02-01T10:30:00Z",
-      "updatedAt": "2026-02-01T10:30:00Z"
-    },
-    {
-      "id": "660e8400-e29b-41d4-a716-446655440004",
-      "userId": "550e8400-e29b-41d4-a716-446655440000",
-      "notificationType": "ConsultationMissed",
-      "emailEnabled": true,
-      "smsEnabled": true,
-      "createdAt": "2026-02-01T10:30:00Z",
-      "updatedAt": "2026-02-01T10:30:00Z"
-    },
-    {
-      "id": "660e8400-e29b-41d4-a716-446655440005",
-      "userId": "550e8400-e29b-41d4-a716-446655440000",
-      "notificationType": "ConsultationCancelled",
-      "emailEnabled": true,
-      "smsEnabled": true,
-      "createdAt": "2026-02-01T10:30:00Z",
-      "updatedAt": "2026-02-01T10:30:00Z"
-    }
-  ]
-}
-```
-
-**Error Responses:**
-
-Unauthorized (missing or invalid token):
-```json
-{
-  "type": "UNAUTHORIZED",
-  "message": "Invalid or missing Authorization header"
-}
-```
-
-### Endpoint 2: Update Preference by Notification Type
-
-**Endpoint:** `PUT /api/notification-preferences/{notificationType}`
-
-**Authentication:** Required (Bearer token in Authorization header)
-
-**Path Parameters:**
-- `notificationType`: One of: `ConsultationApproved`, `ConsultationDeclined`, `ConsultationCompleted`, `ConsultationMissed`, `ConsultationCancelled`
-
-**Request Body:**
-```json
-{
-  "emailEnabled": false,
-  "smsEnabled": true
-}
-```
-
-**Description:** Updates notification preferences for a specific notification type. Only the authenticated user can update their own preferences.
-
-```bash
-curl -X PUT http://localhost:8090/api/notification-preferences/ConsultationApproved \
-  -H "Authorization: Bearer 550e8400-e29b-41d4-a716-446655440000" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "emailEnabled": false,
-    "smsEnabled": true
-  }'
-```
-
-**Response:**
-```json
-{
-  "id": "660e8400-e29b-41d4-a716-446655440001",
-  "userId": "550e8400-e29b-41d4-a716-446655440000",
-  "notificationType": "ConsultationApproved",
-  "emailEnabled": false,
-  "smsEnabled": true,
-  "createdAt": "2026-02-01T10:30:00Z",
-  "updatedAt": "2026-02-04T15:45:00Z"
-}
-```
-
-**Error Responses:**
-
-Unauthorized (missing or invalid token):
-```json
-{
-  "type": "UNAUTHORIZED",
-  "message": "Invalid or missing Authorization header"
-}
-```
-
-Preference not found:
-```json
-{
-  "type": "NOT_FOUND",
-  "message": "Preference not found"
-}
-```
-
-Invalid notification type:
-```json
-{
-  "type": "VALIDATION_ERROR",
-  "message": "Invalid notification type"
-}
-```
-
-### Notification Types
-
-The system supports the following notification types:
-
-| Type | Triggered When | Default |
-|------|--------|---------|
-| `ConsultationApproved` | Specialist approves a consultation request | Email & SMS enabled |
-| `ConsultationDeclined` | Specialist declines a consultation request | Email & SMS enabled |
-| `ConsultationCompleted` | Consultation is marked as completed | Email & SMS enabled |
-| `ConsultationMissed` | Consultation is marked as missed | Email & SMS enabled |
-| `ConsultationCancelled` | Consultation is cancelled | Email & SMS enabled |
-
----
-
-## Security Considerations
-
-**Important:** 
-1. **Authentication Required**: All notification preference endpoints require a valid JWT token
-2. **User Isolation**: Users can only access their own preferences. Attempting to modify another user's preferences will fail
-3. **Bearer Token Format**: Tokens must be sent as `Authorization: Bearer <token>`
-4. **Token Validation**: The server validates:
-   - Token format is valid
-   - Token is not expired
-   - User ID in token matches the requested resource
-
-**Never:**
-- Pass user IDs in query parameters
-- Use hardcoded user IDs in client code
-- Store tokens in localStorage (use secure HTTP-only cookies when possible)
-- Log authentication tokens
-
----
-
-## Integration Examples
-
-### Python/Requests
-```python
-import requests
-
-headers = {
-    "Authorization": "Bearer 550e8400-e29b-41d4-a716-446655440000"
-}
-
-# Get preferences
-response = requests.get(
-    "http://localhost:8090/api/notification-preferences",
-    headers=headers
-)
-print(response.json())
-
-# Update preference
-response = requests.put(
-    "http://localhost:8090/api/notification-preferences/ConsultationApproved",
-    headers=headers,
-    json={"emailEnabled": False, "smsEnabled": True}
-)
-print(response.json())
-```
-
-### JavaScript/Fetch
-```javascript
-const token = "550e8400-e29b-41d4-a716-446655440000";
-
-// Get preferences
-fetch("http://localhost:8090/api/notification-preferences", {
-  method: "GET",
-  headers: {
-    "Authorization": `Bearer ${token}`
-  }
-})
-.then(r => r.json())
-.then(data => console.log(data));
-
-// Update preference
-fetch("http://localhost:8090/api/notification-preferences/ConsultationApproved", {
-  method: "PUT",
-  headers: {
-    "Authorization": `Bearer ${token}`,
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    emailEnabled: false,
-    smsEnabled: true
-  })
-})
-.then(r => r.json())
-.then(data => console.log(data));
-```

@@ -36,11 +36,21 @@ class ConsultationService(
               val price = calculatePrice(categoryRate.hourlyRate, request.duration)
               for
                 consultation <- consultationRepo.create(request, price)
-                _ <- notificationService.sendEmail(
-                  user.email,
-                  "Consultation Request Created",
-                  s"Your consultation with ${specialist.name} has been requested."
-                )
+                // Wrap email send with error handling: log failures but don't fail consultation creation
+                _ <- notificationService
+                  .sendEmail(
+                    user.email,
+                    "Consultation Request Created",
+                    s"Your consultation with ${specialist.name} has been requested."
+                  )
+                  .attempt
+                  .flatMap {
+                    case Right(_) => IO.unit
+                    case Left(error) =>
+                      IO.println(
+                        s"[WARNING] Failed to send consultation creation email to ${user.email}: ${error.getMessage}"
+                      )
+                  }
               yield Right(consultation)
         case (None, _) => IO.pure(Left(DomainError.UserNotFound(request.userId)))
         case (_, None) => IO.pure(Left(DomainError.SpecialistNotFound(request.specialistId)))
@@ -61,10 +71,16 @@ class ConsultationService(
       result <- consultationOpt match
         case Some(consultation) =>
           for
-            _          <- consultationRepo.updateStatus(id, status)
-            user       <- userRepo.findById(consultation.userId)
-            specialist <- specialistRepo.findById(consultation.specialistId)
-            _          <- sendStatusChangeNotifications(consultation, status, user, specialist)
+            _ <- consultationRepo.updateStatus(id, status)
+            // Only fetch user/specialist if this transition requires notifications
+            _ <-
+              if statusTransitionRequiresNotifications(consultation.status, status) then
+                for
+                  user       <- userRepo.findById(consultation.userId)
+                  specialist <- specialistRepo.findById(consultation.specialistId)
+                  _          <- sendStatusChangeNotifications(consultation, status, user, specialist)
+                yield ()
+              else IO.unit
           yield Right(())
         case None => IO.pure(Left(DomainError.ConsultationNotFound(id)))
     yield result
@@ -85,7 +101,7 @@ class ConsultationService(
             _          <- consultationRepo.update(updated)
             user       <- userRepo.findById(consultation.userId)
             specialist <- specialistRepo.findById(consultation.specialistId)
-            _          <- sendStatusChangeNotifications(consultation, ConsultationStatus.Scheduled, user, specialist)
+            _          <- sendStatusChangeNotifications(updated, updated.status, user, specialist)
           yield Right(())
         case None => IO.pure(Left(DomainError.ConsultationNotFound(id)))
     yield result
@@ -144,6 +160,31 @@ class ConsultationService(
         val totalRating = rating * totalConsultations + newRating
         totalRating / (totalConsultations + 1)
       case None => BigDecimal(newRating)
+
+  /**
+   * Check if a status transition requires sending notifications
+   *
+   * This avoids fetching user/specialist data when no notifications will be sent. Transitions that produce
+   * notifications:
+   *   - Requested -> Scheduled (approval)
+   *   - Requested -> Cancelled (decline)
+   *   - Scheduled -> Completed
+   *   - Scheduled -> Missed
+   *   - Scheduled -> Cancelled
+   *   - InProgress -> Completed All other transitions have no notifications.
+   */
+  private def statusTransitionRequiresNotifications(
+    oldStatus: ConsultationStatus,
+    newStatus: ConsultationStatus
+  ): Boolean =
+    (oldStatus, newStatus) match
+      case (ConsultationStatus.Requested, ConsultationStatus.Scheduled)  => true
+      case (ConsultationStatus.Requested, ConsultationStatus.Cancelled)  => true
+      case (ConsultationStatus.Scheduled, ConsultationStatus.Completed)  => true
+      case (ConsultationStatus.Scheduled, ConsultationStatus.Missed)     => true
+      case (ConsultationStatus.Scheduled, ConsultationStatus.Cancelled)  => true
+      case (ConsultationStatus.InProgress, ConsultationStatus.Completed) => true
+      case _                                                             => false
 
   private def sendStatusChangeNotifications(
     consultation: Consultation,
@@ -311,7 +352,7 @@ class ConsultationService(
           // Default: no notification for other transitions
           case _ => List()
 
-        // Check preferences and send only if enabled
+// Check preferences and send only if enabled (with error handling)
         val emailsToSend: List[IO[Unit]] = notificationsToSend.flatMap {
           case (email, subject, body, notificationType) =>
             if email == user.email then
@@ -321,14 +362,36 @@ class ConsultationService(
                   .findByUserAndType(user.id, notificationType)
                   .flatMap {
                     case Some(pref) if pref.emailEnabled =>
-                      notificationService.sendEmail(email, subject, body)
+                      // Wrap with error handling: log failures but don't fail the operation
+                      notificationService
+                        .sendEmail(email, subject, body)
+                        .attempt
+                        .flatMap {
+                          case Right(_) => IO.unit
+                          case Left(error) =>
+                            IO.println(
+                              s"[WARNING] Failed to send email to $email for consultation status change: ${error.getMessage}"
+                            )
+                        }
                     case _ => IO.unit
                   }
               )
             else
               // For specialist notifications, always send (specialists don't have preferences yet)
               // In future, can add specialist preferences similarly
-              List(notificationService.sendEmail(email, subject, body))
+              // Wrap with error handling: log failures but don't fail the operation
+              List(
+                notificationService
+                  .sendEmail(email, subject, body)
+                  .attempt
+                  .flatMap {
+                    case Right(_) => IO.unit
+                    case Left(error) =>
+                      IO.println(
+                        s"[WARNING] Failed to send email to $email for consultation status change: ${error.getMessage}"
+                      )
+                  }
+              )
         }
 
         emailsToSend.sequence.void

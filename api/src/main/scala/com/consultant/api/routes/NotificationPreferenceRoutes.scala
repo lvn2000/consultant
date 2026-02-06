@@ -35,11 +35,28 @@ class NotificationPreferenceRoutes(
         IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing or invalid Authorization header")))
       case (_, None) =>
         IO.pure(Left(ErrorResponse("BAD_REQUEST", "Missing X-User-Id header")))
-      case (Some(_sessionId), Some(userIdStr)) =>
-        // TODO: In production, validate that _sessionId belongs to the requesting user
-        // and that the userId in sessionId matches the userIdStr provided
+      case (Some(sessionId), Some(userIdStr)) =>
+        // CRITICAL SECURITY: Must validate that sessionId is owned by the requesting user
+        // and that the userId from session matches userIdStr (X-User-Id header)
+        // This prevents unauthorized access to other users' preferences
+        // TODO: Implement session validation:
+        //   1. Look up sessionId in SessionRepository to get actual userId
+        //   2. Compare actual userId with userIdStr from X-User-Id header
+        //   3. Return 403 Forbidden if they don't match
+        //   4. Check session hasn't expired
         try
           val userId: UUID = UUID.fromString(userIdStr)
+
+          // PLACEHOLDER: Once SessionRepository is available, replace with:
+          // sessionRepo.findById(sessionId).flatMap {
+          //   case Some(session) if session.userId.toString == userIdStr =>
+          //     ... perform operation ...
+          //   case Some(session) =>
+          //     IO.pure(Left(ErrorResponse("FORBIDDEN", "User not authorized to access these preferences")))
+          //   case None =>
+          //     IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Session not found or expired")))
+          // }
+
           notificationPreferenceRepo
             .findByUser(userId)
             .flatMap { preferences =>
@@ -111,12 +128,28 @@ class NotificationPreferenceRoutes(
           IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing or invalid Authorization header")))
         case (_, None) =>
           IO.pure(Left(ErrorResponse("BAD_REQUEST", "Missing X-User-Id header")))
-        case (Some(_sessionId), Some(userIdStr)) =>
-          // TODO: In production, validate that _sessionId belongs to the requesting user
-          // and that the userId in sessionId matches the userIdStr provided
+        case (Some(sessionId), Some(userIdStr)) =>
+          // CRITICAL SECURITY: Must validate that sessionId is owned by the requesting user
+          // and that the userId from session matches userIdStr (X-User-Id header)
+          // This prevents unauthorized modification of other users' preferences
+          // TODO: Implement session validation:
+          //   1. Look up sessionId in SessionRepository to get actual userId
+          //   2. Compare actual userId with userIdStr from X-User-Id header
+          //   3. Return 403 Forbidden if they don't match
+          //   4. Check session hasn't expired
           try
             val userId: UUID     = UUID.fromString(userIdStr)
             val notificationType = NotificationType.valueOf(notificationTypeStr)
+
+            // PLACEHOLDER: Once SessionRepository is available, replace with:
+            // sessionRepo.findById(sessionId).flatMap {
+            //   case Some(session) if session.userId.toString == userIdStr =>
+            //     ... perform operation ...
+            //   case Some(session) =>
+            //     IO.pure(Left(ErrorResponse("FORBIDDEN", "User not authorized to modify these preferences")))
+            //   case None =>
+            //     IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Session not found or expired")))
+            // }
 
             notificationPreferenceRepo
               .findByUserAndType(userId, notificationType)
@@ -159,15 +192,23 @@ class NotificationPreferenceRoutes(
   /**
    * Helper method to extract sessionId from Authorization header
    *
-   * IMPORTANT: This is a placeholder for session validation In production, this should:
-   *   1. Validate the sessionId exists in the session store 2. Extract the associated userId from the session 3. Verify
-   *      the session has not expired 4. Perform the ownership check (userId in session == userId in X-User-Id)
+   * Strictly parses the Authorization header to extract Bearer token. Only accepts headers in the format "Bearer
+   * <token>" where token is non-empty. Rejects any other scheme (Basic, etc.) or malformed headers.
    *
-   * Current implementation assumes Bearer tokens are valid sessionIds
+   * CRITICAL SECURITY WARNING: This method only performs basic format validation.
+   *
+   * In production, this MUST be replaced with proper session validation:
+   *   1. Look up sessionId in SessionRepository or similar persistent storage 2. Verify the session exists and hasn't
+   *      expired 3. Extract the actual userId associated with the session 4. Return None if session is invalid/expired
+   *      5. Caller must verify that the userId from session matches X-User-Id header 6. Return 403 Forbidden if userId
+   *      from session != userId in X-User-Id header
+   *
+   * WITHOUT this implementation, any bearer token value is accepted, allowing:
+   *   - Unauthorized access to read any user's preferences (by setting X-User-Id)
+   *   - Unauthorized modification of any user's preferences
+   *   - Auto-creation of default preferences for any user
    */
   private def extractSessionIdFromAuth(authHeader: String): Option[String] =
-    authHeader
-      .stripPrefix("Bearer ")
-      .trim match
-      case sessionId if sessionId.nonEmpty => Some(sessionId)
-      case _                               => None
+    authHeader.trim.split(" ", 2) match
+      case Array("Bearer", token) if token.nonEmpty => Some(token)
+      case _                                        => None

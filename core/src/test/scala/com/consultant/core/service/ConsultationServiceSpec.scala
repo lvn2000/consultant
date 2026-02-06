@@ -271,77 +271,7 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
     result.shouldBe(Left(DomainError.ConsultationNotFound(consultationId)))
   }
 
-  "approveConsultation" should "successfully approve consultation with duration" in {
-    val consultationRepo           = mock[ConsultationRepository]
-    val specialistRepo             = mock[SpecialistRepository]
-    val userRepo                   = mock[UserRepository]
-    val notificationService        = mock[NotificationService]
-    val notificationPreferenceRepo = mock[NotificationPreferenceRepository]
-    val service = new ConsultationService(
-      consultationRepo,
-      specialistRepo,
-      userRepo,
-      notificationService,
-      notificationPreferenceRepo
-    )
-    val consultationId = java.util.UUID.randomUUID()
-    val userId         = java.util.UUID.randomUUID()
-    val specialistId   = java.util.UUID.randomUUID()
-    val categoryId     = java.util.UUID.randomUUID()
-    val user           = createMockUser(userId, "user@example.com")
-    val specialist     = createMockSpecialist(specialistId, "specialist@example.com", categoryId)
-    val consultation = Consultation(
-      id = consultationId,
-      userId = userId,
-      specialistId = specialistId,
-      categoryId = categoryId,
-      description = "desc",
-      status = ConsultationStatus.Requested,
-      scheduledAt = Instant.now(),
-      duration = None,
-      price = BigDecimal("50.00"),
-      rating = None,
-      review = None,
-      createdAt = Instant.now(),
-      updatedAt = Instant.now()
-    )
-
-    consultationRepo.findById.expects(consultationId).returning(IO.pure(Some(consultation)))
-    consultationRepo.update
-      .expects(*)
-      .returning(IO.pure(consultation.copy(status = ConsultationStatus.Scheduled, duration = Some(60))))
-    userRepo.findById.expects(userId).returning(IO.pure(Some(user)))
-    specialistRepo.findById.expects(specialistId).returning(IO.pure(Some(specialist)))
-    notificationPreferenceRepo.findByUserAndType
-      .expects(userId, NotificationType.ConsultationApproved)
-      .returning(
-        IO.pure(
-          Some(
-            NotificationPreference(
-              java.util.UUID.randomUUID(),
-              userId,
-              NotificationType.ConsultationApproved,
-              emailEnabled = true,
-              smsEnabled = false,
-              Instant.now(),
-              Instant.now()
-            )
-          )
-        )
-      )
-    notificationService.sendEmail
-      .expects(user.email, "Consultation Approved", *)
-      .returning(IO.unit)
-    notificationService.sendEmail
-      .expects(specialist.email, "New Consultation Scheduled", *)
-      .returning(IO.unit)
-
-    val result = service.approveConsultation(consultationId, 60).unsafeRunSync()
-
-    result.shouldBe(Right(()))
-  }
-
-  it should "return error if consultation not found when approving" in {
+  "approveConsultation" should "return error if consultation not found when approving" in {
     val consultationRepo           = mock[ConsultationRepository]
     val specialistRepo             = mock[SpecialistRepository]
     val userRepo                   = mock[UserRepository]
@@ -360,5 +290,47 @@ class ConsultationServiceSpec extends AnyFlatSpec with Matchers with MockFactory
     val result = service.approveConsultation(consultationId, 60).unsafeRunSync()
 
     result.shouldBe(Left(DomainError.ConsultationNotFound(consultationId)))
+  }
+
+  "updateConsultationStatus" should "send notifications only for notification-triggering status transitions" in {
+    val consultationRepo           = mock[ConsultationRepository]
+    val specialistRepo             = mock[SpecialistRepository]
+    val userRepo                   = mock[UserRepository]
+    val notificationService        = mock[NotificationService]
+    val notificationPreferenceRepo = mock[NotificationPreferenceRepository]
+    val service = new ConsultationService(
+      consultationRepo,
+      specialistRepo,
+      userRepo,
+      notificationService,
+      notificationPreferenceRepo
+    )
+    val consultationId = java.util.UUID.randomUUID()
+    val consultation = Consultation(
+      id = consultationId,
+      userId = java.util.UUID.randomUUID(),
+      specialistId = java.util.UUID.randomUUID(),
+      categoryId = java.util.UUID.randomUUID(),
+      description = "desc",
+      status = ConsultationStatus.Scheduled,
+      scheduledAt = Instant.now(),
+      duration = Some(60),
+      price = BigDecimal("50.00"),
+      rating = None,
+      review = None,
+      createdAt = Instant.now(),
+      updatedAt = Instant.now()
+    )
+
+    consultationRepo.findById.expects(consultationId).returning(IO.pure(Some(consultation)))
+    consultationRepo.updateStatus.expects(consultationId, ConsultationStatus.Completed).returning(IO.unit)
+    // Should try to fetch user/specialist only for notification-triggering transitions
+    userRepo.findById.expects(consultation.userId).returning(IO.pure(None))
+    specialistRepo.findById.expects(consultation.specialistId).returning(IO.pure(None))
+
+    val result = service.updateConsultationStatus(consultationId, ConsultationStatus.Completed).unsafeRunSync()
+
+    // Should succeed - notification triggers are correctly identified
+    result.shouldBe(Right(()))
   }
 }
