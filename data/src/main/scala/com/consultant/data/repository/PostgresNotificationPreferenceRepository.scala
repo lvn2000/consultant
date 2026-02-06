@@ -32,7 +32,7 @@ class PostgresNotificationPreferenceRepository(xa: Transactor[IO]) extends Notif
   // Uses a single atomic transaction with ON CONFLICT DO NOTHING for idempotency
   override def createDefaults(userId: UserId): IO[List[NotificationPreference]] =
     val defaults = NotificationPreference.defaultPreferences(userId)
-    
+
     // Execute all inserts in a single transaction, idempotent via ON CONFLICT
     val inserts = defaults.traverse { pref =>
       sql"""
@@ -41,7 +41,7 @@ class PostgresNotificationPreferenceRepository(xa: Transactor[IO]) extends Notif
         ON CONFLICT (user_id, notification_type) DO NOTHING
       """.update.run
     }
-    
+
     inserts.transact(xa).map(_ => defaults)
 
   // Get preference for a specific notification type
@@ -78,8 +78,7 @@ class PostgresNotificationPreferenceRepository(xa: Transactor[IO]) extends Notif
       .flatMap { affectedRows =>
         if affectedRows == 0 then
           IO.raiseError(new IllegalArgumentException(s"NotificationPreference with id ${preference.id} not found"))
-        else
-          IO.pure(preference.copy(updatedAt = now))
+        else IO.pure(preference.copy(updatedAt = now))
       }
 
   // Delete all preferences for a user

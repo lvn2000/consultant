@@ -29,7 +29,7 @@ class NotificationPreferenceRoutes(
   val getUserPreferences = getUserPreferencesEndpoint.serverLogic { case (authHeader, userIdOpt) =>
     // Extract sessionId from Authorization header
     val sessionIdOpt = extractSessionIdFromAuth(authHeader)
-    
+
     (sessionIdOpt, userIdOpt) match
       case (None, _) =>
         IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing or invalid Authorization header")))
@@ -105,7 +105,7 @@ class NotificationPreferenceRoutes(
   val updatePreferenceByType = updatePreferenceByTypeEndpoint.serverLogic {
     case (notificationTypeStr, authHeader, userIdOpt, updateDto) =>
       val sessionIdOpt = extractSessionIdFromAuth(authHeader)
-      
+
       (sessionIdOpt, userIdOpt) match
         case (None, _) =>
           IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing or invalid Authorization header")))
@@ -150,25 +150,21 @@ class NotificationPreferenceRoutes(
   }
 
   val endpoints = List(
-    getUserPreferencesEndpoint,
-    updatePreferenceByTypeEndpoint
+    getUserPreferences,
+    updatePreferenceByType
   )
 
-  val routes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(
-    List(getUserPreferences, updatePreferenceByType)
-  )
+  val routes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(endpoints)
 
-  /** Helper method to extract sessionId from Authorization header
-    * 
-    * IMPORTANT: This is a placeholder for session validation
-    * In production, this should:
-    * 1. Validate the sessionId exists in the session store
-    * 2. Extract the associated userId from the session
-    * 3. Verify the session has not expired
-    * 4. Perform the ownership check (userId in session == userId in X-User-Id)
-    * 
-    * Current implementation assumes Bearer tokens are valid sessionIds
-    */
+  /**
+   * Helper method to extract sessionId from Authorization header
+   *
+   * IMPORTANT: This is a placeholder for session validation In production, this should:
+   *   1. Validate the sessionId exists in the session store 2. Extract the associated userId from the session 3. Verify
+   *      the session has not expired 4. Perform the ownership check (userId in session == userId in X-User-Id)
+   *
+   * Current implementation assumes Bearer tokens are valid sessionIds
+   */
   private def extractSessionIdFromAuth(authHeader: String): Option[String] =
     authHeader
       .stripPrefix("Bearer ")
