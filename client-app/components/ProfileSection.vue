@@ -57,16 +57,40 @@ const profileUpdating = ref(false)
 const profileUpdateMessage = ref('')
 const profileUpdateSuccess = ref(false)
 
+/**
+ * Make authenticated request with Bearer token (JWT accessToken)
+ */
+async function authenticatedFetch<T>(url: string, options?: any): Promise<T> {
+  const accessToken = sessionStorage.getItem('accessToken')
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...options?.headers
+  }
+
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`
+  }
+
+  console.log(`[ProfileSection] ${options?.method || 'GET'} ${url}`)
+  return $fetch<T>(url, {
+    ...options,
+    headers
+  })
+}
+
 const loadProfile = async () => {
   profileLoading.value = true
   profileError.value = ''
   try {
     const userId = sessionStorage.getItem('userId')
+    console.log('ProfileSection - userId from sessionStorage:', userId)
     if (!userId) {
       profileError.value = 'User ID not found'
+      console.warn('ProfileSection - No userId found in sessionStorage')
       return
     }
-    const user = await $fetch(`${config.public.apiBase}/users/${userId}`)
+    const user = await authenticatedFetch(`${config.public.apiBase}/users/${userId}`)
     profileForm.value = {
       name: user.name || '',
       email: user.email || '',
@@ -91,7 +115,7 @@ const updateProfile = async () => {
       return
     }
     
-    await $fetch(`${config.public.apiBase}/users/${userId}`, {
+    await authenticatedFetch(`${config.public.apiBase}/users/${userId}`, {
       method: 'PUT',
       body: {
         name: profileForm.value.name,

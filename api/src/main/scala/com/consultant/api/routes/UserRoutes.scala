@@ -6,13 +6,14 @@ import sttp.tapir.json.circe.*
 import sttp.tapir.generic.auto.*
 import com.consultant.api.dto.*
 import com.consultant.core.service.UserService
+import com.consultant.infrastructure.security.JwtTokenService
 import com.consultant.api.DtoMappers.*
 import java.util.UUID
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 import org.http4s.HttpRoutes
 import com.consultant.api.codec.SecurityCodecs.given
 
-class UserRoutes(userService: UserService):
+class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] = None):
 
   private val baseEndpoint = endpoint
 
@@ -80,18 +81,38 @@ class UserRoutes(userService: UserService):
     .errorOut(jsonBody[ErrorResponse])
 
   val login = loginEndpoint.serverLogic { dto =>
-    userService.login(dto.login, dto.password, "0.0.0.0", "unknown").map {
+    userService.login(dto.login, dto.password, "0.0.0.0", "unknown").flatMap {
       case Right(result) =>
-        Right(
-          LoginResponseDto(
-            result.user.id.toString,
-            result.user.login,
-            result.user.email,
-            result.user.role.toString,
-            result.session.sessionId
-          )
-        )
-      case Left(error) => Left(toErrorResponse(error))
+        // Generate JWT access token if jwtService is available
+        jwtService match
+          case Some(service) =>
+            service.generateAccessToken(result.user.id, result.user.role, result.user.email).map { authToken =>
+              Right(
+                LoginResponseDto(
+                  result.user.id.toString,
+                  result.user.login,
+                  result.user.email,
+                  result.user.role.toString,
+                  result.session.sessionId,
+                  Some(authToken.token)
+                )
+              )
+            }
+          case None =>
+            IO.pure(
+              Right(
+                LoginResponseDto(
+                  result.user.id.toString,
+                  result.user.login,
+                  result.user.email,
+                  result.user.role.toString,
+                  result.session.sessionId,
+                  None
+                )
+              )
+            )
+
+      case Left(error) => IO.pure(Left(toErrorResponse(error)))
     }
   }
 

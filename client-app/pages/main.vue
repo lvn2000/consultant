@@ -161,11 +161,20 @@ const loadConsultations = async () => {
   consultationsError.value = ''
   try {
     const userId = sessionStorage.getItem('userId')
+    const accessToken = sessionStorage.getItem('accessToken')
     if (!userId) {
       consultationsError.value = 'User ID not found'
       return
     }
-    const data = await $fetch(`${config.public.apiBase}/consultations/user/${userId}`)
+    if (!accessToken) {
+      consultationsError.value = 'Authentication token not found - please log in again'
+      return
+    }
+    const data = await $fetch(`${config.public.apiBase}/consultations/user/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    })
     consultations.value = data
     consultationPagination.value.totalCount = data.length
     consultationPagination.value.totalPages = Math.ceil(data.length / consultationPagination.value.pageSize)
@@ -195,20 +204,26 @@ const goToPage = (page: number) => {
 }
 
 const logout = async () => {
-  const sessionId = sessionStorage.getItem('sessionId')
+  const accessToken = sessionStorage.getItem('accessToken')
 
   try {
-    if (sessionId) {
-      await $fetch(`${config.public.apiBase}/users/logout`, {
+    if (accessToken) {
+      await $fetch(`${config.public.apiBase}/auth/logout`, {
         method: 'POST',
-        body: { sessionId },
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
       })
     }
   } finally {
-    sessionStorage.removeItem('sessionId')
+    // Clear all stored credentials
+    sessionStorage.removeItem('accessToken')
+    sessionStorage.removeItem('refreshToken')
+    sessionStorage.removeItem('expiresAt')
     sessionStorage.removeItem('userId')
     sessionStorage.removeItem('login')
     sessionStorage.removeItem('email')
+    sessionStorage.removeItem('name')
     sessionStorage.removeItem('role')
     localStorage.removeItem('client_session')
     router.push('/login')
