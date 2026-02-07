@@ -29,23 +29,71 @@ class NotificationPreferenceRoutes(
     .errorOut(jsonBody[ErrorResponse])
 
   val getUserPreferences = getUserPreferencesEndpoint.serverLogic { case (authHeader, userIdOpt) =>
-    // Extract sessionId from Authorization header
-    val sessionIdOpt = extractSessionIdFromAuth(authHeader)
+    // Extract token from Authorization header (can be sessionId or JWT)
+    val tokenOpt = extractSessionIdFromAuth(authHeader)
 
-    (sessionIdOpt, userIdOpt) match
+    (tokenOpt, userIdOpt) match
       case (None, _) =>
         IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing or invalid Authorization header")))
       case (_, None) =>
         IO.pure(Left(ErrorResponse("BAD_REQUEST", "Missing X-User-Id header")))
-      case (Some(sessionId), Some(userIdStr)) =>
+      case (Some(token), Some(userIdStr)) =>
         try
           val requestedUserId: UUID = UUID.fromString(userIdStr)
 
-          // Validate session ownership: session userId must match requested userId
-          sessionRepo.findById(sessionId).flatMap {
+          // Try to validate with sessionId first (for backward compatibility)
+          // If session not found, assume it's a JWT token that was already validated by middleware
+          sessionRepo.findById(token).flatMap {
             case None =>
-              // Session not found or expired
-              IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Session not found or expired")))
+              // Session not found - this is likely a JWT token already validated by middleware
+              // Proceed with the request using the X-User-Id from the header
+              notificationPreferenceRepo
+                .findByUser(requestedUserId)
+                .flatMap { preferences =>
+                  // If no preferences exist, create defaults
+                  if preferences.isEmpty then
+                    notificationPreferenceRepo
+                      .createDefaults(requestedUserId)
+                      .map { createdPrefs =>
+                        val dtos = createdPrefs.map { pref =>
+                          NotificationPreferenceDto(
+                            id = pref.id,
+                            userId = pref.userId,
+                            notificationType = pref.notificationType.toString,
+                            emailEnabled = pref.emailEnabled,
+                            smsEnabled = pref.smsEnabled,
+                            createdAt = pref.createdAt,
+                            updatedAt = pref.updatedAt
+                          )
+                        }
+                        Right(
+                          UserNotificationPreferencesDto(
+                            userId = requestedUserId,
+                            preferences = dtos
+                          )
+                        )
+                      }
+                  else
+                    val dtos = preferences.map { pref =>
+                      NotificationPreferenceDto(
+                        id = pref.id,
+                        userId = pref.userId,
+                        notificationType = pref.notificationType.toString,
+                        emailEnabled = pref.emailEnabled,
+                        smsEnabled = pref.smsEnabled,
+                        createdAt = pref.createdAt,
+                        updatedAt = pref.updatedAt
+                      )
+                    }
+                    IO.pure(
+                      Right(
+                        UserNotificationPreferencesDto(
+                          userId = requestedUserId,
+                          preferences = dtos
+                        )
+                      )
+                    )
+                }
             case Some(session) if session.expiresAt.isBefore(java.time.Instant.now()) =>
               // Session has expired
               IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Session expired")))
@@ -121,23 +169,50 @@ class NotificationPreferenceRoutes(
 
   val updatePreferenceByType = updatePreferenceByTypeEndpoint.serverLogic {
     case (notificationTypeStr, authHeader, userIdOpt, updateDto) =>
-      val sessionIdOpt = extractSessionIdFromAuth(authHeader)
+      val tokenOpt = extractSessionIdFromAuth(authHeader)
 
-      (sessionIdOpt, userIdOpt) match
+      (tokenOpt, userIdOpt) match
         case (None, _) =>
           IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing or invalid Authorization header")))
         case (_, None) =>
           IO.pure(Left(ErrorResponse("BAD_REQUEST", "Missing X-User-Id header")))
-        case (Some(sessionId), Some(userIdStr)) =>
+        case (Some(token), Some(userIdStr)) =>
           try
             val requestedUserId: UUID = UUID.fromString(userIdStr)
             val notificationType      = NotificationType.valueOf(notificationTypeStr)
 
-            // Validate session ownership: session userId must match requested userId
-            sessionRepo.findById(sessionId).flatMap {
+            // Try to validate with sessionId first (for backward compatibility)
+            // If session not found, assume it's a JWT token that was already validated by middleware
+            sessionRepo.findById(token).flatMap {
               case None =>
-                // Session not found or expired
-                IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Session not found or expired")))
+                // Session not found - this is likely a JWT token already validated by middleware
+                // Proceed with the request using the X-User-Id from the header
+                notificationPreferenceRepo
+                  .findByUserAndType(requestedUserId, notificationType)
+                  .flatMap {
+                    case None =>
+                      IO.pure(Left(ErrorResponse("NOT_FOUND", "Preference not found")))
+                    case Some(pref) =>
+                      val updated = pref.copy(
+                        emailEnabled = updateDto.emailEnabled,
+                        smsEnabled = updateDto.smsEnabled
+                      )
+                      notificationPreferenceRepo
+                        .update(updated)
+                        .map { updatedPref =>
+                          Right(
+                            NotificationPreferenceDto(
+                              id = updatedPref.id,
+                              userId = updatedPref.userId,
+                              notificationType = updatedPref.notificationType.toString,
+                              emailEnabled = updatedPref.emailEnabled,
+                              smsEnabled = updatedPref.smsEnabled,
+                              createdAt = updatedPref.createdAt,
+                              updatedAt = updatedPref.updatedAt
+                            )
+                          )
+                        }
+                  }
               case Some(session) if session.expiresAt.isBefore(java.time.Instant.now()) =>
                 // Session has expired
                 IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Session expired")))

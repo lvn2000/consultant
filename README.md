@@ -125,6 +125,7 @@ The system includes default test credentials for development and testing purpose
 
 | Account | Email | Password | Role | Phone |
 |---------|-------|----------|------|-------|
+| **Admin** | admin@admin.com | admin | Admin | N/A |
 | **User** | user@example.com | user | Client | +1234567890 |
 | **Specialist** | spec@example.com | spec | Specialist | +9876543210 |
 

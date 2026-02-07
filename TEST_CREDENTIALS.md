@@ -1,10 +1,28 @@
 # Test Credentials
 
-This document contains the default test credentials loaded during database migration (V004).
+This document contains the default test credentials loaded during database migrations.
+
+## Prerequisites
+
+Before using these credentials, ensure the backend is configured with the correct database connection:
+
+```bash
+# Database credentials in .env file:
+DB_USER=consultant
+DB_PASSWORD=bW1g55n9
+DB_URL=jdbc:postgresql://localhost:5432/consultant_db
+```
 
 ## Test Accounts
 
-### 1. Test User (Client)
+### 1. Test Admin
+- **Email:** `admin@admin.com`
+- **Password:** `admin`
+- **Role:** Admin
+- **Name:** Administrator
+- **User ID:** `99999999-9999-9999-9999-999999999999`
+
+### 2. Test User (Client)
 - **Email:** `user@example.com`
 - **Password:** `user`
 - **Role:** Client
@@ -12,7 +30,7 @@ This document contains the default test credentials loaded during database migra
 - **Phone:** +1234567890
 - **User ID:** `11111111-1111-1111-1111-111111111111`
 
-### 2. Test Specialist
+### 3. Test Specialist
 - **Email:** `spec@example.com`
 - **Password:** `spec`
 - **Role:** Specialist
@@ -26,13 +44,13 @@ This document contains the default test credentials loaded during database migra
 
 ## Database Migration
 
-These credentials are created by the V004 migration script:
+These credentials are created by the database migration scripts:
 ```
-V004__initial_test_data.sql
+V005__initial_test_data.sql
 ```
 
 The migration:
-1. Creates the test user and specialist user accounts
+1. Creates the admin, test user, and specialist user accounts
 2. Inserts bcrypt-hashed passwords into the credentials table
 3. Creates the specialist profile record
 4. Adds a connection type (WhatsApp) for the specialist
@@ -41,8 +59,9 @@ The migration:
 ## Password Hashes
 
 The passwords are stored using bcrypt hashing:
-- `user` → `$2a$10$N9qo8uLOickgx2ZMRZoMye.mw5qMRH.6V6tz8tNl0VTXTlCLBW3Se`
-- `spec` → `$2a$10$QUghbfJsJpd6H/9xjZyO9eG7wZWEGN7fN4Vl5OZ8Z.1W4QxKzL9ey`
+- `admin` → `$2a$10$OQnLnzqlG4ulnNKTz3MQZOz8YzuugeWGaGTMJhQkcSxtYlaUrMKrq`
+- `user` → `$2a$10$l1GeFWm4m1cZTuVIoEuRQObiF7hX1muH6/CSELnpmSoQ/sRSIxadi`
+- `spec` → `$2a$06$1dB6e0xAh4TG/CQk3CjcH.o5ktrQTQLUng6sDGyMveq5148SodjLe`
 
 ## Removing Test Data
 
@@ -51,8 +70,8 @@ To remove the test data in development:
 DELETE FROM specialist_connections WHERE specialist_id = '22222222-2222-2222-2222-222222222222'::uuid;
 DELETE FROM specialist_categories WHERE specialist_id = '22222222-2222-2222-2222-222222222222'::uuid;
 DELETE FROM specialists WHERE id = '22222222-2222-2222-2222-222222222222'::uuid;
-DELETE FROM credentials WHERE email IN ('user@example.com', 'spec@example.com');
-DELETE FROM users WHERE id IN ('11111111-1111-1111-1111-111111111111'::uuid, '22222222-2222-2222-2222-222222222222'::uuid);
+DELETE FROM credentials WHERE email IN ('admin@admin.com', 'user@example.com', 'spec@example.com');
+DELETE FROM users WHERE id IN ('99999999-9999-9999-9999-999999999999'::uuid, '11111111-1111-1111-1111-111111111111'::uuid, '22222222-2222-2222-2222-222222222222'::uuid);
 ```
 
 ## Security Note

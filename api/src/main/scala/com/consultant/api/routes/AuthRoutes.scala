@@ -4,6 +4,8 @@ import cats.effect.IO
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
 import sttp.tapir.generic.auto.*
+import sttp.tapir.server.http4s.Http4sServerInterpreter
+import org.http4s.HttpRoutes
 import com.consultant.api.dto.ErrorResponse
 import com.consultant.infrastructure.security.AuthenticationService
 import com.consultant.core.domain.security.UserRole
@@ -201,9 +203,11 @@ class AuthRoutes(authService: AuthenticationService, legacyAuthEnabled: Boolean)
     }
   }
 
-  val routes = List(
+  val endpoints = List(
     registerRoute,
     loginRoute,
     refreshRoute,
     logoutRoute
   )
+
+  val routes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(endpoints)

@@ -36,6 +36,7 @@ object Server extends IOApp:
       case (
             config,
             tokenVerifier,
+            jwtService,
             userService,
             specialistService,
             consultationService,
@@ -45,7 +46,7 @@ object Server extends IOApp:
             notificationPreferenceRepository,
             sessionRepository
           ) =>
-        val userRoutes         = UserRoutes(userService)
+        val userRoutes         = UserRoutes(userService, Some(jwtService))
         val specialistRoutes   = SpecialistRoutes(specialistService)
         val consultationRoutes = ConsultationRoutes(consultationService)
         val categoryRoutes     = CategoryRoutes(categoryService)
@@ -84,14 +85,20 @@ object Server extends IOApp:
           val path   = req.uri.path.renderString
           val method = req.method
 
+          // Note: Router strips path prefixes, so we check relative paths within the routed handlers
           method == Method.OPTIONS ||
           path == "/" ||
           path.startsWith("/docs") ||
           path.startsWith("/health") ||
           path.startsWith("/auth") ||
+          // Absolute paths
           path == "/api/users/register" ||
           path == "/api/users/login" ||
-          path == "/api/users/logout"
+          path == "/api/users/logout" ||
+          // Relative paths after routing through /api/users
+          path == "/register" ||
+          path == "/login" ||
+          path == "/logout"
         }
 
         val protectedApiRoutes = TokenAuthMiddleware.protect(tokenVerifier, isPublic)(apiRoutes)
@@ -123,6 +130,7 @@ object Server extends IOApp:
     (
       AppConfig,
       TokenVerifier,
+      JwtTokenService,
       UserService,
       SpecialistService,
       ConsultationService,
@@ -188,6 +196,7 @@ object Server extends IOApp:
     yield (
       config,
       tokenVerifier,
+      jwtService,
       userService,
       specialistService,
       consultationService,
