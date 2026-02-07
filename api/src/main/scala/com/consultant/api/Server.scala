@@ -34,16 +34,16 @@ object Server extends IOApp:
   def run(args: List[String]): IO[ExitCode] =
     resources.use {
       case (
-        config,
-        tokenVerifier,
-        userService,
-        specialistService,
-        consultationService,
-        categoryService,
-        connectionService,
-        availabilityRepository,
-        notificationPreferenceRepository,
-        sessionRepository
+            config,
+            tokenVerifier,
+            userService,
+            specialistService,
+            consultationService,
+            categoryService,
+            connectionService,
+            availabilityRepository,
+            notificationPreferenceRepository,
+            sessionRepository
           ) =>
         val userRoutes         = UserRoutes(userService)
         val specialistRoutes   = SpecialistRoutes(specialistService)
@@ -203,12 +203,8 @@ object Server extends IOApp:
       val oidcVerifier   = new OidcTokenVerifier(config.oidc)
       val legacyVerifier = new LegacyJwtTokenVerifier(jwtService)
 
-      if config.oidc.enabled && config.legacyAuthEnabled then
-        CompositeTokenVerifier(Some(oidcVerifier), legacyVerifier)
-      else if config.oidc.enabled then
-        oidcVerifier
-      else if config.legacyAuthEnabled then
-        legacyVerifier
-      else
-        throw new RuntimeException("Both OIDC and legacy auth are disabled")
+      if config.oidc.enabled && config.legacyAuthEnabled then CompositeTokenVerifier(Some(oidcVerifier), legacyVerifier)
+      else if config.oidc.enabled then oidcVerifier
+      else if config.legacyAuthEnabled then legacyVerifier
+      else throw new RuntimeException("Both OIDC and legacy auth are disabled")
     }

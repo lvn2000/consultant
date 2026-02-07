@@ -161,17 +161,16 @@ object AppConfig:
 
     val legacyAuthEnabled = env("LEGACY_AUTH_ENABLED").as[Boolean].default(true)
 
-    (baseConfig, oidcConfig, jwtConfig, legacyAuthEnabled).parMapN {
-      (base, oidc, jwt, legacy) =>
-        AppConfig(
-          base.server,
-          base.database,
-          base.aws,
-          base.storage,
-          oidc,
-          jwt,
-          legacyAuthEnabled = legacy
-        )
+    (baseConfig, oidcConfig, jwtConfig, legacyAuthEnabled).parMapN { (base, oidc, jwt, legacy) =>
+      AppConfig(
+        base.server,
+        base.database,
+        base.aws,
+        base.storage,
+        oidc,
+        jwt,
+        legacyAuthEnabled = legacy
+      )
     }.load[IO]
 
   private def parseDuration(value: String, name: String): FiniteDuration =

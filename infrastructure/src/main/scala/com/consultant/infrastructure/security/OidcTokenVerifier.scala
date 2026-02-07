@@ -24,16 +24,17 @@ class OidcTokenVerifier(config: OidcConfig) extends TokenVerifier:
     if !config.enabled then IO.pure(Left("OIDC verification is disabled"))
     else
       (for
-        issuer <- IO.fromOption(config.issuer)(new RuntimeException("OIDC issuer is not configured"))
-        jwksUri <- IO.fromOption(config.jwksUri)(new RuntimeException("OIDC JWKS URI is not configured"))
+        issuer    <- IO.fromOption(config.issuer)(new RuntimeException("OIDC issuer is not configured"))
+        jwksUri   <- IO.fromOption(config.jwksUri)(new RuntimeException("OIDC JWKS URI is not configured"))
         signedJwt <- IO(SignedJWT.parse(token))
-        _ <- validateAlg(signedJwt.getHeader)
-        jwks <- getJwks(jwksUri)
+        _         <- validateAlg(signedJwt.getHeader)
+        jwks      <- getJwks(jwksUri)
         jwk <- IO.fromOption(selectJwk(jwks, signedJwt.getHeader))(
-          new RuntimeException("No suitable JWK found for token"))
-        _ <- verifySignature(signedJwt, jwk)
-        claims <- IO(signedJwt.getJWTClaimsSet)
-        _ <- validateClaims(issuer, claims)
+          new RuntimeException("No suitable JWK found for token")
+        )
+        _         <- verifySignature(signedJwt, jwk)
+        claims    <- IO(signedJwt.getJWTClaimsSet)
+        _         <- validateClaims(issuer, claims)
         authToken <- IO.fromEither(buildAuthToken(token, claims).leftMap(new RuntimeException(_)))
       yield authToken).attempt.map {
         case Right(authToken) => Right(authToken)
@@ -42,15 +43,14 @@ class OidcTokenVerifier(config: OidcConfig) extends TokenVerifier:
 
   private def validateAlg(header: JWSHeader): IO[Unit] =
     IO {
-      val alg = header.getAlgorithm
+      val alg     = header.getAlgorithm
       val algName = Option(alg).map(_.getName).getOrElse("")
-      if !config.allowedAlgs.contains(algName) then
-        throw new RuntimeException(s"Disallowed JWT alg: $algName")
+      if !config.allowedAlgs.contains(algName) then throw new RuntimeException(s"Disallowed JWT alg: $algName")
     }
 
   private def getJwks(jwksUri: String): IO[JWKSet] =
     for
-      now <- IO(Instant.now())
+      now    <- IO(Instant.now())
       cached <- IO(Option(jwksCache.get()).flatten)
       jwks <- cached match
         case Some((cachedAt, jwks)) if !isCacheExpired(cachedAt, now) => IO.pure(jwks)
@@ -65,7 +65,8 @@ class OidcTokenVerifier(config: OidcConfig) extends TokenVerifier:
 
   private def fetchJwks(jwksUri: String): IO[JWKSet] =
     IO.blocking {
-      val request = HttpRequest.newBuilder()
+      val request = HttpRequest
+        .newBuilder()
         .uri(URI.create(jwksUri))
         .GET()
         .build()
@@ -83,7 +84,7 @@ class OidcTokenVerifier(config: OidcConfig) extends TokenVerifier:
     kid.flatMap(id => Option(jwkSet.getKeyByKeyId(id))).orElse {
       keys.find { key =>
         val keyUseOk = Option(key.getKeyUse).contains(KeyUse.SIGNATURE) || key.getKeyUse == null
-        val algOk = alg.forall(a => Option(key.getAlgorithm).exists(_.getName == a))
+        val algOk    = alg.forall(a => Option(key.getAlgorithm).exists(_.getName == a))
         keyUseOk && algOk
       }
     }
@@ -96,38 +97,32 @@ class OidcTokenVerifier(config: OidcConfig) extends TokenVerifier:
         case other       => throw new RuntimeException(s"Unsupported JWK key type: ${other.getValue}")
 
       val verifier = new DefaultJWSVerifierFactory().createJWSVerifier(signedJwt.getHeader, key)
-      if !signedJwt.verify(verifier) then
-        throw new BadJWSException("Invalid JWT signature")
+      if !signedJwt.verify(verifier) then throw new BadJWSException("Invalid JWT signature")
     }
 
   private def validateClaims(issuer: String, claims: com.nimbusds.jwt.JWTClaimsSet): IO[Unit] =
     IO {
-      if claims.getIssuer != issuer then
-        throw new RuntimeException("Invalid token issuer")
+      if claims.getIssuer != issuer then throw new RuntimeException("Invalid token issuer")
 
       config.audience.foreach { aud =>
         val audiences = Option(claims.getAudience).map(_.asScala.toSet).getOrElse(Set.empty)
-        if !audiences.contains(aud) then
-          throw new RuntimeException("Invalid token audience")
+        if !audiences.contains(aud) then throw new RuntimeException("Invalid token audience")
       }
 
       val now = Instant.now().getEpochSecond
       val exp = Option(claims.getExpirationTime).map(_.toInstant.getEpochSecond)
       val nbf = Option(claims.getNotBeforeTime).map(_.toInstant.getEpochSecond)
 
-      if exp.forall(_ <= now) then
-        throw new RuntimeException("Token expired")
+      if exp.forall(_ <= now) then throw new RuntimeException("Token expired")
 
-      if nbf.exists(_ > now) then
-        throw new RuntimeException("Token not active yet")
+      if nbf.exists(_ > now) then throw new RuntimeException("Token not active yet")
     }
 
   private def buildAuthToken(token: String, claims: com.nimbusds.jwt.JWTClaimsSet): Either[String, AuthToken] =
     val subject = Option(claims.getSubject).getOrElse("")
     val userId =
       try Right(UUID.fromString(subject))
-      catch
-        case _: IllegalArgumentException => Left("Token subject is not a valid UUID")
+      catch case _: IllegalArgumentException => Left("Token subject is not a valid UUID")
 
     val role = extractRole(claims)
     val expiresAt = Option(claims.getExpirationTime)
@@ -156,7 +151,7 @@ class OidcTokenVerifier(config: OidcConfig) extends TokenVerifier:
       .getOrElse(Set.empty)
 
   private def rolesFromResourceAccess(claims: com.nimbusds.jwt.JWTClaimsSet): Set[String] =
-    val audienceKey = config.audience
+    val audienceKey    = config.audience
     val resourceAccess = Option(claims.getJSONObjectClaim("resource_access"))
     (resourceAccess, audienceKey) match
       case (Some(map), Some(aud)) =>

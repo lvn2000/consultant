@@ -15,8 +15,7 @@ object TokenAuthMiddleware:
     isPublic: Request[IO] => Boolean
   ): HttpRoutes[IO] => HttpRoutes[IO] = { routes =>
     Kleisli { req =>
-      if isPublic(req) then
-        routes(req)
+      if isPublic(req) then routes(req)
       else
         extractBearerToken(req) match
           case Some(token) =>
