@@ -5,12 +5,12 @@ import cats.data.{ Kleisli, OptionT }
 import org.http4s.{ AuthedRoutes, Request, Response, Status }
 import org.http4s.server.AuthMiddleware
 import com.consultant.core.domain.security.{ AuthToken, UserRole }
-import com.consultant.infrastructure.security.JwtTokenService
+import com.consultant.infrastructure.security.TokenVerifier
 import org.http4s.headers.Authorization
 import org.http4s.Credentials
 
 /** Middleware for request authentication */
-class AuthenticationMiddleware(jwtService: JwtTokenService):
+class AuthenticationMiddleware(tokenVerifier: TokenVerifier):
 
   /** Extracts and validates JWT token from header */
   private val authUser: Kleisli[IO, Request[IO], Either[String, AuthToken]] =
@@ -24,7 +24,7 @@ class AuthenticationMiddleware(jwtService: JwtTokenService):
 
       tokenEither match
         case Some(token) if token.nonEmpty =>
-          jwtService.validateToken(token)
+          tokenVerifier.verify(token)
         case _ =>
           IO.pure(Left("No authorization token provided"))
     }

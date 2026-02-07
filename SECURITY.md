@@ -6,9 +6,40 @@
 
 #### JWT Tokens
 
+- **Dual mode during migration**: OIDC (RS256/JWKS) + legacy JWT (HS512)
 - **Access Token**: JWT with 15-minute TTL, used for API requests
-- **Refresh Token**: UUID with 7-day TTL, stored in DB for session renewal
-- **Algorithm**: HS512 (HMAC with SHA-512)
+- **Refresh Token**: UUID with 7-day TTL, stored in DB for session renewal (legacy)
+- **Algorithm**: OIDC RS256 (preferred), legacy HS512 (temporary)
+
+#### OIDC Configuration (Keycloak)
+
+Environment variables:
+
+```
+OIDC_ENABLED=true
+OIDC_ISSUER=https://auth.example.com/realms/consultant
+OIDC_JWKS_URI=https://auth.example.com/realms/consultant/protocol/openid-connect/certs
+OIDC_AUDIENCE=consultant-web
+OIDC_ALLOWED_ALGS=RS256
+OIDC_JWKS_CACHE_SECONDS=600
+LEGACY_AUTH_ENABLED=true
+JWT_SECRET=dev-jwt-secret-change-in-production
+JWT_ISSUER=consultant-api
+JWT_ACCESS_TTL=15m
+JWT_REFRESH_TTL=7d
+```
+
+Middleware setup (dual mode example):
+
+```scala
+import com.consultant.infrastructure.security.*
+
+val legacyVerifier = LegacyJwtTokenVerifier(jwtService)
+val oidcVerifier   = new OidcTokenVerifier(config.oidc)
+val tokenVerifier  = CompositeTokenVerifier(Some(oidcVerifier), legacyVerifier)
+
+val authMiddleware = AuthenticationMiddleware(tokenVerifier)
+```
 
 #### Password Security
 
@@ -192,16 +223,16 @@ WHERE expires_at < NOW();
 ### Public (no authentication)
 
 ```
-POST /auth/register     - Registration
-POST /auth/login        - Login
-POST /auth/refresh      - Token refresh
+POST /auth/register     - Registration (legacy)
+POST /auth/login        - Login (legacy)
+POST /auth/refresh      - Token refresh (legacy)
 GET  /health           - Health check
 ```
 
 ### Protected (JWT required)
 
 ```
-POST /auth/logout       - Logout
+POST /auth/logout       - Logout (legacy)
 GET  /api/users         - List users (Admin)
 POST /api/users         - Create user (Admin)
 GET  /api/specialists   - List specialists (All)
@@ -356,6 +387,7 @@ SESSION_SECRET=<session-secret>
 ```scala
 libraryDependencies ++= Seq(
   "com.github.jwt-scala" %% "jwt-circe" % "9.4.5",
+  "com.nimbusds" % "nimbus-jose-jwt" % "9.37.3",
   "org.bouncycastle" % "bcprov-jdk18on" % "1.77"
 )
 ```
@@ -364,22 +396,16 @@ libraryDependencies ++= Seq(
 
 ```scala
 // Create security services
-val passwordService = new PasswordHashingService()
 val jwtService = new JwtTokenService(
-  secretKey = config.jwtSecret,
-  issuer = config.jwtIssuer
+  secretKey = config.jwt.secret,
+  issuer = config.jwt.issuer,
+  accessTokenTTL = config.jwt.accessTtl,
+  refreshTokenTTL = config.jwt.refreshTtl
 )
-val authService = new AuthenticationService(
-  userRepo, credentialsRepo, refreshTokenRepo, 
-  auditRepo, passwordService, jwtService
-)
+val tokenVerifier = buildTokenVerifier(config, jwtService)
 
-// Add auth routes
-val authRoutes = new AuthRoutes(authService)
-val allRoutes = authRoutes.routes ++ userRoutes.routes ++ ...
-
-// Add authentication middleware
-val authMiddleware = new AuthenticationMiddleware(jwtService)
+// Protect routes
+val protectedApiRoutes = TokenAuthMiddleware.protect(tokenVerifier, isPublic)(apiRoutes)
 ```
 
 Complete security documentation ready! 🔒

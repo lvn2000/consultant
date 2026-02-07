@@ -105,6 +105,8 @@ lazy val infrastructure = (project in file("infrastructure"))
       "dev.profunktor" %% "redis4cats-streams" % redis4catsVersion,
       // JWT for authentication
       "com.github.jwt-scala" %% "jwt-circe" % jwtVersion,
+      // OIDC/JWKS verification
+      "com.nimbusds" % "nimbus-jose-jwt" % "9.37.3",
       // BCrypt for password hashing (through BouncyCastle)
       "org.bouncycastle" % "bcprov-jdk18on" % bcryptVersion,
       // jBCrypt for password checking

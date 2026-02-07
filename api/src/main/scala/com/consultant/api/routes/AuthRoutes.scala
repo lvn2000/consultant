@@ -12,7 +12,7 @@ import java.time.Instant
 import java.util.UUID
 
 /** Authentication and authorization endpoints */
-class AuthRoutes(authService: AuthenticationService):
+class AuthRoutes(authService: AuthenticationService, legacyAuthEnabled: Boolean):
 
   // DTOs
   case class RegisterDto(
@@ -64,7 +64,12 @@ class AuthRoutes(authService: AuthenticationService):
     .out(jsonBody[AuthResponseDto])
     .description("Register a new user")
 
+  private def legacyGuard[A](action: => IO[Either[ErrorResponse, A]]): IO[Either[ErrorResponse, A]] =
+    if legacyAuthEnabled then action
+    else IO.pure(Left(ErrorResponse("LEGACY_AUTH_DISABLED", "Legacy auth endpoints are disabled")))
+
   def registerRoute = registerEndpoint.serverLogic { dto =>
+    legacyGuard {
     val role = dto.role.toLowerCase match
       case "specialist" => UserRole.Specialist
       case "admin"      => UserRole.Admin
@@ -109,6 +114,7 @@ class AuthRoutes(authService: AuthenticationService):
       case Left(error) =>
         IO.pure(Left(ErrorResponse("REGISTRATION_ERROR", error)))
     }
+    }
   }
 
   // POST /auth/login - Login
@@ -119,29 +125,31 @@ class AuthRoutes(authService: AuthenticationService):
     .description("Login with credentials")
 
   def loginRoute = loginEndpoint.serverLogic { dto =>
-    val request = AuthenticationService.LoginRequest(
-      login = dto.login,
-      password = dto.password,
-      ipAddress = "0.0.0.0", // TODO: extract from request
-      userAgent = "unknown"
-    )
+    legacyGuard {
+      val request = AuthenticationService.LoginRequest(
+        login = dto.login,
+        password = dto.password,
+        ipAddress = "0.0.0.0", // TODO: extract from request
+        userAgent = "unknown"
+      )
 
-    authService.login(request).map {
-      case Right(response) =>
-        Right(
-          AuthResponseDto(
-            accessToken = response.accessToken,
-            refreshToken = response.refreshToken,
-            expiresAt = response.expiresAt,
-            userId = response.user.id,
-            login = response.user.login,
-            email = response.user.email,
-            name = response.user.name,
-            role = response.user.role.toString
+      authService.login(request).map {
+        case Right(response) =>
+          Right(
+            AuthResponseDto(
+              accessToken = response.accessToken,
+              refreshToken = response.refreshToken,
+              expiresAt = response.expiresAt,
+              userId = response.user.id,
+              login = response.user.login,
+              email = response.user.email,
+              name = response.user.name,
+              role = response.user.role.toString
+            )
           )
-        )
-      case Left(error) =>
-        Left(ErrorResponse("LOGIN_ERROR", error))
+        case Left(error) =>
+          Left(ErrorResponse("LOGIN_ERROR", error))
+      }
     }
   }
 
@@ -153,22 +161,24 @@ class AuthRoutes(authService: AuthenticationService):
     .description("Refresh access token")
 
   def refreshRoute = refreshEndpoint.serverLogic { dto =>
-    authService.refreshAccessToken(dto.refreshToken).map {
-      case Right(response) =>
-        Right(
-          AuthResponseDto(
-            accessToken = response.accessToken,
-            refreshToken = response.refreshToken,
-            expiresAt = response.expiresAt,
-            userId = response.user.id,
-            login = response.user.login,
-            email = response.user.email,
-            name = response.user.name,
-            role = response.user.role.toString
+    legacyGuard {
+      authService.refreshAccessToken(dto.refreshToken).map {
+        case Right(response) =>
+          Right(
+            AuthResponseDto(
+              accessToken = response.accessToken,
+              refreshToken = response.refreshToken,
+              expiresAt = response.expiresAt,
+              userId = response.user.id,
+              login = response.user.login,
+              email = response.user.email,
+              name = response.user.name,
+              role = response.user.role.toString
+            )
           )
-        )
-      case Left(error) =>
-        Left(ErrorResponse("REFRESH_ERROR", error))
+        case Left(error) =>
+          Left(ErrorResponse("REFRESH_ERROR", error))
+      }
     }
   }
 
@@ -180,12 +190,14 @@ class AuthRoutes(authService: AuthenticationService):
     .description("Logout (invalidate refresh token)")
 
   def logoutRoute = logoutEndpoint.serverLogic { dto =>
-    // TODO: extract userId from JWT access token
-    val userId = UUID.randomUUID() // Placeholder
+    legacyGuard {
+      // TODO: extract userId from JWT access token
+      val userId = UUID.randomUUID() // Placeholder
 
-    authService.logout(dto.refreshToken, userId, "0.0.0.0", "unknown").map { success =>
-      if success then Right("Logged out successfully")
-      else Left(ErrorResponse("LOGOUT_ERROR", "Failed to logout"))
+      authService.logout(dto.refreshToken, userId, "0.0.0.0", "unknown").map { success =>
+        if success then Right("Logged out successfully")
+        else Left(ErrorResponse("LOGOUT_ERROR", "Failed to logout"))
+      }
     }
   }
 
