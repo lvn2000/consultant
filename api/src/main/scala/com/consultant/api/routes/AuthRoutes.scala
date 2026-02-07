@@ -70,50 +70,50 @@ class AuthRoutes(authService: AuthenticationService, legacyAuthEnabled: Boolean)
 
   def registerRoute = registerEndpoint.serverLogic { dto =>
     legacyGuard {
-    val role = dto.role.toLowerCase match
-      case "specialist" => UserRole.Specialist
-      case "admin"      => UserRole.Admin
-      case _            => UserRole.Client
+      val role = dto.role.toLowerCase match
+        case "specialist" => UserRole.Specialist
+        case "admin"      => UserRole.Admin
+        case _            => UserRole.Client
 
-    val request = AuthenticationService.RegistrationRequest(
-      email = dto.email,
-      password = dto.password,
-      name = dto.name,
-      phone = dto.phone,
-      role = role
-    )
+      val request = AuthenticationService.RegistrationRequest(
+        email = dto.email,
+        password = dto.password,
+        name = dto.name,
+        phone = dto.phone,
+        role = role
+      )
 
-    authService.register(request).flatMap {
-      case Right(user) =>
-        // Auto login after registration
-        val loginRequest = AuthenticationService.LoginRequest(
-          login = user.login,
-          password = dto.password,
-          ipAddress = "0.0.0.0", // TODO: extract from request
-          userAgent = "unknown"
-        )
+      authService.register(request).flatMap {
+        case Right(user) =>
+          // Auto login after registration
+          val loginRequest = AuthenticationService.LoginRequest(
+            login = user.login,
+            password = dto.password,
+            ipAddress = "0.0.0.0", // TODO: extract from request
+            userAgent = "unknown"
+          )
 
-        authService.login(loginRequest).map {
-          case Right(loginResponse) =>
-            Right(
-              AuthResponseDto(
-                accessToken = loginResponse.accessToken,
-                refreshToken = loginResponse.refreshToken,
-                expiresAt = loginResponse.expiresAt,
-                userId = loginResponse.user.id,
-                login = loginResponse.user.login,
-                email = loginResponse.user.email,
-                name = loginResponse.user.name,
-                role = loginResponse.user.role.toString
+          authService.login(loginRequest).map {
+            case Right(loginResponse) =>
+              Right(
+                AuthResponseDto(
+                  accessToken = loginResponse.accessToken,
+                  refreshToken = loginResponse.refreshToken,
+                  expiresAt = loginResponse.expiresAt,
+                  userId = loginResponse.user.id,
+                  login = loginResponse.user.login,
+                  email = loginResponse.user.email,
+                  name = loginResponse.user.name,
+                  role = loginResponse.user.role.toString
+                )
               )
-            )
-          case Left(error) =>
-            Left(ErrorResponse("REGISTRATION_ERROR", error))
-        }
+            case Left(error) =>
+              Left(ErrorResponse("REGISTRATION_ERROR", error))
+          }
 
-      case Left(error) =>
-        IO.pure(Left(ErrorResponse("REGISTRATION_ERROR", error)))
-    }
+        case Left(error) =>
+          IO.pure(Left(ErrorResponse("REGISTRATION_ERROR", error)))
+      }
     }
   }
 
