@@ -4,7 +4,7 @@ import cats.effect.{ ExitCode, IO, IOApp, Resource }
 import cats.syntax.all.*
 import com.comcast.ip4s.*
 import org.http4s.ember.server.EmberServerBuilder
-import org.http4s.{ HttpRoutes, Response }
+import org.http4s.{ HttpRoutes, Method, Request, Response }
 import org.http4s.dsl.io.*
 import org.http4s.headers.Location
 import org.http4s.implicits.*
@@ -17,8 +17,16 @@ import com.consultant.data.repository.*
 import com.consultant.core.service.*
 import com.consultant.core.ports.{ AvailabilityRepository, NotificationPreferenceRepository, SessionRepository }
 import com.consultant.api.routes.*
+import com.consultant.api.middleware.TokenAuthMiddleware
 import com.consultant.infrastructure.config.AppConfig
 import com.consultant.infrastructure.local.MockNotificationService
+import com.consultant.infrastructure.security.{
+  CompositeTokenVerifier,
+  JwtTokenService,
+  LegacyJwtTokenVerifier,
+  OidcTokenVerifier,
+  TokenVerifier
+}
 import org.flywaydb.core.Flyway
 
 object Server extends IOApp:
@@ -26,15 +34,16 @@ object Server extends IOApp:
   def run(args: List[String]): IO[ExitCode] =
     resources.use {
       case (
-            config,
-            userService,
-            specialistService,
-            consultationService,
-            categoryService,
-            connectionService,
-            availabilityRepository,
-            notificationPreferenceRepository,
-            sessionRepository
+        config,
+        tokenVerifier,
+        userService,
+        specialistService,
+        consultationService,
+        categoryService,
+        connectionService,
+        availabilityRepository,
+        notificationPreferenceRepository,
+        sessionRepository
           ) =>
         val userRoutes         = UserRoutes(userService)
         val specialistRoutes   = SpecialistRoutes(specialistService)
@@ -71,8 +80,24 @@ object Server extends IOApp:
 
         // swaggerRoutes already serve under /docs by default; do not double-prefix in Router
         // Mount everything at root to avoid pathInfo mismatches that lead to 404s
+        val isPublic: Request[IO] => Boolean = { req =>
+          val path   = req.uri.path.renderString
+          val method = req.method
+
+          method == Method.OPTIONS ||
+          path == "/" ||
+          path.startsWith("/docs") ||
+          path.startsWith("/health") ||
+          path.startsWith("/auth") ||
+          path == "/api/users/register" ||
+          path == "/api/users/login" ||
+          path == "/api/users/logout"
+        }
+
+        val protectedApiRoutes = TokenAuthMiddleware.protect(tokenVerifier, isPublic)(apiRoutes)
+
         val routes = Router(
-          "/" -> (rootRedirect <+> swaggerRoutes <+> apiRoutes)
+          "/" -> (rootRedirect <+> swaggerRoutes <+> protectedApiRoutes)
         ).orNotFound
 
         val corsRoutes = CORS.policy.withAllowOriginAll.withAllowCredentials(false).apply(routes)
@@ -97,6 +122,7 @@ object Server extends IOApp:
     IO,
     (
       AppConfig,
+      TokenVerifier,
       UserService,
       SpecialistService,
       ConsultationService,
@@ -109,6 +135,13 @@ object Server extends IOApp:
   ] =
     for
       config <- Resource.eval(AppConfig.load)
+      jwtService = new JwtTokenService(
+        secretKey = config.jwt.secret,
+        issuer = config.jwt.issuer,
+        accessTokenTTL = config.jwt.accessTtl,
+        refreshTokenTTL = config.jwt.refreshTtl
+      )
+      tokenVerifier <- Resource.eval(buildTokenVerifier(config, jwtService))
       dbConfig = DbConfig(
         config.database.driver,
         config.database.url,
@@ -154,6 +187,7 @@ object Server extends IOApp:
       connectionService = ConnectionService(connectionRepo, connectionTypeRepo, specialistRepo)
     yield (
       config,
+      tokenVerifier,
       userService,
       specialistService,
       consultationService,
@@ -163,3 +197,18 @@ object Server extends IOApp:
       notificationPreferenceRepo,
       sessionRepo
     )
+
+  private def buildTokenVerifier(config: AppConfig, jwtService: JwtTokenService): IO[TokenVerifier] =
+    IO {
+      val oidcVerifier   = new OidcTokenVerifier(config.oidc)
+      val legacyVerifier = new LegacyJwtTokenVerifier(jwtService)
+
+      if config.oidc.enabled && config.legacyAuthEnabled then
+        CompositeTokenVerifier(Some(oidcVerifier), legacyVerifier)
+      else if config.oidc.enabled then
+        oidcVerifier
+      else if config.legacyAuthEnabled then
+        legacyVerifier
+      else
+        throw new RuntimeException("Both OIDC and legacy auth are disabled")
+    }

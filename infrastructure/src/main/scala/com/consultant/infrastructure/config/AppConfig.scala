@@ -9,7 +9,10 @@ case class AppConfig(
   server: ServerConfig,
   database: DatabaseConfig,
   aws: Option[AwsConfig],
-  storage: StorageConfig
+  storage: StorageConfig,
+  oidc: OidcConfig,
+  jwt: JwtConfig,
+  legacyAuthEnabled: Boolean
 )
 
 case class ServerConfig(
@@ -37,10 +40,33 @@ case class StorageConfig(
   localBasePath: Option[String]
 )
 
+case class OidcConfig(
+  enabled: Boolean,
+  issuer: Option[String],
+  jwksUri: Option[String],
+  audience: Option[String],
+  allowedAlgs: List[String],
+  jwksCacheSeconds: Long
+)
+
+case class JwtConfig(
+  secret: String,
+  issuer: String,
+  accessTtl: FiniteDuration,
+  refreshTtl: FiniteDuration
+)
+
 object AppConfig:
 
+  private case class BaseConfig(
+    server: ServerConfig,
+    database: DatabaseConfig,
+    aws: Option[AwsConfig],
+    storage: StorageConfig
+  )
+
   def load: IO[AppConfig] =
-    (
+    val baseConfig = (
       env("SERVER_HOST").as[String].default("0.0.0.0"),
       env("SERVER_PORT").as[Int].default(8090),
       env("DB_DRIVER").as[String].default("org.postgresql.Driver"),
@@ -55,7 +81,21 @@ object AppConfig:
       env("AWS_SENDER_EMAIL").as[String].option,
       env("LOCAL_STORAGE_PATH").as[String].option
     ).parMapN {
-      (host, port, driver, url, user, pass, poolSize, useAws, region, bucket, queuePrefix, email, localPath) =>
+      (
+        host,
+        port,
+        driver,
+        url,
+        user,
+        pass,
+        poolSize,
+        useAws,
+        region,
+        bucket,
+        queuePrefix,
+        email,
+        localPath
+      ) =>
         val awsConfig =
           if useAws then
             Some(
@@ -68,10 +108,73 @@ object AppConfig:
             )
           else None
 
-        AppConfig(
+        BaseConfig(
           ServerConfig(host, port),
           DatabaseConfig(driver, url, user, pass, poolSize),
           awsConfig,
           StorageConfig(useAws, localPath.orElse(Some("./storage")))
         )
+    }
+
+    val oidcConfig = (
+      env("OIDC_ENABLED").as[Boolean].default(false),
+      env("OIDC_ISSUER").as[String].option,
+      env("OIDC_JWKS_URI").as[String].option,
+      env("OIDC_AUDIENCE").as[String].option,
+      env("OIDC_ALLOWED_ALGS").as[String].default("RS256"),
+      env("OIDC_JWKS_CACHE_SECONDS").as[Long].default(600L)
+    ).parMapN { (oidcEnabled, oidcIssuer, oidcJwksUri, oidcAudience, oidcAllowedAlgs, oidcJwksCacheSeconds) =>
+      val allowedAlgs =
+        oidcAllowedAlgs
+          .split(",")
+          .map(_.trim)
+          .filter(_.nonEmpty)
+          .toList
+          .distinct
+
+      OidcConfig(
+        enabled = oidcEnabled,
+        issuer = oidcIssuer,
+        jwksUri = oidcJwksUri,
+        audience = oidcAudience,
+        allowedAlgs = allowedAlgs,
+        jwksCacheSeconds = oidcJwksCacheSeconds
+      )
+    }
+
+    val jwtConfig = (
+      env("JWT_SECRET").as[String].default("dev-jwt-secret-change-in-production"),
+      env("JWT_ISSUER").as[String].default("consultant-api"),
+      env("JWT_ACCESS_TTL").as[String].default("15m"),
+      env("JWT_REFRESH_TTL").as[String].default("7d")
+    ).parMapN { (jwtSecret, jwtIssuer, jwtAccessTtl, jwtRefreshTtl) =>
+      val accessTtl  = parseDuration(jwtAccessTtl, "JWT_ACCESS_TTL")
+      val refreshTtl = parseDuration(jwtRefreshTtl, "JWT_REFRESH_TTL")
+
+      JwtConfig(
+        secret = jwtSecret,
+        issuer = jwtIssuer,
+        accessTtl = accessTtl,
+        refreshTtl = refreshTtl
+      )
+    }
+
+    val legacyAuthEnabled = env("LEGACY_AUTH_ENABLED").as[Boolean].default(true)
+
+    (baseConfig, oidcConfig, jwtConfig, legacyAuthEnabled).parMapN {
+      (base, oidc, jwt, legacy) =>
+        AppConfig(
+          base.server,
+          base.database,
+          base.aws,
+          base.storage,
+          oidc,
+          jwt,
+          legacyAuthEnabled = legacy
+        )
     }.load[IO]
+
+  private def parseDuration(value: String, name: String): FiniteDuration =
+    Duration(value) match
+      case fd: FiniteDuration => fd
+      case _                  => throw new RuntimeException(s"$name must be a finite duration")

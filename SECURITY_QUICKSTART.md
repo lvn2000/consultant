@@ -5,6 +5,7 @@
 ### 1. Authentication
 
 - **JWT tokens** (Access + Refresh)
+- **OIDC (Keycloak)** optional during migration
 - **Password hashing** (PBKDF2 with 210k iterations)
 - **Account lockout** (5 attempts, 15 min lockout)
 
@@ -25,15 +26,15 @@
 #### Public
 
 ```bash
-POST /auth/register  # Registration
-POST /auth/login     # Login
-POST /auth/refresh   # Token refresh
+POST /auth/register  # Registration (legacy)
+POST /auth/login     # Login (legacy)
+POST /auth/refresh   # Token refresh (legacy)
 ```
 
 #### Protected (JWT required)
 
 ```bash
-POST /auth/logout    # Logout
+POST /auth/logout    # Logout (legacy)
 GET  /api/users      # With Bearer token
 ```
 
@@ -118,14 +119,26 @@ scala> random.nextBytes(bytes)
 scala> Base64.getEncoder.encodeToString(bytes)
 ```
 
-### 3. DB Migration
+### 3. OIDC (optional)
+
+```bash
+export OIDC_ENABLED=true
+export OIDC_ISSUER="https://auth.example.com/realms/consultant"
+export OIDC_JWKS_URI="https://auth.example.com/realms/consultant/protocol/openid-connect/certs"
+export OIDC_AUDIENCE="consultant-web"
+export OIDC_ALLOWED_ALGS="RS256"
+export OIDC_JWKS_CACHE_SECONDS=600
+export LEGACY_AUTH_ENABLED=true
+```
+
+### 4. DB Migration
 
 ```bash
 # Apply V002__security_tables.sql
 docker-compose exec postgres-master psql -U consultant_user -d consultant -f /docker-entrypoint-initdb.d/V002__security_tables.sql
 ```
 
-### 4. HTTPS in Production
+### 5. HTTPS in Production
 
 ```nginx
 server {
@@ -166,6 +179,7 @@ server {
 ## 🔒 Production Checklist
 
 - [ ] Generate strong JWT_SECRET (64+ chars)
+- [ ] Configure OIDC env vars (if enabled)
 - [ ] Configure HTTPS with valid certificate
 - [ ] Enable HSTS headers
 - [ ] Configure CORS for your frontend

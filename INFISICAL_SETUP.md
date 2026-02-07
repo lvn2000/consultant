@@ -183,6 +183,13 @@ infisical secrets set DB_ENCRYPTION_KEY "dev-encryption-key-change-in-prod" --en
 infisical secrets set REDIS_HOST "localhost" --env=development
 infisical secrets set REDIS_PORT "6379" --env=development
 infisical secrets set SESSION_SECRET "dev-session-secret" --env=development
+infisical secrets set OIDC_ENABLED "false" --env=development
+infisical secrets set OIDC_ISSUER "https://auth.example.com/realms/consultant" --env=development
+infisical secrets set OIDC_JWKS_URI "https://auth.example.com/realms/consultant/protocol/openid-connect/certs" --env=development
+infisical secrets set OIDC_AUDIENCE "consultant-web" --env=development
+infisical secrets set OIDC_ALLOWED_ALGS "RS256" --env=development
+infisical secrets set OIDC_JWKS_CACHE_SECONDS "600" --env=development
+infisical secrets set LEGACY_AUTH_ENABLED "true" --env=development
 ```
 
 ---
