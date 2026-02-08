@@ -48,6 +48,6 @@ object TokenAuthMiddleware:
     OptionT.liftF(
       IO.pure(
         Response[IO](status = Status.Unauthorized)
-          .withEntity(ErrorResponse("Unauthorized", message))
+          .withEntity(ErrorResponse("UNAUTHORIZED", message))
       )
     )
