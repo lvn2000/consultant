@@ -24,7 +24,7 @@ export function useApi() {
       headers['Authorization'] = `Bearer ${accessToken}`
     }
 
-    console.log(`[API] ${options?.method || 'GET'} ${url}`, { headers })
+    console.log(`[API] ${options?.method || 'GET'} ${url}`)
 
     try {
       const response = await ofetch<T>(url, {
