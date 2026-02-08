@@ -48,7 +48,7 @@ ON CONFLICT DO NOTHING;
 
 -- Insert credentials for test user
 -- Note: In production, use proper password hashing (BCrypt/Argon2)
--- Password hash for 'user' (using simple SHA256 for demo: should be bcrypt in production)
+-- Password hash for 'user' (bcrypt with cost 10)
 INSERT INTO credentials (email, password_hash, salt, user_id, role, is_active, created_at, updated_at)
 VALUES (
     'user@example.com',

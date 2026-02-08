@@ -30,7 +30,7 @@
         <div v-for="consultation in paginatedConsultations" :key="consultation.id" class="table-row consultations-table">
           <span>{{ consultation.clientName || consultation.userId }}</span>
           <span>{{ consultation.categoryName || consultation.categoryId }}</span>
-          <span>{{ formatDateTime(consultation.scheduledAt) }}</span>
+          <span>{{ formatDateTime(consultation.scheduledAt || '') }}</span>
           <span>{{ consultation.duration }} min</span>
           <span :class="['status-badge', consultation.status.toLowerCase()]">
             {{ consultation.status }}
@@ -145,13 +145,33 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
-import { $fetch } from 'ofetch'
+import { useApi } from '~/composables/useApi'
 
 const config = useRuntimeConfig()
+const { $fetch } = useApi()
+
+type Consultation = {
+  id: string
+  userId?: string
+  categoryId?: string
+  scheduledAt?: string
+  duration: number
+  status: string
+  price: number
+}
+
+type EnrichedConsultation = Consultation & {
+  clientName?: string
+  categoryName?: string
+}
+
+type NamedResource = {
+  name?: string
+}
 
 const consultationsLoading = ref(false)
 const consultationsError = ref('')
-const consultations = ref<any[]>([])
+const consultations = ref<EnrichedConsultation[]>([])
 const currentConsultationPage = ref(1)
 const itemsPerPage = 10
 const updatingConsultationId = ref<string | null>(null)
@@ -188,7 +208,7 @@ const loadConsultations = async () => {
       consultationsError.value = 'User ID not found'
       return
     }
-    const data = await $fetch(`${config.public.apiBase}/consultations/specialist/${userId}`)
+    const data = await $fetch<Consultation[]>(`${config.public.apiBase}/consultations/specialist/${userId}`)
     const consultationsData = data || []
     
     // Enrich consultations with client names and category names
@@ -199,7 +219,7 @@ const loadConsultations = async () => {
           let clientName = 'Unknown Client'
           if (consultation.userId) {
             try {
-              const clientData = await $fetch(`${config.public.apiBase}/users/${consultation.userId}`)
+              const clientData = await $fetch<NamedResource>(`${config.public.apiBase}/users/${consultation.userId}`)
               clientName = clientData?.name || consultation.userId
             } catch (e: any) {
               clientName = `Client (${consultation.userId})`
@@ -210,7 +230,7 @@ const loadConsultations = async () => {
           let categoryName = 'Unknown Category'
           if (consultation.categoryId) {
             try {
-              const categoryData = await $fetch(`${config.public.apiBase}/categories/${consultation.categoryId}`)
+              const categoryData = await $fetch<NamedResource>(`${config.public.apiBase}/categories/${consultation.categoryId}`)
               categoryName = categoryData?.name || consultation.categoryId
             } catch (e: any) {
               categoryName = `Category (${consultation.categoryId})`
@@ -320,7 +340,7 @@ const markAsMissed = async (consultationId: string) => {
   }
 }
 
-const isConsultationActionable = (consultation: any): boolean => {
+const isConsultationActionable = (consultation: EnrichedConsultation): boolean => {
   if (!consultation.scheduledAt) return false
   
   try {
@@ -332,7 +352,7 @@ const isConsultationActionable = (consultation: any): boolean => {
   }
 }
 
-const isConsultationInFuture = (consultation: any): boolean => {
+const isConsultationInFuture = (consultation: EnrichedConsultation): boolean => {
   if (!consultation.scheduledAt) return false
   
   try {

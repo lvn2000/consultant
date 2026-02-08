@@ -40,11 +40,23 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
-import { $fetch } from 'ofetch'
+import { useApi } from '~/composables/useApi'
 
 const config = useRuntimeConfig()
+const { $fetch } = useApi()
 
-const notificationPreferences = ref<any[]>([])
+type NotificationPreference = {
+  id: string
+  notificationType: string
+  emailEnabled: boolean
+  smsEnabled?: boolean
+}
+
+type NotificationPreferencesResponse = {
+  preferences?: NotificationPreference[]
+}
+
+const notificationPreferences = ref<NotificationPreference[]>([])
 const notificationsLoading = ref(false)
 const notificationsError = ref('')
 const notificationUpdateMessage = ref('')
@@ -56,19 +68,18 @@ const loadNotificationPreferences = async () => {
   notificationsError.value = ''
   try {
     const userId = sessionStorage.getItem('userId')
-    const sessionId = sessionStorage.getItem('sessionId')
+    const token = sessionStorage.getItem('accessToken') || sessionStorage.getItem('sessionId')
     if (!userId) {
       notificationsError.value = 'User ID not found'
       return
     }
-    if (!sessionId) {
+    if (!token) {
       notificationsError.value = 'Session not found - please log in again'
       return
     }
     
-    const response = await $fetch(`${config.public.apiBase}/notification-preferences`, {
+    const response = await $fetch<NotificationPreferencesResponse>(`${config.public.apiBase}/notification-preferences`, {
       headers: {
-        'Authorization': `Bearer ${sessionId}`,
         'X-User-Id': userId
       }
     })
@@ -82,19 +93,19 @@ const loadNotificationPreferences = async () => {
   }
 }
 
-const updateNotificationPreference = async (preference: any) => {
+const updateNotificationPreference = async (preference: NotificationPreference) => {
   updatingNotificationId.value = preference.id
   notificationUpdateMessage.value = ''
   notificationUpdateSuccess.value = false
   
   try {
     const userId = sessionStorage.getItem('userId')
-    const sessionId = sessionStorage.getItem('sessionId')
+    const token = sessionStorage.getItem('accessToken') || sessionStorage.getItem('sessionId')
     if (!userId) {
       notificationUpdateMessage.value = 'User ID not found'
       return
     }
-    if (!sessionId) {
+    if (!token) {
       notificationUpdateMessage.value = 'Session not found - please log in again'
       return
     }
@@ -102,7 +113,6 @@ const updateNotificationPreference = async (preference: any) => {
     await $fetch(`${config.public.apiBase}/notification-preferences/${preference.notificationType}`, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${sessionId}`,
         'X-User-Id': userId
       },
       body: {

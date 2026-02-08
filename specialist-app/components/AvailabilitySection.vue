@@ -71,13 +71,21 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
-import { $fetch } from 'ofetch'
+import { useApi } from '~/composables/useApi'
 
 const config = useRuntimeConfig()
+const { $fetch } = useApi()
+
+type AvailabilitySlot = {
+  id: string
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+}
 
 const availabilityLoading = ref(false)
 const availabilityError = ref('')
-const availability = ref<any[]>([])
+const availability = ref<AvailabilitySlot[]>([])
 const availabilityForm = ref({
   dayOfWeek: '',
   startTime: '',
@@ -118,7 +126,7 @@ const loadAvailability = async () => {
       availabilityError.value = 'User ID not found'
       return
     }
-    const data = await $fetch(`${config.public.apiBase}/specialists/${userId}/availability`)
+    const data = await $fetch<AvailabilitySlot[]>(`${config.public.apiBase}/specialists/${userId}/availability`)
     availability.value = data || []
   } catch (error: any) {
     availabilityError.value = error.data?.message || error.message || 'Failed to load availability'

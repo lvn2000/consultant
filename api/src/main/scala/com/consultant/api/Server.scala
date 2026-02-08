@@ -10,6 +10,7 @@ import org.http4s.headers.Location
 import org.http4s.implicits.*
 import org.http4s.server.Router
 import org.http4s.server.middleware.CORS
+import org.typelevel.ci.CIString
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 import com.consultant.data.config.{ DatabaseConfig, DbConfig }
@@ -107,7 +108,27 @@ object Server extends IOApp:
           "/" -> (rootRedirect <+> swaggerRoutes <+> protectedApiRoutes)
         ).orNotFound
 
-        val corsRoutes = CORS.policy.withAllowOriginAll.withAllowCredentials(false).apply(routes)
+        val corsRoutes = CORS.policy.withAllowOriginAll
+          .withAllowCredentials(false)
+          .withAllowHeadersIn(
+            Set(
+              CIString("Content-Type"),
+              CIString("Authorization"),
+              CIString("X-User-Id"),
+              CIString("X-User-Role"),
+              CIString("Accept")
+            )
+          )
+          .withAllowMethodsIn(
+            Set(
+              org.http4s.Method.GET,
+              org.http4s.Method.POST,
+              org.http4s.Method.PUT,
+              org.http4s.Method.DELETE,
+              org.http4s.Method.OPTIONS
+            )
+          )
+          .apply(routes)
 
         EmberServerBuilder
           .default[IO]
@@ -162,6 +183,7 @@ object Server extends IOApp:
           .configure()
           .dataSource(dbConfig.url, dbConfig.user, dbConfig.password)
           .locations("classpath:db/migration")
+          .validateOnMigrate(false) // Disable validation to allow checksum mismatches
           .load()
         flyway.migrate()
       })

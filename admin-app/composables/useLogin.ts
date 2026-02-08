@@ -7,6 +7,7 @@ interface LoginResponse {
   email: string
   role: string
   sessionId: string
+  accessToken?: string
 }
 
 // Utility composable for login API
@@ -26,6 +27,10 @@ export async function loginRequest(login: string, password: string): Promise<{ s
     }
 
     if (data.value) {
+      const token = data.value.accessToken || data.value.sessionId
+      if (token) {
+        sessionStorage.setItem('accessToken', token)
+      }
       // Store session data
       sessionStorage.setItem('userId', data.value.userId)
       sessionStorage.setItem('login', data.value.login)
