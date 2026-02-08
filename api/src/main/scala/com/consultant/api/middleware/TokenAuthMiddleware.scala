@@ -35,7 +35,7 @@ object TokenAuthMiddleware:
 
   private def extractBearerToken(req: Request[IO]): Option[String] =
     req.headers.get[Authorization].collect {
-      case Authorization(Credentials.Token(scheme, token)) if scheme.toString == "Bearer" => token
+      case Authorization(Credentials.Token(scheme, token)) if scheme.toString.equalsIgnoreCase("Bearer") => token
     }
 
   private def attachHeaders(req: Request[IO], authToken: AuthToken): Request[IO] =
