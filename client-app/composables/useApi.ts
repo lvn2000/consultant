@@ -1,8 +1,6 @@
-import { useRuntimeConfig } from 'nuxt/app'
 import { $fetch as ofetch } from 'ofetch'
 
 export function useApi() {
-  const config = useRuntimeConfig()
 
   /**
    * Make authenticated API request with Bearer token
