@@ -138,34 +138,8 @@ class NotificationPreferenceRoutes(
             // If session not found, assume it's a JWT token that was already validated by middleware
             sessionRepo.findById(token).flatMap {
               case None =>
-                // Session not found - this is likely a JWT token already validated by middleware
-                // Proceed with the request using the X-User-Id from the header
-                notificationPreferenceRepo
-                  .findByUserAndType(requestedUserId, notificationType)
-                  .flatMap {
-                    case None =>
-                      IO.pure(Left(ErrorResponse("NOT_FOUND", "Preference not found")))
-                    case Some(pref) =>
-                      val updated = pref.copy(
-                        emailEnabled = updateDto.emailEnabled,
-                        smsEnabled = updateDto.smsEnabled
-                      )
-                      notificationPreferenceRepo
-                        .update(updated)
-                        .map { updatedPref =>
-                          Right(
-                            NotificationPreferenceDto(
-                              id = updatedPref.id,
-                              userId = updatedPref.userId,
-                              notificationType = updatedPref.notificationType.toString,
-                              emailEnabled = updatedPref.emailEnabled,
-                              smsEnabled = updatedPref.smsEnabled,
-                              createdAt = updatedPref.createdAt,
-                              updatedAt = updatedPref.updatedAt
-                            )
-                          )
-                        }
-                  }
+                // Session not found - reject the request to avoid relying solely on X-User-Id for authorization
+                IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Invalid or missing session")))
               case Some(session) if session.expiresAt.isBefore(java.time.Instant.now()) =>
                 // Session has expired
                 IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Session expired")))
