@@ -142,11 +142,26 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
-import { $fetch } from 'ofetch'
+import { useApi } from '~/composables/useApi'
+
+interface Category {
+  id: string
+  name: string
+}
+
+interface AvailableSlot {
+  startTime: string
+  endTime: string
+}
+
+interface SlotsResponse {
+  slots: AvailableSlot[]
+}
 
 const emit = defineEmits(['consultation-created'])
 
 const config = useRuntimeConfig()
+const { $fetch } = useApi()
 
 const form = ref({
   specialistId: '',
@@ -159,12 +174,12 @@ const form = ref({
 const creating = ref(false)
 const message = ref('')
 const success = ref(false)
-const availableSlots = ref<any[]>([])
+const availableSlots = ref<AvailableSlot[]>([])
 const slotsLoading = ref(false)
 const slotsError = ref('')
 
 const specialists = ref<any[]>([])
-const categories = ref<any[]>([])
+const categories = ref<Category[]>([])
 const specialistsLoading = ref(false)
 const categoriesLoading = ref(false)
 const specialistSearch = ref('')
@@ -176,7 +191,7 @@ const showCategoryDropdown = ref(false)
 const loadSpecialists = async () => {
   specialistsLoading.value = true
   try {
-    const url = `${config.public.apiBase}/specialists/search`
+    const url = `${config.public.apiBase}/specialists/search?offset=0&limit=1000`
     const response = await $fetch(url)
     
     if (Array.isArray(response)) {
@@ -196,7 +211,7 @@ const loadSpecialists = async () => {
 const loadCategories = async () => {
   categoriesLoading.value = true
   try {
-    const data = await $fetch(`${config.public.apiBase}/categories`)
+    const data = await $fetch<Category[]>(`${config.public.apiBase}/categories`)
     categories.value = data || []
   } catch (error: any) {
     console.error('Categories load error:', error)
@@ -318,7 +333,7 @@ const loadAvailableSlots = async () => {
   availableSlots.value = []
 
   try {
-    const response = await $fetch(`${config.public.apiBase}/specialists/${form.value.specialistId}/availability/slots`, {
+    const response = await $fetch<SlotsResponse>(`${config.public.apiBase}/specialists/${form.value.specialistId}/availability/slots`, {
       query: {
         date: form.value.scheduledDate,
         durationMinutes: 60

@@ -27,8 +27,9 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
     val userQ = sql"""
       SELECT u.id, u.login, u.email, u.name, u.phone, u.role, u.country_id, c.password_hash, u.created_at, u.updated_at
       FROM users u
-      JOIN credentials c ON u.email = c.email
-      WHERE u.login = $login AND c.is_active = true
+      JOIN credentials c ON u.id = c.user_id
+      WHERE (LOWER(u.login) = LOWER($login) OR LOWER(u.email) = LOWER($login))
+        AND c.is_active = true
     """.query[(UUID, String, String, String, Option[String], UserRole, Option[UUID], String, Instant, Instant)].option
     val action: ConnectionIO[Option[User]] = for {
       userOpt <- userQ

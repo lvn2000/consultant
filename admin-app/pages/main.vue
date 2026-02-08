@@ -87,10 +87,11 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRuntimeConfig } from 'nuxt/app'
-import { $fetch } from 'ofetch'
+import { useApi } from '../composables/useApi'
 
 const router = useRouter()
 const config = useRuntimeConfig()
+const { $fetch } = useApi()
 
 type MenuKey = 'specialists' | 'clients' | 'connections' | 'categories'
 
@@ -114,9 +115,11 @@ const selectMenu = (menu: MenuKey) => {
 const loadStats = async () => {
   try {
     // Load specialists
-    const specialists = await $fetch<any[]>(`${config.public.apiBase}/specialists/search?offset=0&limit=1000`)
+    const specialists = await $fetch<Array<{ isAvailable?: boolean }>>(
+      `${config.public.apiBase}/specialists/search?offset=0&limit=1000`
+    )
     specialistsCount.value = specialists.length
-    availableSpecialistsCount.value = specialists.filter(s => s.isAvailable).length
+    availableSpecialistsCount.value = specialists.filter((specialist: { isAvailable?: boolean }) => specialist.isAvailable).length
 
     // Load categories
     const categories = await $fetch<any[]>(`${config.public.apiBase}/categories`)
@@ -134,12 +137,13 @@ const logout = async () => {
   try {
     const sessionId = sessionStorage.getItem('sessionId')
     if (sessionId) {
-      await $fetch('/api/users/logout', {
+      await $fetch(`${config.public.apiBase}/users/logout`, {
         method: 'POST',
         body: { sessionId },
       })
     }
   } finally {
+    sessionStorage.removeItem('accessToken')
     sessionStorage.removeItem('sessionId')
     sessionStorage.removeItem('userId')
     sessionStorage.removeItem('login')

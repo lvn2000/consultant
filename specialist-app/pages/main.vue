@@ -80,7 +80,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRuntimeConfig } from 'nuxt/app'
-import { $fetch } from 'ofetch'
+import { useApi } from '~/composables/useApi'
 import ProfileSection from '~/components/ProfileSection.vue'
 import RatesSection from '~/components/RatesSection.vue'
 import AvailabilitySection from '~/components/AvailabilitySection.vue'
@@ -90,6 +90,7 @@ import NotificationsSection from '~/components/NotificationsSection.vue'
 
 const router = useRouter()
 const config = useRuntimeConfig()
+const { $fetch } = useApi()
 
 // Menu state
 const selectedMenu = ref('profile')
@@ -122,6 +123,7 @@ const logout = async () => {
       })
     }
   } finally {
+    sessionStorage.removeItem('accessToken')
     sessionStorage.removeItem('sessionId')
     sessionStorage.removeItem('userId')
     sessionStorage.removeItem('login')

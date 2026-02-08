@@ -6,6 +6,7 @@ interface LoginResponse {
   email: string
   role: string
   sessionId: string
+  accessToken?: string
 }
 
 export async function loginRequest(login: string, password: string): Promise<{ success: boolean; error?: string }> {
@@ -24,6 +25,10 @@ export async function loginRequest(login: string, password: string): Promise<{ s
     })
 
     if (data) {
+      const token = data.accessToken || data.sessionId
+      if (token) {
+        sessionStorage.setItem('accessToken', token)
+      }
       sessionStorage.setItem('userId', data.userId)
       sessionStorage.setItem('login', data.login)
       sessionStorage.setItem('email', data.email)

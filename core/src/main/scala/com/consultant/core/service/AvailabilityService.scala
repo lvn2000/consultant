@@ -84,7 +84,7 @@ class AvailabilityService(
     durationMinutes: Int
   ): IO[Either[DomainError, Boolean]] =
     for
-      dayOfWeek            <- IO.pure(date.getDayOfWeek.getValue % 7) // Convert Java DayOfWeek to 0-6
+      dayOfWeek            <- IO.pure((date.getDayOfWeek.getValue + 6) % 7) // Convert to UI format (0=Mon, 6=Sun)
       availabilitiesResult <- getAvailabilityForDay(specialistId, dayOfWeek)
       available <- availabilitiesResult match
         case Right(availabilities) =>
@@ -124,7 +124,7 @@ class AvailabilityService(
     slotDurationMinutes: Int = 60
   ): IO[Either[DomainError, List[(LocalTime, LocalTime)]]] =
     for
-      dayOfWeek            <- IO.pure(date.getDayOfWeek.getValue % 7)
+      dayOfWeek            <- IO.pure((date.getDayOfWeek.getValue + 6) % 7) // Convert to UI format (0=Mon, 6=Sun)
       availabilitiesResult <- getAvailabilityForDay(specialistId, dayOfWeek)
       slots <- availabilitiesResult match
         case Right(availabilities) =>

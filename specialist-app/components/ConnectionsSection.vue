@@ -97,14 +97,28 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
-import { $fetch } from 'ofetch'
+import { useApi } from '~/composables/useApi'
 
 const config = useRuntimeConfig()
+const { $fetch } = useApi()
+
+type Connection = {
+  id: string
+  connectionTypeId: string
+  connectionValue: string
+  isVerified: boolean
+}
+
+type ConnectionType = {
+  id: string
+  name: string
+  description?: string | null
+}
 
 const connectionsLoading = ref(false)
 const connectionsError = ref('')
-const connections = ref<any[]>([])
-const connectionTypes = ref<any[]>([])
+const connections = ref<Connection[]>([])
+const connectionTypes = ref<ConnectionType[]>([])
 const connectionForm = ref({
   connectionTypeId: '',
   connectionValue: '',
@@ -124,10 +138,10 @@ const loadConnections = async () => {
       connectionsError.value = 'User ID not found'
       return
     }
-    const connectionsData = await $fetch(`${config.public.apiBase}/specialists/${userId}/connections`)
+    const connectionsData = await $fetch<Connection[]>(`${config.public.apiBase}/specialists/${userId}/connections`)
     connections.value = connectionsData || []
     // Load connection types
-    const typesData = await $fetch(`${config.public.apiBase}/connection-types`)
+    const typesData = await $fetch<ConnectionType[]>(`${config.public.apiBase}/connection-types`)
     connectionTypes.value = typesData || []
   } catch (error: any) {
     connectionsError.value = error.message || 'Failed to load connections'
@@ -136,7 +150,7 @@ const loadConnections = async () => {
   }
 }
 
-const startEditConnection = (connection: any) => {
+const startEditConnection = (connection: Connection | null) => {
   if (connection) {
     connectionForm.value = {
       connectionTypeId: connection.connectionTypeId,

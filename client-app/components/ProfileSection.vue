@@ -57,6 +57,12 @@ const profileUpdating = ref(false)
 const profileUpdateMessage = ref('')
 const profileUpdateSuccess = ref(false)
 
+type UserProfile = {
+  name?: string
+  email?: string
+  phone?: string
+}
+
 /**
  * Make authenticated request with Bearer token (JWT accessToken)
  */
@@ -90,7 +96,7 @@ const loadProfile = async () => {
       console.warn('ProfileSection - No userId found in sessionStorage')
       return
     }
-    const user = await authenticatedFetch(`${config.public.apiBase}/users/${userId}`)
+    const user = await authenticatedFetch<UserProfile>(`${config.public.apiBase}/users/${userId}`)
     profileForm.value = {
       name: user.name || '',
       email: user.email || '',

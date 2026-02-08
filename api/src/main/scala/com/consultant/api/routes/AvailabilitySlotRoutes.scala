@@ -46,8 +46,9 @@ class AvailabilitySlotRoutes(
 
       // Calculate available slots by filtering out booked times
       localDate = java.time.LocalDate.parse(date)
+      dayOfWeek = (localDate.getDayOfWeek.getValue + 6) % 7 // Convert to UI format (0=Mon, 6=Sun)
       slots = availabilitySlots
-        .filter(_.dayOfWeek == localDate.getDayOfWeek.getValue)
+        .filter(avail => avail.dayOfWeek == dayOfWeek)
         .flatMap { avail =>
           val slotEnd = avail.startTime.plusMinutes(durationMinutes.toLong)
           Some((avail.startTime, slotEnd))
@@ -98,10 +99,11 @@ class AvailabilitySlotRoutes(
 
       // Check if time slot is available
       localDate = java.time.LocalDate.parse(request.date)
+      dayOfWeek = (localDate.getDayOfWeek.getValue + 6) % 7 // Convert to UI format (0=Mon, 6=Sun)
       startTime = java.time.LocalTime.parse(request.startTime)
       slotEnd   = startTime.plusMinutes(request.durationMinutes.toLong)
       hasAvailabilitySlot = availabilitySlots.exists { avail =>
-        avail.dayOfWeek == localDate.getDayOfWeek.getValue &&
+        avail.dayOfWeek == dayOfWeek &&
         !startTime.isBefore(avail.startTime) &&
         !slotEnd.isAfter(avail.endTime)
       }

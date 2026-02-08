@@ -101,19 +101,32 @@
 
       <p v-if="categoryActionMessage" class="form-message">{{ categoryActionMessage }}</p>
     </form>
+
+    <!-- Confirmation Dialog -->
+    <div v-if="confirmState.visible" class="modal-overlay" @click.self="confirmResolver?.(false)">
+      <div class="modal-dialog">
+        <h3>{{ confirmState.title }}</h3>
+        <p>{{ confirmState.message }}</p>
+        <div class="modal-actions">
+          <button type="button" class="btn" @click="confirmResolver?.(false)">Cancel</button>
+          <button type="button" class="btn primary" @click="confirmResolver?.(true)">Confirm</button>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, nextTick } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
-import { $fetch } from 'ofetch'
+import { useApi } from '../composables/useApi'
 
 defineProps<{
   visible: boolean
 }>()
 
 const config = useRuntimeConfig()
+const { $fetch } = useApi()
 
 type Category = {
   id: string
@@ -173,7 +186,10 @@ const availableParentCategories = computed(() => {
 const confirmAction = (title: string, message: string) =>
   new Promise<boolean>(resolve => {
     confirmState.value = { visible: true, title, message }
-    confirmResolver.value = resolve
+    confirmResolver.value = (confirmed: boolean) => {
+      resolve(confirmed)
+      confirmState.value.visible = false
+    }
   })
 
 const resolveCategoryName = (id: string | null) => {
@@ -282,8 +298,15 @@ const addCategory = async () => {
     categoryActionMessage.value = 'Category created successfully.'
     resetCategoryForm()
     await loadCategories()
-  } catch (error) {
-    categoryActionMessage.value = 'Failed to create category.'
+  } catch (error: any) {
+    console.error('Add category error:', error)
+    if (error.data?.message) {
+      categoryActionMessage.value = `Failed to create category: ${error.data.message}`
+    } else if (error.message) {
+      categoryActionMessage.value = `Failed to create category: ${error.message}`
+    } else {
+      categoryActionMessage.value = 'Failed to create category.'
+    }
   }
 }
 
@@ -309,8 +332,15 @@ const updateCategory = async () => {
     })
     categoryActionMessage.value = 'Category updated successfully.'
     await loadCategories()
-  } catch (error) {
-    categoryActionMessage.value = 'Failed to update category.'
+  } catch (error: any) {
+    console.error('Update category error:', error)
+    if (error.data?.message) {
+      categoryActionMessage.value = `Failed to update category: ${error.data.message}`
+    } else if (error.message) {
+      categoryActionMessage.value = `Failed to update category: ${error.message}`
+    } else {
+      categoryActionMessage.value = 'Failed to update category.'
+    }
   }
 }
 
@@ -330,8 +360,15 @@ const deleteSelectedCategory = async () => {
     categoryActionMessage.value = 'Category deleted successfully.'
     resetCategoryForm()
     await loadCategories()
-  } catch (error) {
-    categoryActionMessage.value = 'Failed to delete category.'
+  } catch (error: any) {
+    console.error('Delete category error:', error)
+    if (error.data?.message) {
+      categoryActionMessage.value = `Failed to delete category: ${error.data.message}`
+    } else if (error.message) {
+      categoryActionMessage.value = `Failed to delete category: ${error.message}`
+    } else {
+      categoryActionMessage.value = 'Failed to delete category.'
+    }
   }
 }
 
@@ -342,8 +379,15 @@ const removeCategory = async (id: string) => {
   try {
     await $fetch(`${config.public.apiBase}/categories/${id}`, { method: 'DELETE' })
     await loadCategories()
-  } catch (error) {
-    categoryActionMessage.value = 'Failed to delete category.'
+  } catch (error: any) {
+    console.error('Remove category error:', error)
+    if (error.data?.message) {
+      categoryActionMessage.value = `Failed to delete category: ${error.data.message}`
+    } else if (error.message) {
+      categoryActionMessage.value = `Failed to delete category: ${error.message}`
+    } else {
+      categoryActionMessage.value = 'Failed to delete category.'
+    }
   }
 }
 
@@ -549,5 +593,61 @@ onMounted(() => {
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Modal Dialog Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-dialog {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 400px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+.modal-dialog h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  color: #111827;
+}
+
+.modal-dialog p {
+  margin: 0 0 1.5rem 0;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.modal-actions .btn {
+  flex: 1;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

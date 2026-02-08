@@ -93,16 +93,34 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
-import { $fetch } from 'ofetch'
+import { useApi } from '~/composables/useApi'
 
 const config = useRuntimeConfig()
+const { $fetch } = useApi()
+
+type Category = {
+  id: string
+  name: string
+}
+
+type CategoryRate = {
+  categoryId: string
+  hourlyRate: number
+  experienceYears: number
+  rating?: number | null
+  totalConsultations?: number | null
+}
+
+type SpecialistProfile = {
+  categoryRates?: CategoryRate[]
+}
 
 const ratesLoading = ref(false)
 const ratesError = ref('')
-const rates = ref<any[]>([])
+const rates = ref<CategoryRate[]>([])
 const currentRatePage = ref(1)
 const itemsPerPage = 5
-const categories = ref<any[]>([])
+const categories = ref<Category[]>([])
 const rateFormRef = ref<HTMLFormElement | null>(null)
 const rateForm = ref({
   categoryId: '',
@@ -124,10 +142,10 @@ const loadRates = async () => {
       ratesError.value = 'User ID not found'
       return
     }
-    const specialist = await $fetch(`${config.public.apiBase}/specialists/${userId}`)
+    const specialist = await $fetch<SpecialistProfile>(`${config.public.apiBase}/specialists/${userId}`)
     rates.value = specialist.categoryRates || []
     // Load categories
-    const categoriesData = await $fetch(`${config.public.apiBase}/categories?page=1&pageSize=100`)
+    const categoriesData = await $fetch<Category[]>(`${config.public.apiBase}/categories?page=1&pageSize=100`)
     categories.value = Array.isArray(categoriesData) ? categoriesData : []
   } catch (error: any) {
     ratesError.value = error.message || 'Failed to load rates'
@@ -171,13 +189,13 @@ const saveRate = async () => {
       rateSuccess.value = false
       return
     }
-    const specialist = await $fetch(`${config.public.apiBase}/specialists/${userId}`)
+    const specialist = await $fetch<SpecialistProfile>(`${config.public.apiBase}/specialists/${userId}`)
     
     let updatedRates = [...(specialist.categoryRates || [])]
     
     if (editingRateId.value) {
       // Update existing rate
-      const index = updatedRates.findIndex(r => r.categoryId === editingRateId.value)
+      const index = updatedRates.findIndex((r: CategoryRate) => r.categoryId === editingRateId.value)
       if (index !== -1) {
         updatedRates[index] = { 
           ...rateForm.value,
@@ -223,8 +241,8 @@ const removeRate = async (categoryId: string) => {
       alert('User ID not found')
       return
     }
-    const specialist = await $fetch(`${config.public.apiBase}/specialists/${userId}`)
-    const updatedRates = (specialist.categoryRates || []).filter((r: any) => r.categoryId !== categoryId)
+    const specialist = await $fetch<SpecialistProfile>(`${config.public.apiBase}/specialists/${userId}`)
+    const updatedRates = (specialist.categoryRates || []).filter((r: CategoryRate) => r.categoryId !== categoryId)
     
     await $fetch(`${config.public.apiBase}/specialists/${userId}`, {
       method: 'PUT',
@@ -241,7 +259,7 @@ const removeRate = async (categoryId: string) => {
 }
 
 const getCategoryName = (categoryId: string) => {
-  const category = categories.value.find(c => c.id === categoryId)
+  const category = categories.value.find((c: Category) => c.id === categoryId)
   return category ? category.name : 'Unknown'
 }
 

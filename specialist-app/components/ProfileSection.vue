@@ -66,20 +66,36 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRuntimeConfig } from 'nuxt/app'
-import { $fetch } from 'ofetch'
+import { useApi } from '~/composables/useApi'
 
 const router = useRouter()
 const config = useRuntimeConfig()
+const { $fetch } = useApi()
+
+type SpecialistProfile = {
+  name?: string
+  email?: string
+  phone?: string
+  bio?: string
+  isAvailable?: boolean
+  categoryRates?: Array<{ categoryId: string; hourlyRate: number; experienceYears: number }>
+}
 
 const profileLoading = ref(false)
 const profileError = ref('')
+type CategoryRate = {
+  categoryId: string
+  hourlyRate: number
+  experienceYears: number
+}
+
 const profileForm = ref({
   name: '',
   email: '',
   phone: '',
   bio: '',
   isAvailable: true,
-  categoryRates: []
+  categoryRates: [] as CategoryRate[]
 })
 const profileUpdating = ref(false)
 const profileUpdateMessage = ref('')
@@ -96,7 +112,7 @@ const loadProfile = async () => {
       profileError.value = 'User ID not found'
       return
     }
-    const specialist = await $fetch(`${config.public.apiBase}/specialists/${userId}`)
+    const specialist = await $fetch<SpecialistProfile>(`${config.public.apiBase}/specialists/${userId}`)
     profileForm.value = {
       name: specialist.name || '',
       email: specialist.email || '',
@@ -167,6 +183,7 @@ const logout = async () => {
       })
     }
   } finally {
+    sessionStorage.removeItem('accessToken')
     sessionStorage.removeItem('sessionId')
     sessionStorage.removeItem('userId')
     sessionStorage.removeItem('login')
