@@ -45,55 +45,8 @@ class NotificationPreferenceRoutes(
           // If session not found, assume it's a JWT token that was already validated by middleware
           sessionRepo.findById(token).flatMap {
             case None =>
-              // Session not found - this is likely a JWT token already validated by middleware
-              // Proceed with the request using the X-User-Id from the header
-              notificationPreferenceRepo
-                .findByUser(requestedUserId)
-                .flatMap { preferences =>
-                  // If no preferences exist, create defaults
-                  if preferences.isEmpty then
-                    notificationPreferenceRepo
-                      .createDefaults(requestedUserId)
-                      .map { createdPrefs =>
-                        val dtos = createdPrefs.map { pref =>
-                          NotificationPreferenceDto(
-                            id = pref.id,
-                            userId = pref.userId,
-                            notificationType = pref.notificationType.toString,
-                            emailEnabled = pref.emailEnabled,
-                            smsEnabled = pref.smsEnabled,
-                            createdAt = pref.createdAt,
-                            updatedAt = pref.updatedAt
-                          )
-                        }
-                        Right(
-                          UserNotificationPreferencesDto(
-                            userId = requestedUserId,
-                            preferences = dtos
-                          )
-                        )
-                      }
-                  else
-                    val dtos = preferences.map { pref =>
-                      NotificationPreferenceDto(
-                        id = pref.id,
-                        userId = pref.userId,
-                        notificationType = pref.notificationType.toString,
-                        emailEnabled = pref.emailEnabled,
-                        smsEnabled = pref.smsEnabled,
-                        createdAt = pref.createdAt,
-                        updatedAt = pref.updatedAt
-                      )
-                    }
-                    IO.pure(
-                      Right(
-                        UserNotificationPreferencesDto(
-                          userId = requestedUserId,
-                          preferences = dtos
-                        )
-                      )
-                    )
-                }
+              // Session not found; do not rely on X-User-Id header for authorization
+              IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Invalid or expired authentication token")))
             case Some(session) if session.expiresAt.isBefore(java.time.Instant.now()) =>
               // Session has expired
               IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Session expired")))
