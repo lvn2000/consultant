@@ -78,7 +78,6 @@ async function authenticatedFetch<T>(url: string, options?: any): Promise<T> {
     headers['Authorization'] = `Bearer ${accessToken}`
   }
 
-  console.log(`[ProfileSection] ${options?.method || 'GET'} ${url}`)
   return $fetch<T>(url, {
     ...options,
     headers
@@ -90,10 +89,8 @@ const loadProfile = async () => {
   profileError.value = ''
   try {
     const userId = sessionStorage.getItem('userId')
-    console.log('ProfileSection - userId from sessionStorage:', userId)
     if (!userId) {
       profileError.value = 'User ID not found'
-      console.warn('ProfileSection - No userId found in sessionStorage')
       return
     }
     const user = await authenticatedFetch<UserProfile>(`${config.public.apiBase}/users/${userId}`)
@@ -103,7 +100,7 @@ const loadProfile = async () => {
       phone: user.phone || ''
     }
   } catch (error: any) {
-    console.error('Profile load error:', error)
+    if (process.dev) console.error('Profile load error:', error)
     profileError.value = error.data?.message || error.message || 'Failed to load profile'
   } finally {
     profileLoading.value = false

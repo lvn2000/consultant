@@ -6,7 +6,9 @@ import org.http4s.{ AuthedRoutes, Request, Response, Status }
 import org.http4s.server.AuthMiddleware
 import com.consultant.core.domain.security.{ AuthToken, UserRole }
 import com.consultant.infrastructure.security.TokenVerifier
+import com.consultant.api.dto.ErrorResponse
 import org.http4s.headers.Authorization
+import org.http4s.circe.CirceEntityCodec.circeEntityEncoder
 import org.http4s.Credentials
 
 /** Middleware for request authentication */
@@ -35,7 +37,7 @@ class AuthenticationMiddleware(tokenVerifier: TokenVerifier):
       OptionT.liftF(
         IO.pure(
           Response[IO](status = Status.Unauthorized)
-            .withEntity(s"""{"error": "Unauthorized", "message": "${req.context}"}""")
+            .withEntity(ErrorResponse("Unauthorized", req.context))
         )
       )
     }

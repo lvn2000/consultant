@@ -176,7 +176,8 @@ object Server extends IOApp:
           .configure()
           .dataSource(dbConfig.url, dbConfig.user, dbConfig.password)
           .locations("classpath:db/migration")
-          .validateOnMigrate(false) // Disable validation to allow checksum mismatches
+          .validateOnMigrate(false) // TODO: Temporarily disabled to fix checksum mismatch on V005
+          .cleanDisabled(true) // Prevent accidental clean in production
           .load()
         flyway.migrate()
       })

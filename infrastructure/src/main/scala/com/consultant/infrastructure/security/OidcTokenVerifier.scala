@@ -84,7 +84,11 @@ class OidcTokenVerifier(config: OidcConfig) extends TokenVerifier:
     kid.flatMap(id => Option(jwkSet.getKeyByKeyId(id))).orElse {
       keys.find { key =>
         val keyUseOk = Option(key.getKeyUse).contains(KeyUse.SIGNATURE) || key.getKeyUse == null
-        val algOk    = alg.forall(a => Option(key.getAlgorithm).exists(_.getName == a))
+        // Accept keys without alg field (many JWKS entries omit it); signature verification validates correctness
+        val algOk = Option(key.getAlgorithm) match
+          case Some(keyAlg) =>
+            alg.forall(tokenAlg => tokenAlg == keyAlg.getName) // If key declares alg, must match token's alg
+          case None => true // If key omits alg, accept it
         keyUseOk && algOk
       }
     }

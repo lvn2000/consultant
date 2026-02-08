@@ -143,7 +143,7 @@ object AppConfig:
     }
 
     val jwtConfig = (
-      env("JWT_SECRET").as[String].default("dev-jwt-secret-change-in-production"),
+      env("JWT_SECRET").as[String], // Required: no default for security-critical keys
       env("JWT_ISSUER").as[String].default("consultant-api"),
       env("JWT_ACCESS_TTL").as[String].default("15m"),
       env("JWT_REFRESH_TTL").as[String].default("7d")

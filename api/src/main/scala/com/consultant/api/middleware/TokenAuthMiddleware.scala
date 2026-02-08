@@ -4,8 +4,10 @@ import cats.data.{ Kleisli, OptionT }
 import cats.effect.IO
 import com.consultant.core.domain.security.AuthToken
 import com.consultant.infrastructure.security.TokenVerifier
+import com.consultant.api.dto.ErrorResponse
 import org.http4s.{ Credentials, Header, HttpRoutes, Request, Response, Status }
 import org.http4s.headers.Authorization
+import org.http4s.circe.CirceEntityCodec.circeEntityEncoder
 import org.typelevel.ci.CIString
 
 object TokenAuthMiddleware:
@@ -46,6 +48,6 @@ object TokenAuthMiddleware:
     OptionT.liftF(
       IO.pure(
         Response[IO](status = Status.Unauthorized)
-          .withEntity(s"""{"error": "Unauthorized", "message": "$message"}""")
+          .withEntity(ErrorResponse("Unauthorized", message))
       )
     )

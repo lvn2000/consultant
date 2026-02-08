@@ -3,7 +3,7 @@
     <form @submit.prevent="onLogin">
       <h2>Login</h2>
       <div>
-        <label for="login">Login</label>
+        <label for="login">Username</label>
         <input id="login" v-model="login" type="text" required />
       </div>
       <div>

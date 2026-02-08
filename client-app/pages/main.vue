@@ -204,15 +204,13 @@ const goToPage = (page: number) => {
 }
 
 const logout = async () => {
-  const accessToken = sessionStorage.getItem('accessToken')
+  const sessionId = sessionStorage.getItem('sessionId')
 
   try {
-    if (accessToken) {
-      await $fetch(`${config.public.apiBase}/auth/logout`, {
+    if (sessionId) {
+      await $fetch(`${config.public.apiBase}/users/logout`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
+        body: { sessionId }
       })
     }
   } finally {
@@ -225,6 +223,7 @@ const logout = async () => {
     sessionStorage.removeItem('email')
     sessionStorage.removeItem('name')
     sessionStorage.removeItem('role')
+    sessionStorage.removeItem('sessionId')
     localStorage.removeItem('client_session')
     router.push('/login')
   }
