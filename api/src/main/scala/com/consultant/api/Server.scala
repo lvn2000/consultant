@@ -86,20 +86,13 @@ object Server extends IOApp:
           val path   = req.uri.path.renderString
           val method = req.method
 
-          // Note: Router strips path prefixes, so we check relative paths within the routed handlers
           method == Method.OPTIONS ||
           path == "/" ||
           path.startsWith("/docs") ||
           path.startsWith("/health") ||
-          path.startsWith("/auth") ||
-          // Absolute paths
+          // Explicit public user endpoints
           path == "/api/users/register" ||
-          path == "/api/users/login" ||
-          path == "/api/users/logout" ||
-          // Relative paths after routing through /api/users
-          path == "/register" ||
-          path == "/login" ||
-          path == "/logout"
+          path == "/api/users/login"
         }
 
         val protectedApiRoutes = TokenAuthMiddleware.protect(tokenVerifier, isPublic)(apiRoutes)
