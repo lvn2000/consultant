@@ -21,7 +21,9 @@ export function useApi() {
         headers
       })
     } catch (error: any) {
-      console.error(`[API Error] ${options?.method || 'GET'} ${url}:`, error)
+      if (process.dev) {
+        console.error(`[API Error] ${options?.method || 'GET'} ${url}:`, error?.message || error)
+      }
       throw error
     }
   }

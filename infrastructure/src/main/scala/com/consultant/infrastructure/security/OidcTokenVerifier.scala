@@ -11,14 +11,17 @@ import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory
 import com.nimbusds.jwt.SignedJWT
 import java.net.URI
 import java.net.http.{ HttpClient, HttpRequest, HttpResponse }
-import java.time.Instant
+import java.time.{ Duration, Instant }
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 import scala.jdk.CollectionConverters.*
 
 class OidcTokenVerifier(config: OidcConfig) extends TokenVerifier:
-  private val httpClient = HttpClient.newHttpClient()
-  private val jwksCache  = new AtomicReference[Option[(Instant, JWKSet)]](None)
+  private val httpClient = HttpClient
+    .newBuilder()
+    .connectTimeout(Duration.ofSeconds(config.jwksTimeoutSeconds))
+    .build()
+  private val jwksCache = new AtomicReference[Option[(Instant, JWKSet)]](None)
 
   override def verify(token: String): IO[Either[String, AuthToken]] =
     if !config.enabled then IO.pure(Left("OIDC verification is disabled"))
@@ -68,6 +71,7 @@ class OidcTokenVerifier(config: OidcConfig) extends TokenVerifier:
       val request = HttpRequest
         .newBuilder()
         .uri(URI.create(jwksUri))
+        .timeout(Duration.ofSeconds(config.jwksTimeoutSeconds))
         .GET()
         .build()
       val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())

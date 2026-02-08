@@ -46,7 +46,8 @@ case class OidcConfig(
   jwksUri: Option[String],
   audience: Option[String],
   allowedAlgs: List[String],
-  jwksCacheSeconds: Long
+  jwksCacheSeconds: Long,
+  jwksTimeoutSeconds: Long
 )
 
 case class JwtConfig(
@@ -122,24 +123,35 @@ object AppConfig:
       env("OIDC_JWKS_URI").as[String].option,
       env("OIDC_AUDIENCE").as[String].option,
       env("OIDC_ALLOWED_ALGS").as[String].default("RS256"),
-      env("OIDC_JWKS_CACHE_SECONDS").as[Long].default(600L)
-    ).parMapN { (oidcEnabled, oidcIssuer, oidcJwksUri, oidcAudience, oidcAllowedAlgs, oidcJwksCacheSeconds) =>
-      val allowedAlgs =
-        oidcAllowedAlgs
-          .split(",")
-          .map(_.trim)
-          .filter(_.nonEmpty)
-          .toList
-          .distinct
+      env("OIDC_JWKS_CACHE_SECONDS").as[Long].default(600L),
+      env("OIDC_JWKS_TIMEOUT_SECONDS").as[Long].default(10L)
+    ).parMapN {
+      (
+        oidcEnabled,
+        oidcIssuer,
+        oidcJwksUri,
+        oidcAudience,
+        oidcAllowedAlgs,
+        oidcJwksCacheSeconds,
+        oidcJwksTimeoutSeconds
+      ) =>
+        val allowedAlgs =
+          oidcAllowedAlgs
+            .split(",")
+            .map(_.trim)
+            .filter(_.nonEmpty)
+            .toList
+            .distinct
 
-      OidcConfig(
-        enabled = oidcEnabled,
-        issuer = oidcIssuer,
-        jwksUri = oidcJwksUri,
-        audience = oidcAudience,
-        allowedAlgs = allowedAlgs,
-        jwksCacheSeconds = oidcJwksCacheSeconds
-      )
+        OidcConfig(
+          enabled = oidcEnabled,
+          issuer = oidcIssuer,
+          jwksUri = oidcJwksUri,
+          audience = oidcAudience,
+          allowedAlgs = allowedAlgs,
+          jwksCacheSeconds = oidcJwksCacheSeconds,
+          jwksTimeoutSeconds = oidcJwksTimeoutSeconds
+        )
     }
 
     val jwtConfig = (

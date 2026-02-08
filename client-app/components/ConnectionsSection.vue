@@ -91,9 +91,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
-import { $fetch } from 'ofetch'
+import { useApi } from '../composables/useApi'
 
 const config = useRuntimeConfig()
+const { $fetch } = useApi()
 
 const connectionsLoading = ref(false)
 const connectionsError = ref('')
@@ -114,29 +115,16 @@ const loadConnections = async () => {
   connectionsError.value = ''
   try {
     const userId = sessionStorage.getItem('userId')
-    const accessToken = sessionStorage.getItem('accessToken')
     if (!userId) {
       connectionsError.value = 'User ID not found'
       return
     }
-    if (!accessToken) {
-      connectionsError.value = 'Authentication token not found - please log in again'
-      return
-    }
     // Load client connections from API
-    const connectionsData = await $fetch(`${config.public.apiBase}/users/${userId}/connections`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
-      }
-    })
+    const connectionsData = (await $fetch(`${config.public.apiBase}/users/${userId}/connections`)) as any[]
     connections.value = connectionsData || []
     
     // Load connection types (public endpoint, but include auth anyway)
-    const typesData = await $fetch(`${config.public.apiBase}/connection-types`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
-      }
-    })
+    const typesData = (await $fetch(`${config.public.apiBase}/connection-types`)) as any[]
     connectionTypes.value = typesData || []
   } catch (error: any) {
     connectionsError.value = error.message || 'Failed to load connections'
@@ -171,14 +159,8 @@ const saveConnection = async () => {
   connectionMessage.value = ''
   try {
     const userId = sessionStorage.getItem('userId')
-    const accessToken = sessionStorage.getItem('accessToken')
     if (!userId) {
       connectionMessage.value = 'User ID not found'
-      connectionSuccess.value = false
-      return
-    }
-    if (!accessToken) {
-      connectionMessage.value = 'Authentication token not found - please log in again'
       connectionSuccess.value = false
       return
     }
@@ -187,9 +169,6 @@ const saveConnection = async () => {
       // Update existing connection
       await $fetch(`${config.public.apiBase}/users/${userId}/connections/${editingConnectionId.value}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        },
         body: {
           connectionValue: connectionForm.value.connectionValue
         }
@@ -199,9 +178,6 @@ const saveConnection = async () => {
       // Create new connection
       await $fetch(`${config.public.apiBase}/users/${userId}/connections`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        },
         body: {
           connectionTypeId: connectionForm.value.connectionTypeId,
           connectionValue: connectionForm.value.connectionValue
@@ -228,21 +204,13 @@ const removeConnection = async (connectionId: string) => {
   
   try {
     const userId = sessionStorage.getItem('userId')
-    const accessToken = sessionStorage.getItem('accessToken')
     if (!userId) {
       alert('User ID not found')
       return
     }
-    if (!accessToken) {
-      alert('Authentication token not found - please log in again')
-      return
-    }
     
     await $fetch(`${config.public.apiBase}/users/${userId}/connections/${connectionId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
-      }
+      method: 'DELETE'
     })
     
     loadConnections()

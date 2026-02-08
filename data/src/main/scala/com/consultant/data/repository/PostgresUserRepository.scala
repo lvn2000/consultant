@@ -31,6 +31,9 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
       WHERE (LOWER(u.login) = LOWER($login) OR LOWER(u.email) = LOWER($login))
         AND c.is_active = true
     """.query[(UUID, String, String, String, Option[String], UserRole, Option[UUID], String, Instant, Instant)].option
+    // NOTE: The LOWER() functions in the WHERE clause are supported by functional indexes
+    // idx_users_login_lower and idx_users_email_lower (see V006 migration).
+    // These indexes allow efficient case-insensitive lookups without full table scans.
     val action: ConnectionIO[Option[User]] = for {
       userOpt <- userQ
       langs <- userOpt match {

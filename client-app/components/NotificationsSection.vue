@@ -38,9 +38,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
-import { $fetch } from 'ofetch'
+import { useApi } from '../composables/useApi'
 
 const config = useRuntimeConfig()
+const { $fetch } = useApi()
 
 const notificationPreferences = ref<any[]>([])
 const notificationsLoading = ref(false)
@@ -55,26 +56,32 @@ const loadNotificationPreferences = async () => {
   try {
     const userId = sessionStorage.getItem('userId')
     const accessToken = sessionStorage.getItem('accessToken')
+    
     if (!userId) {
-      notificationsError.value = 'User ID not found'
+      notificationsError.value = 'User ID not found - please log in again'
       return
     }
+    
     if (!accessToken) {
       notificationsError.value = 'Authentication token not found - please log in again'
       return
     }
     
-    const response = await $fetch(`${config.public.apiBase}/notification-preferences`, {
+    const response = (await $fetch(`${config.public.apiBase}/notification-preferences`, {
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
         'X-User-Id': userId
       }
-    })
+    })) as any
     
     notificationPreferences.value = response.preferences || []
   } catch (error: any) {
-    console.error('Notification preferences load error:', error)
-    notificationsError.value = error.data?.message || error.message || 'Failed to load notification preferences'
+    if (process.dev) console.error('Notification preferences load error:', error)
+    // Check if error is due to expired token
+    if (error?.status === 401 || error?.data?.message?.includes('token') || error?.data?.message?.includes('authentication')) {
+      notificationsError.value = 'Your session has expired - please log in again'
+    } else {
+      notificationsError.value = error.data?.message || error.message || 'Failed to load notification preferences'
+    }
   } finally {
     notificationsLoading.value = false
   }
@@ -88,19 +95,20 @@ const updateNotificationPreference = async (preference: any) => {
   try {
     const userId = sessionStorage.getItem('userId')
     const accessToken = sessionStorage.getItem('accessToken')
+    
     if (!userId) {
-      notificationUpdateMessage.value = 'User ID not found'
+      notificationUpdateMessage.value = 'User ID not found - please log in again'
       return
     }
+    
     if (!accessToken) {
-      notificationUpdateMessage.value = 'Authentication token not found - please log in again'
+      notificationUpdateMessage.value = 'Your session has expired - please log in again'
       return
     }
     
     await $fetch(`${config.public.apiBase}/notification-preferences/${preference.notificationType}`, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
         'X-User-Id': userId
       },
       body: {
@@ -116,8 +124,13 @@ const updateNotificationPreference = async (preference: any) => {
       notificationUpdateMessage.value = ''
     }, 2000)
   } catch (error: any) {
-    console.error('Error updating notification preference:', error)
-    notificationUpdateMessage.value = error.data?.message || error.message || 'Failed to update preference'
+    if (process.dev) console.error('Error updating notification preference:', error)
+    // Check if error is due to expired token
+    if (error?.status === 401 || error?.data?.message?.includes('token') || error?.data?.message?.includes('authentication')) {
+      notificationUpdateMessage.value = 'Your session has expired - please log in again'
+    } else {
+      notificationUpdateMessage.value = error.data?.message || error.message || 'Failed to update preference'
+    }
     notificationUpdateSuccess.value = false
     // Revert the change
     await loadNotificationPreferences()

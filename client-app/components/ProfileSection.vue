@@ -42,9 +42,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
-import { $fetch } from 'ofetch'
+import { useApi } from '../composables/useApi'
 
 const config = useRuntimeConfig()
+const { $fetch } = useApi()
 
 const profileLoading = ref(false)
 const profileError = ref('')
@@ -63,27 +64,6 @@ type UserProfile = {
   phone?: string
 }
 
-/**
- * Make authenticated request with Bearer token (JWT accessToken)
- */
-async function authenticatedFetch<T>(url: string, options?: any): Promise<T> {
-  const accessToken = sessionStorage.getItem('accessToken')
-  
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...options?.headers
-  }
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`
-  }
-
-  return $fetch<T>(url, {
-    ...options,
-    headers
-  })
-}
-
 const loadProfile = async () => {
   profileLoading.value = true
   profileError.value = ''
@@ -93,7 +73,7 @@ const loadProfile = async () => {
       profileError.value = 'User ID not found'
       return
     }
-    const user = await authenticatedFetch<UserProfile>(`${config.public.apiBase}/users/${userId}`)
+    const user = await $fetch<UserProfile>(`${config.public.apiBase}/users/${userId}`)
     profileForm.value = {
       name: user.name || '',
       email: user.email || '',
@@ -118,7 +98,7 @@ const updateProfile = async () => {
       return
     }
     
-    await authenticatedFetch(`${config.public.apiBase}/users/${userId}`, {
+    await $fetch(`${config.public.apiBase}/users/${userId}`, {
       method: 'PUT',
       body: {
         name: profileForm.value.name,

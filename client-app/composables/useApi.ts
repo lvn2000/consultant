@@ -12,17 +12,24 @@ export function useApi() {
   ): Promise<T> {
     const accessToken = sessionStorage.getItem('accessToken')
     
-    // If we have an accessToken, add it as Bearer token
+    // Merge headers: start with defaults, merge custom headers, then add Authorization
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...options?.headers
+      'Content-Type': 'application/json'
     }
 
+    // Merge any custom headers from options
+    if (options?.headers) {
+      Object.assign(headers, options.headers)
+    }
+
+    // Add Authorization header if we have a token (this takes precedence)
     if (accessToken) {
       headers['Authorization'] = `Bearer ${accessToken}`
     }
 
-    console.log(`[API] ${options?.method || 'GET'} ${url}`)
+    if (process.dev) {
+      console.log(`[API] ${options?.method || 'GET'} ${url}`)
+    }
 
     try {
       const response = await ofetch<T>(url, {
@@ -31,7 +38,9 @@ export function useApi() {
       })
       return response
     } catch (error: any) {
-      console.error(`[API Error] ${options?.method || 'GET'} ${url}:`, error)
+      if (process.dev) {
+        console.error(`[API Error] ${options?.method || 'GET'} ${url}:`, error?.message || error)
+      }
       throw error
     }
   }

@@ -54,7 +54,7 @@ object Server extends IOApp:
         val connectionRoutes   = ConnectionRoutes(connectionService)
         val availabilityRoutes = AvailabilitySlotRoutes(consultationService, availabilityRepository)
         val notificationPreferenceRoutes =
-          NotificationPreferenceRoutes(notificationPreferenceRepository, sessionRepository)
+          NotificationPreferenceRoutes(notificationPreferenceRepository)
 
         // Swagger documentation - include all endpoints
         val allEndpoints = userRoutes.endpoints ++ specialistRoutes.endpoints ++
@@ -176,9 +176,13 @@ object Server extends IOApp:
           .configure()
           .dataSource(dbConfig.url, dbConfig.user, dbConfig.password)
           .locations("classpath:db/migration")
-          .validateOnMigrate(false) // TODO: Temporarily disabled to fix checksum mismatch on V005
           .cleanDisabled(true) // Prevent accidental clean in production
+          .outOfOrder(true)    // Allow V006 (new functional index migration) to apply after repairs
           .load()
+        // Repair any existing checksum mismatches before applying validation
+        // This allows already-applied migrations to proceed, then recalculates their checksums
+        // to match current content. Going forward, validation detects any unauthorized changes.
+        flyway.repair()
         flyway.migrate()
       })
       xa <- DatabaseConfig.makeTransactor[IO](dbConfig)

@@ -184,7 +184,7 @@ class AvailabilityServiceSpec extends AnyFlatSpec with Matchers with MockFactory
     val service          = new AvailabilityService(availabilityRepo, consultationRepo)
     val specialistId     = java.util.UUID.randomUUID()
     val date             = LocalDate.of(2026, 2, 9) // Monday
-    val dayOfWeek        = date.getDayOfWeek.getValue % 7 // This converts Mon=1 to 1
+    val dayOfWeek        = (date.getDayOfWeek.getValue + 6) % 7 // Convert to UI format (0=Mon, 6=Sun)
     val availability = createAvailability(
       java.util.UUID.randomUUID(),
       specialistId,
@@ -211,7 +211,7 @@ class AvailabilityServiceSpec extends AnyFlatSpec with Matchers with MockFactory
     val service          = new AvailabilityService(availabilityRepo, consultationRepo)
     val specialistId     = java.util.UUID.randomUUID()
     val date             = LocalDate.of(2026, 2, 9) // Monday
-    val dayOfWeek        = date.getDayOfWeek.getValue % 7 // This converts Mon=1 to 1
+    val dayOfWeek        = (date.getDayOfWeek.getValue + 6) % 7 // Convert to UI format (0=Mon, 6=Sun)
     val availability = createAvailability(
       java.util.UUID.randomUUID(),
       specialistId,
@@ -248,7 +248,7 @@ class AvailabilityServiceSpec extends AnyFlatSpec with Matchers with MockFactory
     val service          = new AvailabilityService(availabilityRepo, consultationRepo)
     val specialistId     = java.util.UUID.randomUUID()
     val date             = LocalDate.of(2026, 2, 9) // Monday
-    val dayOfWeek        = date.getDayOfWeek.getValue % 7 // This converts Mon=1 to 1
+    val dayOfWeek        = (date.getDayOfWeek.getValue + 6) % 7 // Convert to UI format (0=Mon, 6=Sun)
     val availability = createAvailability(
       java.util.UUID.randomUUID(),
       specialistId,
@@ -277,7 +277,7 @@ class AvailabilityServiceSpec extends AnyFlatSpec with Matchers with MockFactory
     val service          = new AvailabilityService(availabilityRepo, consultationRepo)
     val specialistId     = java.util.UUID.randomUUID()
     val date             = LocalDate.of(2026, 2, 9) // Monday
-    val dayOfWeek        = date.getDayOfWeek.getValue % 7 // This converts Mon=1 to 1
+    val dayOfWeek        = (date.getDayOfWeek.getValue + 6) % 7 // Convert to UI format (0=Mon, 6=Sun)
 
     availabilityRepo.findBySpecialistAndDay
       .expects(specialistId, dayOfWeek)
@@ -294,7 +294,7 @@ class AvailabilityServiceSpec extends AnyFlatSpec with Matchers with MockFactory
     val service          = new AvailabilityService(availabilityRepo, consultationRepo)
     val specialistId     = java.util.UUID.randomUUID()
     val date             = LocalDate.of(2026, 2, 9) // Monday
-    val dayOfWeek        = date.getDayOfWeek.getValue % 7 // This converts Mon=1 to 1
+    val dayOfWeek        = (date.getDayOfWeek.getValue + 6) % 7 // Convert to UI format (0=Mon, 6=Sun)
     val availability = createAvailability(
       java.util.UUID.randomUUID(),
       specialistId,

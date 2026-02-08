@@ -16,7 +16,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
-import { $fetch } from 'ofetch'
+import { useApi } from '../composables/useApi'
 
 interface Props {
   show: boolean
@@ -26,6 +26,7 @@ defineProps<Props>()
 defineEmits(['close'])
 
 const config = useRuntimeConfig()
+const { $fetch } = useApi()
 const removing = ref(false)
 
 const removeAccount = async () => {
