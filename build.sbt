@@ -72,9 +72,9 @@ lazy val data = (project in file("data"))
       "org.tpolecat" %% "doobie-scalatest" % doobieVersion % Test,
       "org.flywaydb" % "flyway-core" % "9.22.3"
     ),
-    flywayUrl := sys.env.getOrElse("DB_URL", "jdbc:postgresql://localhost:5432/consultant_db"),
-    flywayUser := sys.env.getOrElse("DB_USER", "consultant"),
-    flywayPassword := sys.env.getOrElse("DB_PASSWORD", "bW1g55n9"),
+    flywayUrl := sys.env.getOrElse("DB_URL", "jdbc:postgresql://localhost:5432/consultant"),
+    flywayUser := sys.env.getOrElse("DB_USER", "consultant_user"),
+    flywayPassword := sys.env.getOrElse("DB_PASSWORD", "consultant_pass"),
     flywayLocations := Seq("filesystem:data/src/main/resources/db/migration")
   )
   .dependsOn(core)
@@ -121,9 +121,9 @@ lazy val api = (project in file("api"))
     name := "api",
     Compile / run / fork := true,
     Compile / run / envVars := Map(
-      "DB_URL" -> "jdbc:postgresql://localhost:5432/consultant_db",
-      "DB_USER" -> "consultant",
-      "DB_PASSWORD" -> "bW1g55n9"
+      "DB_URL" -> "jdbc:postgresql://localhost:5432/consultant",
+      "DB_USER" -> "consultant_user",
+      "DB_PASSWORD" -> "consultant_pass"
     ),
     libraryDependencies ++= Seq(
       "org.http4s"                  %% "http4s-ember-server"     % http4sVersion,

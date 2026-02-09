@@ -1,9 +1,16 @@
 # Multi-stage build для оптимального размера образа
 
 # Stage 1: Build
-FROM sbtscala/scala-sbt:eclipse-temurin-jammy-17.0.5_8_1.9.7_3.3.1 AS builder
+FROM eclipse-temurin:21-jdk-jammy AS builder
 
 WORKDIR /app
+
+# Install SBT
+RUN apt-get update && apt-get install -y curl gnupg2 && \
+    echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | tee /etc/apt/sources.list.d/sbt.list && \
+    curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x99E82A75642AC823" | apt-key add && \
+    apt-get update && apt-get install -y sbt && \
+    rm -rf /var/lib/apt/lists/*
 
 # Копируем файлы сборки
 COPY build.sbt .
@@ -22,15 +29,15 @@ COPY api api/
 RUN sbt api/assembly
 
 # Stage 2: Runtime
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 
 WORKDIR /app
 
 # Создаем пользователя для безопасности
 RUN groupadd -r consultant && useradd -r -g consultant consultant
 
-# Копируем собранный jar
-COPY --from=builder /app/api/target/scala-3.3.1/*-assembly*.jar app.jar
+    # Копируем собранный jar
+COPY --from=builder /app/api/target/scala-3.4.2/*-assembly*.jar app.jar
 
 # Настраиваем JVM для контейнера
 ENV JAVA_OPTS="-XX:+UseContainerSupport \
