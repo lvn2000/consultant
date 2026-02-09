@@ -316,7 +316,7 @@ bash start-https.sh
 
 This will:
 - Build Docker image with JDK 21
-- Start PostgreSQL, Redis, 3 API instances, and Nginx
+- Start PostgreSQL, 3 API instances, and Nginx
 - Enable HTTPS on port 9443
 - Automatically redirect HTTP (9080) to HTTPS (9443)
 

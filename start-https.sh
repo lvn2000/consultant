@@ -26,20 +26,8 @@ docker run -d \
   --health-retries=5 \
   postgres:16-alpine
 
-echo "🔴 Starting Redis..."
-docker rm -f consultant-redis 2>/dev/null || true
-docker run -d \
-  --name consultant-redis \
-  --network consultant-net \
-  -p 6379:6379 \
-  --health-cmd="redis-cli ping" \
-  --health-interval=10s \
-  --health-timeout=3s \
-  --health-retries=5 \
-  redis:7-alpine
-
-echo "⏳ Waiting for database and cache to be ready (30s)..."
-sleep 30
+echo "⏳ Waiting for database to be ready (15s)..."
+sleep 15
 
 echo "🚀 Starting API instances..."
 for i in 1 2 3; do
@@ -55,8 +43,6 @@ for i in 1 2 3; do
     -e DB_USER=consultant_user \
     -e DB_PASSWORD=consultant_pass \
     -e DB_ENCRYPTION_KEY="dev-encryption-key-change-in-prod" \
-    -e REDIS_HOST=consultant-redis \
-    -e REDIS_PORT=6379 \
     -e SERVER_HOST=0.0.0.0 \
     -e SERVER_PORT=8090 \
     -e JWT_SECRET="dev-jwt-secret-change-in-production-minimum-64-characters-long" \

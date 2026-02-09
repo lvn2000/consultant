@@ -2,7 +2,7 @@
 
 # Run API Server Script
 # This script:
-# 1. Starts PostgreSQL & Redis in Docker (if not running)
+# 1. Starts PostgreSQL in Docker (if not running)
 # 2. Loads environment variables from .env
 # 3. Starts the API server
 
@@ -19,15 +19,15 @@ echo "🐳 Starting Docker containers..."
 cd "$SCRIPT_DIR"
 
 # Check if containers are already running
-if docker ps | grep -q consultant-db-master && docker ps | grep -q consultant-redis; then
-    echo "✅ Containers already running"
+if docker ps | grep -q consultant-db-master; then
+    echo "✅ PostgreSQL container already running"
 else
-    echo "🚀 Starting PostgreSQL and Redis..."
+    echo "🚀 Starting PostgreSQL..."
     docker-compose up -d
     
     # Wait for PostgreSQL to be ready
     echo "⏳ Waiting for PostgreSQL to be ready..."
-    sleep 5
+    sleep 3
     
     # Check health
     for i in {1..30}; do

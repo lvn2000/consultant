@@ -17,11 +17,11 @@ VALUES (
 ON CONFLICT DO NOTHING;
 
 -- Insert credentials for default admin
--- Password hash for 'admin' (bcrypt: $2a$10$7EqJtq98hPqEX7fNZaFWoOhi5g1bY6LZix/2yW0b1p/0t6kQ6F7Ui)
+-- Password hash for 'admin' (bcrypt: $2a$10$kShylGbn/AAM0WFbEPzOLeO36bv8MElKe2jx.s.k6L41wC0uyGqhK)
 INSERT INTO credentials (email, password_hash, salt, user_id, role, is_active, created_at, updated_at)
 VALUES (
     'admin@admin.com',
-    '$2a$10$7EqJtq98hPqEX7fNZaFWoOhi5g1bY6LZix/2yW0b1p/0t6kQ6F7Ui',  -- bcrypt hash of 'admin'
+    '$2a$10$kShylGbn/AAM0WFbEPzOLeO36bv8MElKe2jx.s.k6L41wC0uyGqhK',  -- bcrypt hash of 'admin'
     'random_salt_admin',
     '99999999-9999-9999-9999-999999999999'::uuid,
     'Admin',
@@ -52,7 +52,7 @@ ON CONFLICT DO NOTHING;
 INSERT INTO credentials (email, password_hash, salt, user_id, role, is_active, created_at, updated_at)
 VALUES (
     'user@example.com',
-    '$2a$10$N9qo8uLOickgx2ZMRZoMye.mw5qMRH.6V6tz8tNl0VTXTlCLBW3Se',  -- bcrypt hash of 'user'
+    '$2a$10$JHe28ZfbIe7n7cxDgPakW.YxEvJt.WOzNo4rtxgDPR24of3olyCbm',  -- bcrypt hash of 'user'
     'random_salt_user',
     '11111111-1111-1111-1111-111111111111'::uuid,
     'Client',
@@ -101,7 +101,7 @@ ON CONFLICT DO NOTHING;
 INSERT INTO credentials (email, password_hash, salt, user_id, role, is_active, created_at, updated_at)
 VALUES (
     'spec@example.com',
-    '$2a$10$QUghbfJsJpd6H/9xjZyO9eG7wZWEGN7fN4Vl5OZ8Z.1W4QxKzL9ey',  -- bcrypt hash of 'spec'
+    '$2a$10$Klbk5q7yO3JNWkDajm4lMOhfJp.NRFRqDr8WmCOJxZ2bmysRllSYa',  -- bcrypt hash of 'spec'
     'random_salt_spec',
     '22222222-2222-2222-2222-222222222222'::uuid,
     'Specialist',
