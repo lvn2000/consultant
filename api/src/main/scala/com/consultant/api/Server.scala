@@ -202,19 +202,14 @@ object Server extends IOApp:
         config.database.user,
         config.database.password
       )
-      // Run Flyway migrations before creating transactor
+      // Run Flyway migrations
       _ <- Resource.eval(IO {
         val flyway = Flyway
           .configure()
           .dataSource(dbConfig.url, dbConfig.user, dbConfig.password)
           .locations("classpath:db/migration")
-          .cleanDisabled(true) // Prevent accidental clean in production
-          .outOfOrder(true)    // Allow V006 (new functional index migration) to apply after repairs
+          .cleanDisabled(true)
           .load()
-        // Repair any existing checksum mismatches before applying validation
-        // This allows already-applied migrations to proceed, then recalculates their checksums
-        // to match current content. Going forward, validation detects any unauthorized changes.
-        flyway.repair()
         flyway.migrate()
       })
       xa <- DatabaseConfig.makeTransactor[IO](dbConfig)
