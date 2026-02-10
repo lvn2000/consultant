@@ -49,8 +49,8 @@ services:
       # Security
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production-minimum-64-characters-long}
       JWT_ISSUER: consultant-api
-      JWT_ACCESS_TTL_MINUTES: 15
-      JWT_REFRESH_TTL_DAYS: 7
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 7d
       SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret}
       MAX_LOGIN_ATTEMPTS: 5
       ACCOUNT_LOCK_DURATION_MINUTES: 15
@@ -90,8 +90,8 @@ services:
       # Security
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production-minimum-64-characters-long}
       JWT_ISSUER: consultant-api
-      JWT_ACCESS_TTL_MINUTES: 15
-      JWT_REFRESH_TTL_DAYS: 7
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 7d
       SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret}
       MAX_LOGIN_ATTEMPTS: 5
       ACCOUNT_LOCK_DURATION_MINUTES: 15
@@ -128,8 +128,8 @@ services:
       # Security
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production-minimum-64-characters-long}
       JWT_ISSUER: consultant-api
-      JWT_ACCESS_TTL_MINUTES: 15
-      JWT_REFRESH_TTL_DAYS: 7
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 7d
       SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret}
       MAX_LOGIN_ATTEMPTS: 5
       ACCOUNT_LOCK_DURATION_MINUTES: 15
@@ -154,8 +154,8 @@ services:
     image: nginx:alpine
     container_name: consultant-nginx
     ports:
-      - "9080:80"
-      - "9443:443"
+      - "80:80"
+      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./certs:/etc/nginx/certs:ro
@@ -166,7 +166,7 @@ services:
     networks:
       - consultant-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "https://localhost/health", "||" ,"wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider https://localhost/health || wget --quiet --tries=1 --spider http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3

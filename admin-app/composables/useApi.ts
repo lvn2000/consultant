@@ -2,9 +2,14 @@ import { $fetch as ofetch } from 'ofetch'
 
 export function useApi() {
   async function $fetch<T>(url: string, options?: any): Promise<T> {
-    const accessToken = sessionStorage.getItem('accessToken')
-    const sessionId = sessionStorage.getItem('sessionId')
-    const token = accessToken || sessionId
+    // Guard sessionStorage access behind process.client to prevent SSR errors
+    // sessionStorage is only available in the browser, not on the server
+    let token: string | null = null
+    if (process.client) {
+      const accessToken = sessionStorage.getItem('accessToken')
+      const sessionId = sessionStorage.getItem('sessionId')
+      token = accessToken || sessionId
+    }
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',

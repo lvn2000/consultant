@@ -40,7 +40,9 @@ object TokenAuthMiddleware:
 
   private def attachHeaders(req: Request[IO], authToken: AuthToken): Request[IO] =
     req.putHeaders(
-      Header.Raw(CIString("X-User-Id"), authToken.userId.toString),
+      // X-Auth-User-Id contains the authenticated principal (from token)
+      Header.Raw(CIString("X-Auth-User-Id"), authToken.userId.toString),
+      // X-User-Role contains the authenticated user's role for authorization checks
       Header.Raw(CIString("X-User-Role"), authToken.role.toString)
     )
 

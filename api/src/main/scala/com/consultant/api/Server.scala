@@ -55,6 +55,7 @@ object Server extends IOApp:
         val availabilityRoutes = AvailabilitySlotRoutes(consultationService, availabilityRepository)
         val notificationPreferenceRoutes =
           NotificationPreferenceRoutes(notificationPreferenceRepository)
+        val healthRoutes = HealthRoutes()
 
         // Swagger documentation - include all endpoints
         val allEndpoints = userRoutes.endpoints ++ specialistRoutes.endpoints ++
@@ -63,7 +64,8 @@ object Server extends IOApp:
 
         val docEndpoints = SwaggerInterpreter()
           .fromServerEndpoints(allEndpoints, "Consultant API", "1.0.0")
-        val swaggerRoutes = Http4sServerInterpreter[IO]().toRoutes(docEndpoints)
+        val swaggerRoutes    = Http4sServerInterpreter[IO]().toRoutes(docEndpoints)
+        val healthHttpRoutes = Http4sServerInterpreter[IO]().toRoutes(healthRoutes.routes)
 
         val rootRedirect: HttpRoutes[IO] = HttpRoutes.of[IO] {
           case req if req.pathInfo == Root =>
@@ -97,8 +99,13 @@ object Server extends IOApp:
 
         val protectedApiRoutes = TokenAuthMiddleware.protect(tokenVerifier, isPublic)(apiRoutes)
 
+        // Mount all routes at root level
+        // - rootRedirect: handles "/" -> "/docs"
+        // - healthHttpRoutes: serves /health endpoint (public, no auth required)
+        // - swaggerRoutes: serves /docs/* (public Swagger UI)
+        // - protectedApiRoutes: serves /api/* endpoints (auth required, with public exceptions)
         val routes = Router(
-          "/" -> (rootRedirect <+> swaggerRoutes <+> protectedApiRoutes)
+          "/" -> (rootRedirect <+> healthHttpRoutes <+> swaggerRoutes <+> protectedApiRoutes)
         ).orNotFound
 
         val corsRoutes = CORS.policy.withAllowOriginAll
@@ -107,7 +114,7 @@ object Server extends IOApp:
             Set(
               CIString("Content-Type"),
               CIString("Authorization"),
-              CIString("X-User-Id"),
+              CIString("X-Auth-User-Id"),
               CIString("X-User-Role"),
               CIString("Accept")
             )

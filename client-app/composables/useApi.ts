@@ -10,7 +10,12 @@ export function useApi() {
     url: string,
     options?: any
   ): Promise<T> {
-    const accessToken = sessionStorage.getItem('accessToken')
+    // Guard sessionStorage access behind process.client to prevent SSR errors
+    // sessionStorage is only available in the browser, not on the server
+    let accessToken: string | null = null
+    if (process.client) {
+      accessToken = sessionStorage.getItem('accessToken')
+    }
     
     // Merge headers: start with defaults, merge custom headers, then add Authorization
     const headers: Record<string, string> = {
