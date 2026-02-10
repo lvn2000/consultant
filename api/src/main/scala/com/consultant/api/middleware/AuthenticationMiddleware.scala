@@ -37,7 +37,7 @@ class AuthenticationMiddleware(tokenVerifier: TokenVerifier):
       OptionT.liftF(
         IO.pure(
           Response[IO](status = Status.Unauthorized)
-            .withEntity(ErrorResponse("Unauthorized", req.context))
+            .withEntity(ErrorResponse("UNAUTHORIZED", req.context))
         )
       )
     }
