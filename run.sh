@@ -23,7 +23,7 @@ if docker ps | grep -q consultant-db-master; then
     echo "✅ PostgreSQL container already running"
 else
     echo "🚀 Starting PostgreSQL..."
-    docker-compose up -d
+    docker compose up -d
     
     # Wait for PostgreSQL to be ready
     echo "⏳ Waiting for PostgreSQL to be ready..."
