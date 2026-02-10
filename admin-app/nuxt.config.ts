@@ -20,7 +20,9 @@ export default defineNuxtConfig({
 
   typescript: {
     strict: true,
-    typeCheck: true
+    // Disabled runtime type checking due to vite-plugin-checker ENOTEMPTY bug on Linux.
+    // Type checking is handled by the IDE and `nuxi typecheck` command instead.
+    typeCheck: false
   },
 
   app: {
