@@ -146,10 +146,13 @@ lazy val api = (project in file("api"))
     assembly / mainClass       := Some("com.consultant.api.Server"),
     assembly / assemblyMergeStrategy := {
       case PathList("META-INF", "versions", "9", "module-info.class") => MergeStrategy.discard
+      case PathList("META-INF", "MANIFEST.MF")                        => MergeStrategy.discard  // Recreate manifest
       case PathList("META-INF", xs @ _*) =>
         xs.map(_.toLowerCase) match {
-          case "manifest.mf" :: Nil | "index.list" :: Nil | "dependencies" :: Nil => MergeStrategy.discard
-          case _                                                                  => MergeStrategy.first
+          case "index.list" :: Nil | "dependencies" :: Nil => MergeStrategy.discard
+          // Discard all signature files that conflict when merging signed JARs
+          case s if s.endsWith(".sf") || s.endsWith(".rsa") || s.endsWith(".dsa") => MergeStrategy.discard
+          case _                                                                  => MergeStrategy.discard  // Discard other META-INF files by default
         }
       case "module-info.class"       => MergeStrategy.discard
       case "application.conf"        => MergeStrategy.concat

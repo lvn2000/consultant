@@ -26,10 +26,10 @@ object TokenAuthMiddleware:
                 val authedReq = attachHeaders(req, authToken)
                 routes(authedReq)
               case Left(error) =>
-                unauthorized(error)
+                unauthorized(req, error)
             }
           case None =>
-            unauthorized("No authorization token provided")
+            unauthorized(req, "No authorization token provided")
     }
   }
 
@@ -46,10 +46,23 @@ object TokenAuthMiddleware:
       Header.Raw(CIString("X-User-Role"), authToken.role.toString)
     )
 
-  private def unauthorized(message: String): OptionT[IO, Response[IO]] =
-    OptionT.liftF(
-      IO.pure(
+  private def unauthorized(req: Request[IO], message: String): OptionT[IO, Response[IO]] =
+    OptionT.liftF {
+      IO.pure {
+        val origin = req.headers
+          .get(CIString("Origin"))
+          .map(_.head.value)
+          .getOrElse("*")
+
         Response[IO](status = Status.Unauthorized)
           .withEntity(ErrorResponse("UNAUTHORIZED", message))
-      )
-    )
+          .withHeaders(
+            Header.Raw(CIString("Access-Control-Allow-Origin"), origin),
+            Header.Raw(CIString("Access-Control-Allow-Methods"), "GET, POST, PUT, DELETE, OPTIONS"),
+            Header.Raw(
+              CIString("Access-Control-Allow-Headers"),
+              "Content-Type, Authorization, X-Auth-User-Id, X-User-Id, X-User-Role, Accept"
+            )
+          )
+      }
+    }

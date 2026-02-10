@@ -17,40 +17,133 @@ class NotificationPreferenceRoutes(
 
   private val baseEndpoint = endpoint
 
+  // Get current authenticated user's preferences
+  // SECURITY: Uses X-Auth-User-Id from the authenticated token
+  // This is a convenience endpoint that gets the current user's ID from the auth header
+  val getCurrentUserPreferencesEndpoint = baseEndpoint.get
+    .in(header[Option[String]]("X-Auth-User-Id"))
+    .in(header[Option[String]]("X-User-Role"))
+    .out(jsonBody[UserNotificationPreferencesDto])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val getCurrentUserPreferences = getCurrentUserPreferencesEndpoint.serverLogic { case (authUserIdOpt, roleOpt) =>
+    (authUserIdOpt, roleOpt) match
+      case (None, _) | (_, None) =>
+        IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing authentication headers")))
+      case (Some(authUserIdStr), Some(roleName)) =>
+        try
+          val requestedUserId: UUID = UUID.fromString(authUserIdStr)
+
+          // Always allow users to access their own preferences using this endpoint
+          notificationPreferenceRepo
+            .findByUser(requestedUserId)
+            .flatMap { preferences =>
+              // If no preferences exist, create defaults
+              if preferences.isEmpty then
+                notificationPreferenceRepo
+                  .createDefaults(requestedUserId)
+                  .map { createdPrefs =>
+                    val dtos = createdPrefs.map { pref =>
+                      NotificationPreferenceDto(
+                        id = pref.id,
+                        userId = pref.userId,
+                        notificationType = pref.notificationType.toString,
+                        emailEnabled = pref.emailEnabled,
+                        smsEnabled = pref.smsEnabled,
+                        createdAt = pref.createdAt,
+                        updatedAt = pref.updatedAt
+                      )
+                    }
+                    Right(
+                      UserNotificationPreferencesDto(
+                        userId = requestedUserId,
+                        preferences = dtos
+                      )
+                    )
+                  }
+              else
+                val dtos = preferences.map { pref =>
+                  NotificationPreferenceDto(
+                    id = pref.id,
+                    userId = pref.userId,
+                    notificationType = pref.notificationType.toString,
+                    emailEnabled = pref.emailEnabled,
+                    smsEnabled = pref.smsEnabled,
+                    createdAt = pref.createdAt,
+                    updatedAt = pref.updatedAt
+                  )
+                }
+                IO.pure(
+                  Right(
+                    UserNotificationPreferencesDto(
+                      userId = requestedUserId,
+                      preferences = dtos
+                    )
+                  )
+                )
+            }
+        catch
+          case _: IllegalArgumentException =>
+            IO.pure(Left(ErrorResponse("VALIDATION_ERROR", "Invalid user ID format")))
+  }
+
   // Get preferences for a specific user (owner or admin)
   // SECURITY: Uses X-Auth-User-Id for the authenticated principal and X-User-Role for authorization
   // userId in path specifies which user's preferences to retrieve
   // Access is allowed if: userId matches authenticated user OR user has Admin role
   val getUserPreferencesEndpoint = baseEndpoint.get
     .in(path[String]("userId"))
-    .in(header[String]("X-Auth-User-Id"))
-    .in(header[String]("X-User-Role"))
+    .in(header[Option[String]]("X-Auth-User-Id"))
+    .in(header[Option[String]]("X-User-Role"))
     .out(jsonBody[UserNotificationPreferencesDto])
     .errorOut(jsonBody[ErrorResponse])
 
-  val getUserPreferences = getUserPreferencesEndpoint.serverLogic { case (userIdStr, authUserIdStr, roleName) =>
-    try
-      val requestedUserId: UUID     = UUID.fromString(userIdStr)
-      val authenticatedUserId: UUID = UUID.fromString(authUserIdStr)
+  val getUserPreferences = getUserPreferencesEndpoint.serverLogic { case (userIdStr, authUserIdOpt, roleOpt) =>
+    (authUserIdOpt, roleOpt) match
+      case (None, _) | (_, None) =>
+        IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing authentication headers")))
+      case (Some(authUserIdStr), Some(roleName)) =>
+        try
+          val requestedUserId: UUID     = UUID.fromString(userIdStr)
+          val authenticatedUserId: UUID = UUID.fromString(authUserIdStr)
 
-      // SECURITY: Enforce role-based access control
-      // Only owner or admin can access preferences
-      val isOwner = authenticatedUserId == requestedUserId
-      val isAdmin = roleName.equalsIgnoreCase("Admin")
+          // SECURITY: Enforce role-based access control
+          // Only owner or admin can access preferences
+          val isOwner = authenticatedUserId == requestedUserId
+          val isAdmin = roleName.equalsIgnoreCase("Admin")
 
-      if !isOwner && !isAdmin then
-        IO.pure(Left(ErrorResponse("FORBIDDEN", "Not authorized to access these preferences")))
-      else
-        // Access granted, proceed with fetching preferences
-        notificationPreferenceRepo
-          .findByUser(requestedUserId)
-          .flatMap { preferences =>
-            // If no preferences exist, create defaults
-            if preferences.isEmpty then
-              notificationPreferenceRepo
-                .createDefaults(requestedUserId)
-                .map { createdPrefs =>
-                  val dtos = createdPrefs.map { pref =>
+          if !isOwner && !isAdmin then
+            IO.pure(Left(ErrorResponse("FORBIDDEN", "Not authorized to access these preferences")))
+          else
+            // Access granted, proceed with fetching preferences
+            notificationPreferenceRepo
+              .findByUser(requestedUserId)
+              .flatMap { preferences =>
+                // If no preferences exist, create defaults
+                if preferences.isEmpty then
+                  notificationPreferenceRepo
+                    .createDefaults(requestedUserId)
+                    .map { createdPrefs =>
+                      val dtos = createdPrefs.map { pref =>
+                        NotificationPreferenceDto(
+                          id = pref.id,
+                          userId = pref.userId,
+                          notificationType = pref.notificationType.toString,
+                          emailEnabled = pref.emailEnabled,
+                          smsEnabled = pref.smsEnabled,
+                          createdAt = pref.createdAt,
+                          updatedAt = pref.updatedAt
+                        )
+                      }
+                      Right(
+                        UserNotificationPreferencesDto(
+                          userId = requestedUserId,
+                          preferences = dtos
+                        )
+                      )
+                    }
+                else
+                  val dtos = preferences.map { pref =>
                     NotificationPreferenceDto(
                       id = pref.id,
                       userId = pref.userId,
@@ -61,37 +154,18 @@ class NotificationPreferenceRoutes(
                       updatedAt = pref.updatedAt
                     )
                   }
-                  Right(
-                    UserNotificationPreferencesDto(
-                      userId = requestedUserId,
-                      preferences = dtos
+                  IO.pure(
+                    Right(
+                      UserNotificationPreferencesDto(
+                        userId = requestedUserId,
+                        preferences = dtos
+                      )
                     )
                   )
-                }
-            else
-              val dtos = preferences.map { pref =>
-                NotificationPreferenceDto(
-                  id = pref.id,
-                  userId = pref.userId,
-                  notificationType = pref.notificationType.toString,
-                  emailEnabled = pref.emailEnabled,
-                  smsEnabled = pref.smsEnabled,
-                  createdAt = pref.createdAt,
-                  updatedAt = pref.updatedAt
-                )
               }
-              IO.pure(
-                Right(
-                  UserNotificationPreferencesDto(
-                    userId = requestedUserId,
-                    preferences = dtos
-                  )
-                )
-              )
-          }
-    catch
-      case _: IllegalArgumentException =>
-        IO.pure(Left(ErrorResponse("VALIDATION_ERROR", "Invalid user ID format")))
+        catch
+          case _: IllegalArgumentException =>
+            IO.pure(Left(ErrorResponse("VALIDATION_ERROR", "Invalid user ID format")))
   }
 
   // Update preference by notification type (owner or admin)
@@ -101,60 +175,65 @@ class NotificationPreferenceRoutes(
   val updatePreferenceByTypeEndpoint = baseEndpoint.put
     .in(path[String]("userId"))
     .in(path[String]("notificationType"))
-    .in(header[String]("X-Auth-User-Id"))
-    .in(header[String]("X-User-Role"))
+    .in(header[Option[String]]("X-Auth-User-Id"))
+    .in(header[Option[String]]("X-User-Role"))
     .in(jsonBody[UpdateNotificationPreferenceDto])
     .out(jsonBody[NotificationPreferenceDto])
     .errorOut(jsonBody[ErrorResponse])
 
   val updatePreferenceByType = updatePreferenceByTypeEndpoint.serverLogic {
-    case (userIdStr, notificationTypeStr, authUserIdStr, roleName, updateDto) =>
-      try
-        val requestedUserId: UUID     = UUID.fromString(userIdStr)
-        val authenticatedUserId: UUID = UUID.fromString(authUserIdStr)
-        val notificationType          = NotificationType.valueOf(notificationTypeStr)
+    case (userIdStr, notificationTypeStr, authUserIdOpt, roleOpt, updateDto) =>
+      (authUserIdOpt, roleOpt) match
+        case (None, _) | (_, None) =>
+          IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing authentication headers")))
+        case (Some(authUserIdStr), Some(roleName)) =>
+          try
+            val requestedUserId: UUID     = UUID.fromString(userIdStr)
+            val authenticatedUserId: UUID = UUID.fromString(authUserIdStr)
+            val notificationType          = NotificationType.valueOf(notificationTypeStr)
 
-        // SECURITY: Enforce role-based access control
-        // Only owner or admin can modify preferences
-        val isOwner = authenticatedUserId == requestedUserId
-        val isAdmin = roleName.equalsIgnoreCase("Admin")
+            // SECURITY: Enforce role-based access control
+            // Only owner or admin can modify preferences
+            val isOwner = authenticatedUserId == requestedUserId
+            val isAdmin = roleName.equalsIgnoreCase("Admin")
 
-        if !isOwner && !isAdmin then
-          IO.pure(Left(ErrorResponse("FORBIDDEN", "Not authorized to modify these preferences")))
-        else
-          // Access granted, proceed with modification
-          notificationPreferenceRepo
-            .findByUserAndType(requestedUserId, notificationType)
-            .flatMap {
-              case None =>
-                IO.pure(Left(ErrorResponse("NOT_FOUND", "Preference not found")))
-              case Some(pref) =>
-                val updated = pref.copy(
-                  emailEnabled = updateDto.emailEnabled,
-                  smsEnabled = updateDto.smsEnabled
-                )
-                notificationPreferenceRepo
-                  .update(updated)
-                  .map { updatedPref =>
-                    Right(
-                      NotificationPreferenceDto(
-                        id = updatedPref.id,
-                        userId = updatedPref.userId,
-                        notificationType = updatedPref.notificationType.toString,
-                        emailEnabled = updatedPref.emailEnabled,
-                        smsEnabled = updatedPref.smsEnabled,
-                        createdAt = updatedPref.createdAt,
-                        updatedAt = updatedPref.updatedAt
-                      )
+            if !isOwner && !isAdmin then
+              IO.pure(Left(ErrorResponse("FORBIDDEN", "Not authorized to modify these preferences")))
+            else
+              // Access granted, proceed with modification
+              notificationPreferenceRepo
+                .findByUserAndType(requestedUserId, notificationType)
+                .flatMap {
+                  case None =>
+                    IO.pure(Left(ErrorResponse("NOT_FOUND", "Preference not found")))
+                  case Some(pref) =>
+                    val updated = pref.copy(
+                      emailEnabled = updateDto.emailEnabled,
+                      smsEnabled = updateDto.smsEnabled
                     )
-                  }
-            }
-      catch
-        case _: IllegalArgumentException =>
-          IO.pure(Left(ErrorResponse("VALIDATION_ERROR", "Invalid notification type or user ID")))
+                    notificationPreferenceRepo
+                      .update(updated)
+                      .map { updatedPref =>
+                        Right(
+                          NotificationPreferenceDto(
+                            id = updatedPref.id,
+                            userId = updatedPref.userId,
+                            notificationType = updatedPref.notificationType.toString,
+                            emailEnabled = updatedPref.emailEnabled,
+                            smsEnabled = updatedPref.smsEnabled,
+                            createdAt = updatedPref.createdAt,
+                            updatedAt = updatedPref.updatedAt
+                          )
+                        )
+                      }
+                }
+          catch
+            case _: IllegalArgumentException =>
+              IO.pure(Left(ErrorResponse("VALIDATION_ERROR", "Invalid notification type or user ID")))
   }
 
   val endpoints = List(
+    getCurrentUserPreferences,
     getUserPreferences,
     updatePreferenceByType
   )

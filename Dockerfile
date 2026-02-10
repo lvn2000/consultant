@@ -37,15 +37,16 @@ WORKDIR /app
 RUN groupadd -r consultant && useradd -r -g consultant consultant
 
 # Copy the assembled JAR
-COPY --from=builder /app/api/target/scala-3.4.2/*-assembly*.jar app.jar
+COPY --from=builder /app/api/target/scala-3.4.2/consultant-api.jar app.jar
 
-# Настраиваем JVM для контейнера
+# Configure JVM for container
 ENV JAVA_OPTS="-XX:+UseContainerSupport \
     -XX:MaxRAMPercentage=75.0 \
     -XX:InitialRAMPercentage=50.0 \
     -XX:+UseG1GC \
     -XX:MaxGCPauseMillis=200 \
-    -XX:+UseStringDeduplication"
+    -XX:+UseStringDeduplication \
+    -Dcom.sun.jndi.ldap.connect.pool=false"
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \

@@ -4,7 +4,7 @@ import cats.effect.{ ExitCode, IO, IOApp, Resource }
 import cats.syntax.all.*
 import com.comcast.ip4s.*
 import org.http4s.ember.server.EmberServerBuilder
-import org.http4s.{ HttpRoutes, Method, Request, Response }
+import org.http4s.{ Header, HttpRoutes, Method, Request, Response }
 import org.http4s.dsl.io.*
 import org.http4s.headers.Location
 import org.http4s.implicits.*
@@ -88,6 +88,8 @@ object Server extends IOApp:
           val path   = req.uri.path.renderString
           val method = req.method
 
+          // Allow OPTIONS preflight for COR requests on all API endpoints
+          (method == Method.OPTIONS && path.startsWith("/api")) ||
           method == Method.OPTIONS ||
           path == "/" ||
           path.startsWith("/docs") ||
@@ -99,22 +101,45 @@ object Server extends IOApp:
 
         val protectedApiRoutes = TokenAuthMiddleware.protect(tokenVerifier, isPublic)(apiRoutes)
 
+        // Add a preflight handler for CORS OPTIONS requests
+        val preflightHandler: HttpRoutes[IO] = HttpRoutes.of[IO] {
+          case req if req.method == Method.OPTIONS =>
+            val origin = req.headers
+              .get(CIString("Origin"))
+              .map(_.head.value)
+              .getOrElse("*")
+            IO.pure(
+              Response[IO](org.http4s.Status.Ok).withHeaders(
+                Header.Raw(CIString("Access-Control-Allow-Origin"), origin),
+                Header.Raw(CIString("Access-Control-Allow-Methods"), "GET, POST, PUT, DELETE, OPTIONS"),
+                Header.Raw(
+                  CIString("Access-Control-Allow-Headers"),
+                  "Content-Type, Authorization, X-Auth-User-Id, X-User-Id, X-User-Role, Accept"
+                ),
+                Header.Raw(CIString("Access-Control-Max-Age"), "3600")
+              )
+            )
+        }
+
         // Mount all routes at root level
+        // - preflightHandler: handles OPTIONS preflight requests for CORS
         // - rootRedirect: handles "/" -> "/docs"
         // - healthHttpRoutes: serves /health endpoint (public, no auth required)
         // - swaggerRoutes: serves /docs/* (public Swagger UI)
         // - protectedApiRoutes: serves /api/* endpoints (auth required, with public exceptions)
         val routes = Router(
-          "/" -> (rootRedirect <+> healthHttpRoutes <+> swaggerRoutes <+> protectedApiRoutes)
+          "/" -> (preflightHandler <+> rootRedirect <+> healthHttpRoutes <+> swaggerRoutes <+> protectedApiRoutes)
         ).orNotFound
 
         val corsRoutes = CORS.policy.withAllowOriginAll
           .withAllowCredentials(false)
+          .withMaxAge(scala.concurrent.duration.FiniteDuration(1, scala.concurrent.duration.HOURS))
           .withAllowHeadersIn(
             Set(
               CIString("Content-Type"),
               CIString("Authorization"),
               CIString("X-Auth-User-Id"),
+              CIString("X-User-Id"),
               CIString("X-User-Role"),
               CIString("Accept")
             )

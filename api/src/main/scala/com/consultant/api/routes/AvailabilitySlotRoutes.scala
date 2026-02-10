@@ -155,45 +155,50 @@ class AvailabilitySlotRoutes(
    * POST /specialists/{specialistId}/availability { "dayOfWeek": 1, "startTime": "09:00", "endTime": "17:00" }
    */
   val createAvailabilityEndpoint = specialistAvailabilityEndpoint.post
-    .in(header[String]("X-Auth-User-Id"))
-    .in(header[String]("X-User-Role"))
+    .in(header[Option[String]]("X-Auth-User-Id"))
+    .in(header[Option[String]]("X-User-Role"))
     .in(jsonBody[CreateAvailabilityDto])
     .out(jsonBody[SpecialistAvailabilityDto])
     .errorOut(jsonBody[ErrorResponse])
 
-  val createAvailability = createAvailabilityEndpoint.serverLogic { case (specialistId, authUserId, userRole, dto) =>
-    // Authorization check: verify authenticated user owns this specialist ID or is admin
-    val isOwner = specialistId.toString == authUserId
-    val isAdmin = userRole.equalsIgnoreCase("Admin")
+  val createAvailability = createAvailabilityEndpoint.serverLogic {
+    case (specialistId, authUserIdOpt, userRoleOpt, dto) =>
+      (authUserIdOpt, userRoleOpt) match
+        case (None, _) | (_, None) =>
+          IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing authentication headers")))
+        case (Some(authUserId), Some(userRole)) =>
+          // Authorization check: verify authenticated user owns this specialist ID or is admin
+          val isOwner = specialistId.toString == authUserId
+          val isAdmin = userRole.equalsIgnoreCase("Admin")
 
-    if !isOwner && !isAdmin then
-      IO.pure(
-        Left(ErrorResponse("FORBIDDEN", "You can only create availability slots for your own specialist profile"))
-      )
-    else
-      (for {
-        availability <- availabilityRepository.create(
-          specialistId,
-          com.consultant.core.domain.CreateAvailabilityRequest(
-            dayOfWeek = dto.dayOfWeek,
-            startTime = java.time.LocalTime.parse(dto.startTime),
-            endTime = java.time.LocalTime.parse(dto.endTime)
-          )
-        )
-        response = SpecialistAvailabilityDto(
-          id = availability.id,
-          specialistId = availability.specialistId,
-          dayOfWeek = availability.dayOfWeek,
-          startTime = availability.startTime.toString,
-          endTime = availability.endTime.toString,
-          createdAt = availability.createdAt,
-          updatedAt = availability.updatedAt
-        )
-      } yield Right(response)).recover { case e =>
-        System.err.println(s"Error creating availability slot: ${e.getMessage}")
-        e.printStackTrace(System.err)
-        Left(ErrorResponse("ERROR", "Failed to create availability slot. Please try again later."))
-      }
+          if !isOwner && !isAdmin then
+            IO.pure(
+              Left(ErrorResponse("FORBIDDEN", "You can only create availability slots for your own specialist profile"))
+            )
+          else
+            (for {
+              availability <- availabilityRepository.create(
+                specialistId,
+                com.consultant.core.domain.CreateAvailabilityRequest(
+                  dayOfWeek = dto.dayOfWeek,
+                  startTime = java.time.LocalTime.parse(dto.startTime),
+                  endTime = java.time.LocalTime.parse(dto.endTime)
+                )
+              )
+              response = SpecialistAvailabilityDto(
+                id = availability.id,
+                specialistId = availability.specialistId,
+                dayOfWeek = availability.dayOfWeek,
+                startTime = availability.startTime.toString,
+                endTime = availability.endTime.toString,
+                createdAt = availability.createdAt,
+                updatedAt = availability.updatedAt
+              )
+            } yield Right(response)).recover { case e =>
+              System.err.println(s"Error creating availability slot: ${e.getMessage}")
+              e.printStackTrace(System.err)
+              Left(ErrorResponse("ERROR", "Failed to create availability slot. Please try again later."))
+            }
   }
 
   /**
@@ -202,61 +207,65 @@ class AvailabilitySlotRoutes(
    * PUT /specialists/{specialistId}/availability/{slotId} { "dayOfWeek": 1, "startTime": "09:00", "endTime": "17:00" }
    */
   val updateAvailabilityEndpoint = specialistAvailabilityEndpoint.put
-    .in(header[String]("X-Auth-User-Id"))
-    .in(header[String]("X-User-Role"))
+    .in(header[Option[String]]("X-Auth-User-Id"))
+    .in(header[Option[String]]("X-User-Role"))
     .in(path[UUID]("slotId"))
     .in(jsonBody[UpdateAvailabilityDto])
     .out(jsonBody[SpecialistAvailabilityDto])
     .errorOut(jsonBody[ErrorResponse])
 
   val updateAvailability = updateAvailabilityEndpoint.serverLogic {
-    case (specialistId, authUserId, userRole, slotId, dto) =>
-      // Authorization check: verify authenticated user owns this specialist ID or is admin
-      val isOwner = specialistId.toString == authUserId
-      val isAdmin = userRole.equalsIgnoreCase("Admin")
+    case (specialistId, authUserIdOpt, userRoleOpt, slotId, dto) =>
+      (authUserIdOpt, userRoleOpt) match
+        case (None, _) | (_, None) =>
+          IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing authentication headers")))
+        case (Some(authUserId), Some(userRole)) =>
+          // Authorization check: verify authenticated user owns this specialist ID or is admin
+          val isOwner = specialistId.toString == authUserId
+          val isAdmin = userRole.equalsIgnoreCase("Admin")
 
-      if !isOwner && !isAdmin then
-        IO.pure(
-          Left(ErrorResponse("FORBIDDEN", "You can only update availability slots for your own specialist profile"))
-        )
-      else
-        (for {
-          existing <- availabilityRepository.findById(slotId).map {
-            case Some(avail) => Right(avail)
-            case None        => Left(ErrorResponse("NOT_FOUND", "Availability slot not found"))
-          }
-          result <- existing match {
-            case Right(avail) =>
-              // Additional check: verify the slot belongs to the requested specialist
-              if avail.specialistId != specialistId then
-                IO.pure(Left(ErrorResponse("FORBIDDEN", "You can only update your own availability slots")))
-              else
-                val updated = avail.copy(
-                  dayOfWeek = dto.dayOfWeek,
-                  startTime = java.time.LocalTime.parse(dto.startTime),
-                  endTime = java.time.LocalTime.parse(dto.endTime),
-                  updatedAt = java.time.Instant.now()
-                )
-                availabilityRepository.update(updated).map { updated =>
-                  Right(
-                    SpecialistAvailabilityDto(
-                      id = updated.id,
-                      specialistId = updated.specialistId,
-                      dayOfWeek = updated.dayOfWeek,
-                      startTime = updated.startTime.toString,
-                      endTime = updated.endTime.toString,
-                      createdAt = updated.createdAt,
-                      updatedAt = updated.updatedAt
+          if !isOwner && !isAdmin then
+            IO.pure(
+              Left(ErrorResponse("FORBIDDEN", "You can only update availability slots for your own specialist profile"))
+            )
+          else
+            (for {
+              existing <- availabilityRepository.findById(slotId).map {
+                case Some(avail) => Right(avail)
+                case None        => Left(ErrorResponse("NOT_FOUND", "Availability slot not found"))
+              }
+              result <- existing match {
+                case Right(avail) =>
+                  // Additional check: verify the slot belongs to the requested specialist
+                  if avail.specialistId != specialistId then
+                    IO.pure(Left(ErrorResponse("FORBIDDEN", "You can only update your own availability slots")))
+                  else
+                    val updated = avail.copy(
+                      dayOfWeek = dto.dayOfWeek,
+                      startTime = java.time.LocalTime.parse(dto.startTime),
+                      endTime = java.time.LocalTime.parse(dto.endTime),
+                      updatedAt = java.time.Instant.now()
                     )
-                  )
-                }
-            case Left(error) => IO.pure(Left(error))
-          }
-        } yield result).recover { case e =>
-          System.err.println(s"Error updating availability slot: ${e.getMessage}")
-          e.printStackTrace(System.err)
-          Left(ErrorResponse("ERROR", "Failed to update availability slot. Please try again later."))
-        }
+                    availabilityRepository.update(updated).map { updated =>
+                      Right(
+                        SpecialistAvailabilityDto(
+                          id = updated.id,
+                          specialistId = updated.specialistId,
+                          dayOfWeek = updated.dayOfWeek,
+                          startTime = updated.startTime.toString,
+                          endTime = updated.endTime.toString,
+                          createdAt = updated.createdAt,
+                          updatedAt = updated.updatedAt
+                        )
+                      )
+                    }
+                case Left(error) => IO.pure(Left(error))
+              }
+            } yield result).recover { case e =>
+              System.err.println(s"Error updating availability slot: ${e.getMessage}")
+              e.printStackTrace(System.err)
+              Left(ErrorResponse("ERROR", "Failed to update availability slot. Please try again later."))
+            }
   }
 
   /**
@@ -265,40 +274,45 @@ class AvailabilitySlotRoutes(
    * DELETE /specialists/{specialistId}/availability/{slotId}
    */
   val deleteAvailabilityEndpoint = specialistAvailabilityEndpoint.delete
-    .in(header[String]("X-Auth-User-Id"))
-    .in(header[String]("X-User-Role"))
+    .in(header[Option[String]]("X-Auth-User-Id"))
+    .in(header[Option[String]]("X-User-Role"))
     .in(path[UUID]("slotId"))
     .out(jsonBody[Map[String, String]])
     .errorOut(jsonBody[ErrorResponse])
 
-  val deleteAvailability = deleteAvailabilityEndpoint.serverLogic { case (specialistId, authUserId, userRole, slotId) =>
-    // Authorization check: verify authenticated user owns this specialist ID or is admin
-    val isOwner = specialistId.toString == authUserId
-    val isAdmin = userRole.equalsIgnoreCase("Admin")
+  val deleteAvailability = deleteAvailabilityEndpoint.serverLogic {
+    case (specialistId, authUserIdOpt, userRoleOpt, slotId) =>
+      (authUserIdOpt, userRoleOpt) match
+        case (None, _) | (_, None) =>
+          IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing authentication headers")))
+        case (Some(authUserId), Some(userRole)) =>
+          // Authorization check: verify authenticated user owns this specialist ID or is admin
+          val isOwner = specialistId.toString == authUserId
+          val isAdmin = userRole.equalsIgnoreCase("Admin")
 
-    if !isOwner && !isAdmin then
-      IO.pure(
-        Left(ErrorResponse("FORBIDDEN", "You can only delete availability slots for your own specialist profile"))
-      )
-    else
-      (for {
-        existing <- availabilityRepository.findById(slotId).map {
-          case Some(avail) if avail.specialistId == specialistId => Right(avail)
-          case Some(_) => Left(ErrorResponse("FORBIDDEN", "You are not the owner of this slot"))
-          case None    => Left(ErrorResponse("NOT_FOUND", "Availability slot not found"))
-        }
-        result <- existing match {
-          case Right(_) =>
-            availabilityRepository.delete(slotId).map { _ =>
-              Right(Map("message" -> "Availability slot deleted successfully"))
+          if !isOwner && !isAdmin then
+            IO.pure(
+              Left(ErrorResponse("FORBIDDEN", "You can only delete availability slots for your own specialist profile"))
+            )
+          else
+            (for {
+              existing <- availabilityRepository.findById(slotId).map {
+                case Some(avail) if avail.specialistId == specialistId => Right(avail)
+                case Some(_) => Left(ErrorResponse("FORBIDDEN", "You are not the owner of this slot"))
+                case None    => Left(ErrorResponse("NOT_FOUND", "Availability slot not found"))
+              }
+              result <- existing match {
+                case Right(_) =>
+                  availabilityRepository.delete(slotId).map { _ =>
+                    Right(Map("message" -> "Availability slot deleted successfully"))
+                  }
+                case Left(error) => IO.pure(Left(error))
+              }
+            } yield result).recover { case e =>
+              System.err.println(s"Error deleting availability slot: ${e.getMessage}")
+              e.printStackTrace(System.err)
+              Left(ErrorResponse("ERROR", "Failed to delete availability slot. Please try again later."))
             }
-          case Left(error) => IO.pure(Left(error))
-        }
-      } yield result).recover { case e =>
-        System.err.println(s"Error deleting availability slot: ${e.getMessage}")
-        e.printStackTrace(System.err)
-        Left(ErrorResponse("ERROR", "Failed to delete availability slot. Please try again later."))
-      }
   }
 
   val endpoints = List(
