@@ -1,13 +1,13 @@
 <template>
   <div v-if="show" class="modal-overlay" @click.self="$emit('close')">
     <div class="modal">
-      <h3>Remove Account</h3>
-      <p>Are you sure you want to remove your account? This action cannot be undone.</p>
+      <h3>{{ $t('profile.removeAccount') }}</h3>
+      <p>{{ $t('profile.removeAccountConfirm') }}</p>
       <div class="modal-actions">
         <button class="btn danger" @click="removeAccount" :disabled="removing">
-          {{ removing ? 'Removing...' : 'Yes, Remove' }}
+          {{ removing ? $t('common.removing') : $t('profile.yesRemoveAccount') }}
         </button>
-        <button class="btn" @click="$emit('close')">Cancel</button>
+        <button class="btn" @click="$emit('close')">{{ $t('common.cancel') }}</button>
       </div>
     </div>
   </div>
@@ -17,6 +17,8 @@
 import { ref } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
 import { useApi } from '../composables/useApi'
+
+const { t } = useI18n()
 
 interface Props {
   show: boolean
@@ -34,15 +36,15 @@ const removeAccount = async () => {
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      alert('User ID not found')
+      alert(t('auth.userIdNotFound'))
       return
     }
     // Note: User deletion endpoint not yet implemented in API
     // TODO: Add DELETE /api/users/:id endpoint to the backend
-    alert('Account deletion not yet available. API endpoint needs to be implemented.')
+    alert(t('profile.accountDeletionNotAvailable'))
     return
   } catch (error: any) {
-    alert(error.message || 'Failed to remove account')
+    alert(error.message || t('profile.failedToRemove'))
   } finally {
     removing.value = false
   }

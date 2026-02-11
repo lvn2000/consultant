@@ -1,25 +1,25 @@
 <template>
   <section v-if="visible" class="section">
     <div class="section-header">
-      <h2>Type Connections</h2>
+      <h2>{{ $t('adminConnectionTypes.title') }}</h2>
       <button type="button" class="btn" @click="loadConnectionTypes">🔄 Refresh</button>
     </div>
 
-    <div class="list-state" v-if="connectionTypesLoading">Loading connection types...</div>
+    <div class="list-state" v-if="connectionTypesLoading">{{ $t('adminConnectionTypes.loading') }}</div>
     <div class="list-state error" v-else-if="connectionTypesError">{{ connectionTypesError }}</div>
 
     <div class="table" v-else>
       <div class="table-header connections-types-table">
-        <span>Name</span>
-        <span>Description</span>
-        <span>Actions</span>
+        <span>{{ $t('common.name') }}</span>
+        <span>{{ $t('common.description') }}</span>
+        <span>{{ $t('common.actions') }}</span>
       </div>
       <div v-for="type in connectionTypes" :key="type.id" class="table-row connections-types-table">
         <span>{{ type.name }}</span>
         <span>{{ type.description || '-' }}</span>
         <span class="row-actions">
-          <button type="button" class="btn" @click="startEditConnectionType(type)">✏️ Select</button>
-          <button type="button" class="btn danger" @click="removeConnectionType(type.id)">🗑️ Delete</button>
+          <button type="button" class="btn" @click="startEditConnectionType(type)">✏️ {{ $t('common.edit') }}</button>
+          <button type="button" class="btn danger" @click="removeConnectionType(type.id)">🗑️ {{ $t('common.delete') }}</button>
         </span>
       </div>
     </div>
@@ -27,29 +27,29 @@
     <form ref="connectionTypeFormRef" class="form" @submit.prevent>
       <div class="form-grid">
         <div class="form-field">
-          <label for="connection-type-name">Name</label>
-          <input id="connection-type-name" v-model="connectionTypeForm.name" type="text" placeholder="WhatsApp" />
+          <label for="connection-type-name">{{ $t('common.name') }}</label>
+          <input id="connection-type-name" v-model="connectionTypeForm.name" type="text" :placeholder="$t('adminConnectionTypes.namePlaceholder')" />
         </div>
         <div class="form-field">
-          <label for="connection-type-description">Description</label>
+          <label for="connection-type-description">{{ $t('common.description') }}</label>
           <input
             id="connection-type-description"
             v-model="connectionTypeForm.description"
             type="text"
-            placeholder="Messaging app"
+            :placeholder="$t('adminConnectionTypes.descriptionPlaceholder')"
           />
         </div>
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn primary" @click="addConnectionType">➕ Add Type</button>
+        <button type="button" class="btn primary" @click="addConnectionType">➕ {{ $t('adminConnectionTypes.addType') }}</button>
         <button type="button" class="btn" :disabled="!selectedConnectionTypeId" @click="updateConnectionType">
-          ✏️ Update Type
+          ✏️ {{ $t('adminConnectionTypes.updateType') }}
         </button>
         <button type="button" class="btn danger" :disabled="!selectedConnectionTypeId" @click="deleteSelectedConnectionType">
-          🗑️ Delete Type
+          🗑️ {{ $t('adminConnectionTypes.deleteType') }}
         </button>
-        <button type="button" class="btn" @click="resetConnectionTypeForm">❌ Clear</button>
+        <button type="button" class="btn" @click="resetConnectionTypeForm">❌ {{ $t('common.cancel') }}</button>
       </div>
 
       <p v-if="connectionTypeActionMessage" class="form-message">{{ connectionTypeActionMessage }}</p>
@@ -61,8 +61,8 @@
         <h3>{{ confirmState.title }}</h3>
         <p>{{ confirmState.message }}</p>
         <div class="modal-actions">
-          <button type="button" class="btn" @click="confirmResolver?.(false)">Cancel</button>
-          <button type="button" class="btn primary" @click="confirmResolver?.(true)">Confirm</button>
+          <button type="button" class="btn" @click="confirmResolver?.(false)">{{ $t('common.cancel') }}</button>
+          <button type="button" class="btn primary" @click="confirmResolver?.(true)">{{ $t('common.saving') }}</button>
         </div>
       </div>
     </div>
@@ -73,6 +73,8 @@
 import { onMounted, ref, nextTick } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
 import { useApi } from '../composables/useApi'
+
+const { t } = useI18n()
 
 defineProps<{
   visible: boolean
@@ -125,7 +127,7 @@ const loadConnectionTypes = async () => {
     connectionTypes.value = data
   } catch (error) {
     connectionTypes.value = []
-    connectionTypesError.value = 'Failed to load connection types'
+    connectionTypesError.value = t('adminConnectionTypes.failedToLoad')
   } finally {
     connectionTypesLoading.value = false
   }
@@ -159,11 +161,11 @@ const addConnectionType = async () => {
   connectionTypeActionMessage.value = ''
 
   if (!connectionTypeForm.value.name.trim()) {
-    connectionTypeActionMessage.value = 'Provide a name for the connection type.'
+    connectionTypeActionMessage.value = t('adminConnectionTypes.nameRequired')
     return
   }
 
-  const confirmed = await confirmAction('Add Connection Type', 'Add this connection type?')
+  const confirmed = await confirmAction(t('adminConnectionTypes.addTitle'), t('adminConnectionTypes.addConfirm'))
   if (!confirmed) return
 
   try {
@@ -174,18 +176,18 @@ const addConnectionType = async () => {
         description: connectionTypeForm.value.description || null,
       },
     })
-    connectionTypeActionMessage.value = 'Connection type created successfully.'
+    connectionTypeActionMessage.value = t('adminConnectionTypes.created')
     resetConnectionTypeForm()
     await loadConnectionTypes()
   } catch (error) {
-    connectionTypeActionMessage.value = 'Failed to create connection type.'
+    connectionTypeActionMessage.value = t('adminConnectionTypes.failedToCreate')
   }
 }
 
 const updateConnectionType = async () => {
   if (!selectedConnectionTypeId.value) return
 
-  const confirmed = await confirmAction('Update Connection Type', 'Update this connection type?')
+  const confirmed = await confirmAction(t('adminConnectionTypes.updateTitle'), t('adminConnectionTypes.updateConfirm'))
   if (!confirmed) return
 
   try {
@@ -196,41 +198,41 @@ const updateConnectionType = async () => {
         description: connectionTypeForm.value.description,
       },
     })
-    connectionTypeActionMessage.value = 'Connection type updated successfully.'
+    connectionTypeActionMessage.value = t('adminConnectionTypes.updated')
     resetConnectionTypeForm()
     await loadConnectionTypes()
   } catch (error) {
-    connectionTypeActionMessage.value = 'Failed to update connection type.'
+    connectionTypeActionMessage.value = t('adminConnectionTypes.failedToUpdate')
   }
 }
 
 const deleteSelectedConnectionType = async () => {
   if (!selectedConnectionTypeId.value) return
 
-  const confirmed = await confirmAction('Delete Connection Type', 'Delete this connection type?')
+  const confirmed = await confirmAction(t('adminConnectionTypes.deleteTitle'), t('adminConnectionTypes.deleteConfirm'))
   if (!confirmed) return
 
   try {
     await $fetch(`${config.public.apiBase}/connection-types/${selectedConnectionTypeId.value}`, {
       method: 'DELETE',
     })
-    connectionTypeActionMessage.value = 'Connection type deleted successfully.'
+    connectionTypeActionMessage.value = t('adminConnectionTypes.deleted')
     resetConnectionTypeForm()
     await loadConnectionTypes()
   } catch (error) {
-    connectionTypeActionMessage.value = 'Failed to delete connection type.'
+    connectionTypeActionMessage.value = t('adminConnectionTypes.failedToDelete')
   }
 }
 
 const removeConnectionType = async (id: string) => {
-  const confirmed = await confirmAction('Delete Connection Type', 'Delete this connection type?')
+  const confirmed = await confirmAction(t('adminConnectionTypes.deleteTitle'), t('adminConnectionTypes.deleteConfirm'))
   if (!confirmed) return
 
   try {
     await $fetch(`${config.public.apiBase}/connection-types/${id}`, { method: 'DELETE' })
     await loadConnectionTypes()
   } catch (error) {
-    connectionTypeActionMessage.value = 'Failed to delete connection type.'
+    connectionTypeActionMessage.value = t('adminConnectionTypes.failedToDelete')
   }
 }
 

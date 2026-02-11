@@ -1,50 +1,50 @@
 <template>
   <div class="tab-panel">
     <div class="form" style="margin-bottom: 2rem;">
-      <h4>Filter Consultations</h4>
+      <h4>{{ $t('consultations.filter.title') }}</h4>
       <div class="form-grid">
         <div class="form-field">
-          <label>Status</label>
+          <label>{{ $t('common.status') }}</label>
           <select v-model="filters.status">
-            <option value="">All Status</option>
-            <option value="Requested">Requested</option>
-            <option value="Scheduled">Scheduled</option>
-            <option value="InProgress">In Progress</option>
-            <option value="Completed">Completed</option>
-            <option value="Missed">Missed</option>
-            <option value="Cancelled">Cancelled</option>
+            <option value="">{{ $t('consultations.filter.allStatus') }}</option>
+            <option value="Requested">{{ $t('consultations.filter.requested') }}</option>
+            <option value="Scheduled">{{ $t('consultations.filter.scheduled') }}</option>
+            <option value="InProgress">{{ $t('consultations.filter.inProgress') }}</option>
+            <option value="Completed">{{ $t('consultations.filter.completed') }}</option>
+            <option value="Missed">{{ $t('consultations.filter.missed') }}</option>
+            <option value="Cancelled">{{ $t('consultations.filter.cancelled') }}</option>
           </select>
         </div>
         <div class="form-field">
-          <label>From Date</label>
+          <label>{{ $t('consultations.filter.fromDate') }}</label>
           <input type="date" v-model="filters.fromDate">
         </div>
         <div class="form-field">
-          <label>To Date</label>
+          <label>{{ $t('consultations.filter.toDate') }}</label>
           <input type="date" v-model="filters.toDate">
         </div>
         <div class="form-field">
-          <label>Search</label>
-          <input type="text" v-model="filters.search" placeholder="Search by specialist or description">
+          <label>{{ $t('common.search') }}</label>
+          <input type="text" v-model="filters.search" :placeholder="$t('consultations.filter.searchPlaceholder')">
         </div>
       </div>
       <div class="form-actions">
-        <button class="btn btn-secondary" @click="clearFilters">Clear Filters</button>
-        <button class="btn btn-primary" @click="emit('load-consultations')">Apply Filters</button>
+        <button class="btn btn-secondary" @click="clearFilters">{{ $t('consultations.filter.clearFilters') }}</button>
+        <button class="btn btn-primary" @click="emit('load-consultations')">{{ $t('consultations.filter.applyFilters') }}</button>
       </div>
     </div>
 
-    <div v-if="loading" class="list-state">Loading consultations...</div>
+    <div v-if="loading" class="list-state">{{ $t('consultations.loading') }}</div>
     <div v-else-if="error" class="list-state error">{{ error }}</div>
     <div v-else-if="consultations.length === 0" class="empty-state">
       <div class="empty-icon">📋</div>
-      <h3>No consultations yet</h3>
-      <p>You haven't booked any consultations. Use the "Book Consultation" tab to schedule your first consultation.</p>
+      <h3>{{ $t('consultations.noConsultations') }}</h3>
+      <p>{{ $t('consultations.noConsultationsClient') }}</p>
     </div>
     <div v-else class="consultation-list">
       <div v-if="filteredConsultations.length === 0" class="empty-state">
-        <div v-if="paginatedConsultations.length === 0">No consultations match your filters. Try adjusting your search criteria.</div>
-        <div v-else>Loading filtered results...</div>
+        <div v-if="paginatedConsultations.length === 0">{{ $t('consultations.noConsultationsFiltered') }}</div>
+        <div v-else>{{ $t('consultations.loadingFiltered') }}</div>
       </div>
       <div v-else>
         <div v-for="consultation in paginatedConsultations" :key="consultation.id" class="consultation-item">
@@ -55,9 +55,9 @@
             </div>
           </div>
           <div class="consultation-details">
-            <div>Specialist: {{ consultation.specialistId }}</div>
-            <div>Duration: {{ consultation.duration }} minutes</div>
-            <div>Price: {{ consultation.price === 0 ? 'Free' : `$${consultation.price}` }}</div>
+            <div>{{ $t('consultations.specialistLabel') }}{{ consultation.specialistId }}</div>
+            <div>{{ $t('consultations.durationLabel') }}{{ $t('consultations.durationMinutes', { n: consultation.duration }) }}</div>
+            <div>{{ $t('consultations.priceLabel') }}{{ consultation.price === 0 ? $t('common.free') : `$${consultation.price}` }}</div>
           </div>
         </div>
       </div>
@@ -69,18 +69,17 @@
           :disabled="paginationInfo.currentPage === 1"
           @click="emit('go-to-page', paginationInfo.currentPage - 1)"
         >
-          Previous
+          {{ $t('common.previous') }}
         </button>
         <span class="pagination-info">
-          Page {{ paginationInfo.currentPage }} of {{ paginationInfo.totalPages }}
-          ({{ paginationInfo.totalCount }} total)
+          {{ $t('common.pagination.pageWithTotal', { current: paginationInfo.currentPage, total: paginationInfo.totalPages, items: paginationInfo.totalCount }) }}
         </span>
         <button 
           class="pagination-btn" 
           :disabled="paginationInfo.currentPage === paginationInfo.totalPages"
           @click="emit('go-to-page', paginationInfo.currentPage + 1)"
         >
-          Next
+          {{ $t('common.next') }}
         </button>
       </div>
     </div>
@@ -110,6 +109,8 @@ interface Props {
 
 const props = defineProps<Props>()
 const emit = defineEmits(['load-consultations', 'go-to-page', 'clear-filters'])
+
+const { t } = useI18n()
 
 const filters = ref(props.filters)
 

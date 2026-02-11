@@ -2,25 +2,25 @@
   <section class="section">
     <div class="section-header">
       <div class="header-content">
-        <h2><span class="icon">🤝</span>My Connections</h2>
-        <p class="header-subtitle">Manage your professional network and partnerships</p>
+        <h2><span class="icon">🤝</span>{{ $t('connections.title') }}</h2>
+        <p class="header-subtitle">{{ $t('connections.subtitle') }}</p>
       </div>
       <button type="button" class="btn btn-primary" @click="startEditConnection(null)">
-        <span class="btn-icon">+</span> Add Connection
+        <span class="btn-icon">+</span> {{ $t('connections.addConnection') }}
       </button>
     </div>
 
     <div v-if="connectionsLoading" class="list-state">
       <div class="spinner"></div>
-      <p>Loading connections...</p>
+      <p>{{ $t('connections.loading') }}</p>
     </div>
     <div v-else-if="connectionsError" class="list-state error">{{ connectionsError }}</div>
     <div v-else-if="connections.length === 0" class="empty-state">
       <div class="empty-icon">📱</div>
-      <h3>No connections yet</h3>
-      <p>Add your first connection to get started</p>
+      <h3>{{ $t('connections.noConnections') }}</h3>
+      <p>{{ $t('connections.noConnectionsDesc') }}</p>
       <button type="button" class="btn btn-primary" @click="startEditConnection(null)">
-        <span class="btn-icon">+</span> Add Connection
+        <span class="btn-icon">+</span> {{ $t('connections.addConnection') }}
       </button>
     </div>
     <div v-else class="connections-list">
@@ -31,16 +31,16 @@
           </div>
           <div class="connection-status" :class="{ verified: connection.isVerified }">
             <span class="status-dot"></span>
-            {{ connection.isVerified ? 'Verified' : 'Not verified' }}
+            {{ connection.isVerified ? $t('common.verified') : $t('common.notVerified') }}
           </div>
         </div>
         <div class="connection-value">{{ connection.connectionValue }}</div>
         <div class="connection-actions">
           <button type="button" class="btn btn-sm btn-secondary" @click="startEditConnection(connection)">
-            ✏️ Edit
+            ✏️ {{ $t('common.edit') }}
           </button>
           <button type="button" class="btn btn-sm btn-danger" @click="removeConnection(connection.id)">
-            🗑️ Remove
+            🗑️ {{ $t('common.delete') }}
           </button>
         </div>
       </div>
@@ -50,30 +50,30 @@
     <div v-if="editingConnectionId !== null" class="form-modal">
       <div class="form-card">
         <div class="form-header">
-          <h3>{{ editingConnectionId ? 'Edit Connection' : 'Add New Connection' }}</h3>
+          <h3>{{ editingConnectionId ? $t('connections.editConnection') : $t('connections.addNewConnection') }}</h3>
           <button type="button" class="close-btn" @click="cancelEditConnection">×</button>
         </div>
         <form class="form-body" @submit.prevent="saveConnection">
           <div class="form-field">
-            <label for="connection-type">Connection Type *</label>
+            <label for="connection-type">{{ $t('connections.connectionType') }} *</label>
             <select
               id="connection-type"
               v-model="connectionForm.connectionTypeId"
               required
             >
-              <option value="">Select a connection type</option>
+              <option value="">{{ $t('connections.selectConnectionType') }}</option>
               <option v-for="type in connectionTypes" :key="type.id" :value="type.id">
                 {{ type.name }} {{ type.description ? `- ${type.description}` : '' }}
               </option>
             </select>
           </div>
           <div class="form-field">
-            <label for="connection-value">Connection Value *</label>
+            <label for="connection-value">{{ $t('connections.connectionValue') }} *</label>
             <input 
               id="connection-value" 
               v-model="connectionForm.connectionValue" 
               type="text" 
-              placeholder="e.g., +1234567890 or username"
+              :placeholder="$t('connections.valuePlaceholder')"
               required 
             />
           </div>
@@ -82,10 +82,10 @@
           </div>
           <div class="form-footer">
             <button type="button" class="btn btn-secondary" @click="cancelEditConnection" :disabled="connectionSaving">
-              Cancel
+              {{ $t('common.cancel') }}
             </button>
             <button type="submit" class="btn btn-primary" :disabled="connectionSaving || !connectionForm.connectionTypeId || !connectionForm.connectionValue">
-              {{ connectionSaving ? 'Saving...' : 'Save Connection' }}
+              {{ connectionSaving ? $t('common.saving') : $t('connections.saveConnection') }}
             </button>
           </div>
         </form>
@@ -101,6 +101,7 @@ import { useApi } from '~/composables/useApi'
 
 const config = useRuntimeConfig()
 const { $fetch } = useApi()
+const { t } = useI18n()
 
 type Connection = {
   id: string
@@ -135,7 +136,7 @@ const loadConnections = async () => {
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      connectionsError.value = 'User ID not found'
+      connectionsError.value = t('auth.userIdNotFound')
       return
     }
     const connectionsData = await $fetch<Connection[]>(`${config.public.apiBase}/specialists/${userId}/connections`)
@@ -144,7 +145,7 @@ const loadConnections = async () => {
     const typesData = await $fetch<ConnectionType[]>(`${config.public.apiBase}/connection-types`)
     connectionTypes.value = typesData || []
   } catch (error: any) {
-    connectionsError.value = error.message || 'Failed to load connections'
+    connectionsError.value = error.message || t('connections.failedToLoad')
   } finally {
     connectionsLoading.value = false
   }
@@ -178,7 +179,7 @@ const saveConnection = async () => {
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      connectionMessage.value = 'User ID not found'
+      connectionMessage.value = t('auth.userIdNotFound')
       connectionSuccess.value = false
       return
     }
@@ -189,14 +190,14 @@ const saveConnection = async () => {
         method: 'PUT',
         body: connectionForm.value
       })
-      connectionMessage.value = 'Connection updated successfully'
+      connectionMessage.value = t('connections.connectionUpdated')
     } else {
       // Add new connection
       await $fetch(`${config.public.apiBase}/specialists/${userId}/connections`, {
         method: 'POST',
         body: connectionForm.value
       })
-      connectionMessage.value = 'Connection added successfully'
+      connectionMessage.value = t('connections.connectionAdded')
     }
     
     connectionSuccess.value = true
@@ -205,7 +206,7 @@ const saveConnection = async () => {
       loadConnections()
     }, 1500)
   } catch (error: any) {
-    connectionMessage.value = error.message || 'Failed to save connection'
+    connectionMessage.value = error.message || t('connections.failedToSave')
     connectionSuccess.value = false
   } finally {
     connectionSaving.value = false
@@ -213,12 +214,12 @@ const saveConnection = async () => {
 }
 
 const removeConnection = async (connectionId: string) => {
-  if (!confirm('Are you sure you want to remove this connection?')) return
+  if (!confirm(t('connections.confirmRemove'))) return
   
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      alert('User ID not found')
+      alert(t('auth.userIdNotFound'))
       return
     }
     await $fetch(`${config.public.apiBase}/specialists/${userId}/connections/${connectionId}`, {
@@ -226,13 +227,13 @@ const removeConnection = async (connectionId: string) => {
     })
     await loadConnections()
   } catch (error: any) {
-    alert(error.message || 'Failed to remove connection')
+    alert(error.message || t('connections.failedToRemove'))
   }
 }
 
 const getConnectionTypeName = (typeId: string) => {
   const type = connectionTypes.value.find(t => t.id === typeId)
-  return type ? type.name : 'Unknown'
+  return type ? type.name : t('common.unknown')
 }
 
 onMounted(() => {

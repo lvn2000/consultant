@@ -1,28 +1,31 @@
 <template>
   <div class="main-container">
     <nav class="menu-panel">
-      <div class="menu-title">Admin Menu</div>
+      <div class="menu-header">
+        <div class="menu-title">{{ $t('admin.menu.title') }}</div>
+        <LocaleSwitcher />
+      </div>
       <ul>
         <li :class="{ active: selectedMenu === 'specialists' }" @click="selectMenu('specialists')">
-          Specialists
+          {{ $t('admin.menu.specialists') }}
         </li>
         <li :class="{ active: selectedMenu === 'clients' }" @click="selectMenu('clients')">
-          Clients
+          {{ $t('admin.menu.clients') }}
         </li>
         <li :class="{ active: selectedMenu === 'connections' }" @click="selectMenu('connections')">
-          Type Connections
+          {{ $t('admin.menu.connectionTypes') }}
         </li>
         <li :class="{ active: selectedMenu === 'categories' }" @click="selectMenu('categories')">
-          Categories
+          {{ $t('admin.menu.categories') }}
         </li>
       </ul>
       <div class="menu-divider"></div>
       <ul>
-        <li class="logout" @click="logout">Logout</li>
+        <li class="logout" @click="logout">{{ $t('common.logout') }}</li>
       </ul>
     </nav>
     <div class="content">
-      <h1>Welcome to Admin Panel</h1>
+      <h1>{{ $t('admin.welcome.title') }}</h1>
 
       <!-- Statistics Dashboard -->
       <div class="stats-grid">
@@ -30,28 +33,28 @@
           <div class="stat-icon">👥</div>
           <div class="stat-content">
             <div class="stat-value">{{ specialistsCount }}</div>
-            <div class="stat-label">Specialists</div>
+            <div class="stat-label">{{ $t('admin.stats.specialists') }}</div>
           </div>
         </div>
         <div class="stat-card">
           <div class="stat-icon">📂</div>
           <div class="stat-content">
             <div class="stat-value">{{ categoriesCount }}</div>
-            <div class="stat-label">Categories</div>
+            <div class="stat-label">{{ $t('admin.stats.categories') }}</div>
           </div>
         </div>
         <div class="stat-card">
           <div class="stat-icon">🔗</div>
           <div class="stat-content">
             <div class="stat-value">{{ connectionTypesCount }}</div>
-            <div class="stat-label">Connection Types</div>
+            <div class="stat-label">{{ $t('admin.stats.connectionTypes') }}</div>
           </div>
         </div>
         <div class="stat-card available">
           <div class="stat-icon">✅</div>
           <div class="stat-content">
             <div class="stat-value">{{ availableSpecialistsCount }}</div>
-            <div class="stat-label">Available</div>
+            <div class="stat-label">{{ $t('admin.stats.available') }}</div>
           </div>
         </div>
       </div>
@@ -75,8 +78,8 @@
         <div class="modal-header">{{ confirmState.title }}</div>
         <p class="modal-message">{{ confirmState.message }}</p>
         <div class="modal-actions">
-          <button type="button" class="btn" @click="cancelConfirm">Cancel</button>
-          <button type="button" class="btn danger" @click="acceptConfirm">Confirm</button>
+          <button type="button" class="btn" @click="cancelConfirm">{{ $t('common.cancel') }}</button>
+          <button type="button" class="btn danger" @click="acceptConfirm">{{ $t('common.confirm') }}</button>
         </div>
       </div>
     </div>
@@ -186,13 +189,21 @@ onMounted(() => {
   padding: 1.5rem 0.75rem;
   border-right: 1px solid #ddd;
   flex-shrink: 0;
+  position: relative;
+  z-index: 10;
 }
 
 .menu-title {
   font-weight: 700;
-  margin-bottom: 0.75rem;
   color: #1f2937;
   font-size: 0.95rem;
+}
+
+.menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
 }
 
 .menu-divider {
@@ -233,6 +244,10 @@ onMounted(() => {
   flex: 1;
   padding: 1.25rem;
   max-width: 90vw;
+  min-width: 0;
+  overflow-x: auto;
+  position: relative;
+  z-index: 1;
 }
 
 .content h1 {

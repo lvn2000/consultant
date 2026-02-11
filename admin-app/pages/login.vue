@@ -1,16 +1,19 @@
 <template>
   <div class="login-container">
     <form @submit.prevent="onLogin">
-      <h2>Login</h2>
+      <div class="login-header">
+        <h2>{{ $t('auth.loginTitle') }}</h2>
+        <LocaleSwitcher />
+      </div>
       <div>
-        <label for="login">Username</label>
+        <label for="login">{{ $t('auth.username') }}</label>
         <input id="login" v-model="login" type="text" required />
       </div>
       <div>
-        <label for="password">Password</label>
+        <label for="password">{{ $t('auth.password') }}</label>
         <input id="password" v-model="password" type="password" required />
       </div>
-      <button type="submit">Login</button>
+      <button type="submit">{{ $t('auth.loginButton') }}</button>
       <div v-if="error" class="error">{{ error }}</div>
     </form>
   </div>
@@ -19,6 +22,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+
+const { t } = useI18n()
 
 const login = ref('')
 const password = ref('')
@@ -30,7 +35,7 @@ import { loginRequest } from '../composables/useLogin'
 const onLogin = async () => {
   error.value = ''
   if (!login.value || !password.value) {
-    error.value = 'Please enter login and password'
+    error.value = t('auth.pleaseEnterCredentials')
     return
   }
   const result = await loginRequest(login.value, password.value)
@@ -38,7 +43,7 @@ const onLogin = async () => {
     localStorage.setItem('admin_session', '1')
     router.push('/main')
   } else {
-    error.value = result.error || 'Invalid credentials'
+    error.value = result.error || t('auth.invalidCredentials')
   }
 }
 </script>
@@ -51,6 +56,15 @@ const onLogin = async () => {
   border: 1px solid #ccc;
   border-radius: 8px;
   background: #fff;
+}
+.login-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.login-header h2 {
+  margin: 0;
 }
 form > div {
   margin-bottom: 1rem;

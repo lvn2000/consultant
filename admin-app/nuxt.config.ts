@@ -9,8 +9,28 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
-    '@nuxt/icon'
+    '@nuxt/icon',
+    '@nuxtjs/i18n'
   ],
+
+  i18n: {
+    locales: [
+      { code: 'en', file: 'en.json', name: 'English' },
+      { code: 'ua', file: 'ua.json', name: 'Українська' },
+      { code: 'ru', file: 'ru.json', name: 'Русский' },
+      { code: 'es', file: 'es.json', name: 'Español' },
+      { code: 'fr', file: 'fr.json', name: 'Français' },
+      { code: 'de', file: 'de.json', name: 'Deutsch' }
+    ],
+    defaultLocale: 'en',
+    langDir: 'locales',
+    strategy: 'no_prefix',
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'i18n_locale',
+      fallbackLocale: 'en'
+    }
+  },
 
   runtimeConfig: {
     public: {

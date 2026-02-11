@@ -2,34 +2,34 @@
   <div class="section">
     <div class="section-header">
       <div class="header-content">
-        <h2><span class="icon">👤</span>My Profile</h2>
-        <p class="header-subtitle">Manage your personal information and account settings</p>
+        <h2><span class="icon">👤</span>{{ $t('profile.title') }}</h2>
+        <p class="header-subtitle">{{ $t('profile.subtitle') }}</p>
       </div>
     </div>
-    <div v-if="profileLoading" class="list-state">Loading profile...</div>
+    <div v-if="profileLoading" class="list-state">{{ $t('profile.loading') }}</div>
     <div v-else-if="profileError" class="list-state error">{{ profileError }}</div>
     <div v-else class="form">
-      <h3>Profile Information</h3>
+      <h3>{{ $t('profile.info') }}</h3>
       <div class="form-grid">
         <div class="form-field">
-          <label>Name</label>
-          <input v-model="profileForm.name" type="text" placeholder="Your name" />
+          <label>{{ $t('profile.fullName') }}</label>
+          <input v-model="profileForm.name" type="text" :placeholder="$t('profile.namePlaceholder')" />
         </div>
         <div class="form-field">
-          <label>Email</label>
-          <input v-model="profileForm.email" type="email" placeholder="your@email.com" />
+          <label>{{ $t('common.email') }}</label>
+          <input v-model="profileForm.email" type="email" :placeholder="$t('profile.emailPlaceholder')" />
         </div>
         <div class="form-field">
-          <label>Phone</label>
-          <input v-model="profileForm.phone" type="tel" placeholder="+1234567890" />
+          <label>{{ $t('common.phone') }}</label>
+          <input v-model="profileForm.phone" type="tel" :placeholder="$t('profile.phonePlaceholder')" />
         </div>
       </div>
       <div class="form-actions">
         <button class="btn btn-primary" @click="updateProfile" :disabled="profileUpdating">
-          {{ profileUpdating ? 'Updating...' : 'Update Profile' }}
+          {{ profileUpdating ? $t('common.saving') : $t('profile.updateProfile') }}
         </button>
         <button class="btn btn-danger" @click="$emit('remove-account')">
-          Remove Account
+          {{ $t('profile.removeAccount') }}
         </button>
       </div>
       <div v-if="profileUpdateMessage" :class="['form-message', profileUpdateSuccess ? 'success' : 'error']">
@@ -43,6 +43,8 @@
 import { ref, onMounted } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
 import { useApi } from '../composables/useApi'
+
+const { t } = useI18n()
 
 const config = useRuntimeConfig()
 const { $fetch } = useApi()
@@ -70,7 +72,7 @@ const loadProfile = async () => {
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      profileError.value = 'User ID not found'
+      profileError.value = t('auth.userIdNotFound')
       return
     }
     const user = await $fetch<UserProfile>(`${config.public.apiBase}/users/${userId}`)
@@ -81,7 +83,7 @@ const loadProfile = async () => {
     }
   } catch (error: any) {
     if (process.dev) console.error('Profile load error:', error)
-    profileError.value = error.data?.message || error.message || 'Failed to load profile'
+    profileError.value = error.data?.message || error.message || t('profile.failedToLoad')
   } finally {
     profileLoading.value = false
   }
@@ -94,7 +96,7 @@ const updateProfile = async () => {
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      profileUpdateMessage.value = 'User ID not found'
+      profileUpdateMessage.value = t('auth.userIdNotFound')
       return
     }
     
@@ -107,7 +109,7 @@ const updateProfile = async () => {
       }
     })
     
-    profileUpdateMessage.value = 'Profile updated successfully'
+    profileUpdateMessage.value = t('profile.profileUpdated')
     profileUpdateSuccess.value = true
     
     // Reload profile to get the updated data
@@ -116,7 +118,7 @@ const updateProfile = async () => {
       profileUpdateMessage.value = ''
     }, 2000)
   } catch (error: any) {
-    profileUpdateMessage.value = error.data?.message || error.message || 'Failed to update profile'
+    profileUpdateMessage.value = error.data?.message || error.message || t('profile.failedToUpdate')
     profileUpdateSuccess.value = false
   } finally {
     profileUpdating.value = false

@@ -1,16 +1,19 @@
 <template>
   <div class="main-container">
     <nav class="menu-panel">
-      <div class="menu-title">Client Menu</div>
+      <div class="menu-header">
+        <div class="menu-title">{{ $t('client.menu.title') }}</div>
+        <LocaleSwitcher />
+      </div>
       <ul>
-        <li :class="{ active: selectedMenu === 'profile' }" @click="selectMenu('profile')">Profile</li>
-        <li :class="{ active: selectedMenu === 'notifications' }" @click="selectMenu('notifications')">Notifications</li>
-        <li :class="{ active: selectedMenu === 'connections' }" @click="selectMenu('connections')">My Connections</li>
-        <li :class="{ active: selectedMenu === 'consultations' }" @click="selectMenu('consultations')">My Consultations</li>
+        <li :class="{ active: selectedMenu === 'profile' }" @click="selectMenu('profile')">{{ $t('client.menu.profile') }}</li>
+        <li :class="{ active: selectedMenu === 'notifications' }" @click="selectMenu('notifications')">{{ $t('client.menu.notifications') }}</li>
+        <li :class="{ active: selectedMenu === 'connections' }" @click="selectMenu('connections')">{{ $t('client.menu.connections') }}</li>
+        <li :class="{ active: selectedMenu === 'consultations' }" @click="selectMenu('consultations')">{{ $t('client.menu.consultations') }}</li>
       </ul>
       <div class="menu-divider"></div>
       <ul>
-        <li class="logout" @click="logout">Logout</li>
+        <li class="logout" @click="logout">{{ $t('common.logout') }}</li>
       </ul>
     </nav>
     
@@ -18,9 +21,9 @@
       <div class="welcome-header">
         <div class="welcome-content">
           <h1 class="welcome-title">
-            <span class="wave">👋</span> Welcome back!
+            <span class="wave">👋</span> {{ $t('client.welcome.title') }}
           </h1>
-          <p class="welcome-subtitle">Browse specialists, manage your connections, and book consultations</p>
+          <p class="welcome-subtitle">{{ $t('client.welcome.subtitle') }}</p>
         </div>
       </div>
 
@@ -47,8 +50,8 @@
       <div v-if="selectedMenu === 'consultations'" class="section">
         <div class="section-header">
           <div class="header-content">
-            <h2><span class="icon">📞</span>My Consultations</h2>
-            <p class="header-subtitle">Browse specialists and book consultations</p>
+            <h2><span class="icon">📞</span>{{ $t('client.consultations.title') }}</h2>
+            <p class="header-subtitle">{{ $t('client.consultations.headerSubtitle') }}</p>
           </div>
         </div>
         
@@ -58,13 +61,13 @@
             :class="['tab-btn', consultationsTab === 'view' ? 'active' : '']"
             @click="consultationsTab = 'view'"
           >
-            View Consultations
+            {{ $t('client.consultations.viewTab') }}
           </button>
           <button 
             :class="['tab-btn', consultationsTab === 'book' ? 'active' : '']"
             @click="consultationsTab = 'book'"
           >
-            Book Consultation
+            {{ $t('client.consultations.bookTab') }}
           </button>
         </div>
         
@@ -102,6 +105,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRuntimeConfig } from 'nuxt/app'
 import { $fetch } from 'ofetch'
+
+const { t } = useI18n()
 import ProfileSection from '~/components/ProfileSection.vue'
 import NotificationsSection from '~/components/NotificationsSection.vue'
 import ConnectionsSection from '~/components/ConnectionsSection.vue'
@@ -163,11 +168,11 @@ const loadConsultations = async () => {
     const userId = sessionStorage.getItem('userId')
     const accessToken = sessionStorage.getItem('accessToken')
     if (!userId) {
-      consultationsError.value = 'User ID not found'
+      consultationsError.value = t('auth.userIdNotFound')
       return
     }
     if (!accessToken) {
-      consultationsError.value = 'Authentication token not found - please log in again'
+      consultationsError.value = t('auth.tokenNotFound')
       return
     }
     const data = await $fetch(`${config.public.apiBase}/consultations/user/${userId}`, {
@@ -181,7 +186,7 @@ const loadConsultations = async () => {
     consultationPagination.value.currentPage = 1
   } catch (error: any) {
     console.error('Consultations load error:', error)
-    consultationsError.value = error.data?.message || error.message || 'Failed to load consultations'
+    consultationsError.value = error.data?.message || error.message || t('consultations.failedToLoad')
   } finally {
     consultationsLoading.value = false
   }
@@ -253,9 +258,15 @@ onMounted(() => {
 
 .menu-title {
   font-weight: 700;
-  margin-bottom: 0.75rem;
   color: #1f2937;
   font-size: 0.95rem;
+}
+
+.menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
 }
 
 .menu-divider {

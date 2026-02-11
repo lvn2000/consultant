@@ -2,26 +2,26 @@
   <section class="section">
     <div class="section-header">
       <div class="header-content">
-        <h2><span class="icon">📅</span>My Availability</h2>
-        <p class="header-subtitle">Define your working hours and time slots for consultations</p>
+        <h2><span class="icon">📅</span>{{ $t('availability.title') }}</h2>
+        <p class="header-subtitle">{{ $t('availability.subtitle') }}</p>
       </div>
       <button type="button" class="btn" @click="loadAvailability">Refresh</button>
     </div>
 
-    <div class="list-state" v-if="availabilityLoading">Loading availability...</div>
+    <div class="list-state" v-if="availabilityLoading">{{ $t('availability.loading') }}</div>
     <div class="list-state error" v-else-if="availabilityError">{{ availabilityError }}</div>
 
     <div v-else class="availability-section">
       <!-- Current Availability -->
       <div v-if="availability.length > 0" class="availability-list">
-        <h3>Current Time Slots</h3>
+        <h3>{{ $t('availability.currentSlots') }}</h3>
         <div class="availability-grid">
           <div v-for="slot in sortedAvailability" :key="slot.id" class="availability-slot">
             <div class="slot-day">{{ getDayName(slot.dayOfWeek) }}</div>
             <div class="slot-time">{{ formatTime(slot.startTime) }} - {{ formatTime(slot.endTime) }}</div>
             <div class="slot-actions">
               <button type="button" class="btn btn-sm btn-danger" @click="deleteAvailability(slot.id)" :disabled="deletingAvailabilityId === slot.id">
-                🗑️ Delete
+                🗑️ {{ $t('common.delete') }}
               </button>
             </div>
           </div>
@@ -30,35 +30,35 @@
 
       <!-- Add New Availability -->
       <div class="form">
-        <h3>{{ editingAvailabilityId ? 'Edit Time Slot' : 'Add New Time Slot' }}</h3>
+        <h3>{{ editingAvailabilityId ? $t('availability.editSlot') : $t('availability.addSlot') }}</h3>
         <div class="form-grid">
           <div class="form-field">
-            <label for="day-of-week">Day of Week *</label>
+            <label for="day-of-week">{{ $t('availability.dayOfWeek') }} *</label>
             <select id="day-of-week" v-model.number="availabilityForm.dayOfWeek" required>
-              <option value="">Select day</option>
-              <option value="0">Monday</option>
-              <option value="1">Tuesday</option>
-              <option value="2">Wednesday</option>
-              <option value="3">Thursday</option>
-              <option value="4">Friday</option>
-              <option value="5">Saturday</option>
-              <option value="6">Sunday</option>
+              <option value="">{{ $t('availability.selectDay') }}</option>
+              <option value="0">{{ $t('availability.days.monday') }}</option>
+              <option value="1">{{ $t('availability.days.tuesday') }}</option>
+              <option value="2">{{ $t('availability.days.wednesday') }}</option>
+              <option value="3">{{ $t('availability.days.thursday') }}</option>
+              <option value="4">{{ $t('availability.days.friday') }}</option>
+              <option value="5">{{ $t('availability.days.saturday') }}</option>
+              <option value="6">{{ $t('availability.days.sunday') }}</option>
             </select>
           </div>
           <div class="form-field">
-            <label for="start-time">Start Time *</label>
+            <label for="start-time">{{ $t('availability.startTime') }} *</label>
             <input id="start-time" v-model="availabilityForm.startTime" type="time" required />
           </div>
           <div class="form-field">
-            <label for="end-time">End Time *</label>
+            <label for="end-time">{{ $t('availability.endTime') }} *</label>
             <input id="end-time" v-model="availabilityForm.endTime" type="time" required />
           </div>
         </div>
         <div class="form-actions">
           <button type="button" class="btn" @click="saveAvailability" :disabled="availabilitySaving || !isAvailabilityFormValid">
-            {{ availabilitySaving ? 'Saving...' : (editingAvailabilityId ? 'Update Slot' : 'Add Slot') }}
+            {{ availabilitySaving ? $t('common.saving') : (editingAvailabilityId ? $t('availability.updateSlot') : $t('availability.addSlotButton')) }}
           </button>
-          <button v-if="editingAvailabilityId" type="button" class="btn" @click="cancelEditAvailability">Cancel</button>
+          <button v-if="editingAvailabilityId" type="button" class="btn" @click="cancelEditAvailability">{{ $t('common.cancel') }}</button>
         </div>
         <div v-if="availabilityMessage" :class="['form-message', availabilitySuccess ? 'success' : 'error']">
           {{ availabilityMessage }}
@@ -75,6 +75,7 @@ import { useApi } from '~/composables/useApi'
 
 const config = useRuntimeConfig()
 const { $fetch } = useApi()
+const { t } = useI18n()
 
 type AvailabilitySlot = {
   id: string
@@ -109,7 +110,15 @@ const isAvailabilityFormValid = computed(() => {
 })
 
 const getDayName = (dayOfWeek: number): string => {
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  const days = [
+    t('availability.days.monday'),
+    t('availability.days.tuesday'),
+    t('availability.days.wednesday'),
+    t('availability.days.thursday'),
+    t('availability.days.friday'),
+    t('availability.days.saturday'),
+    t('availability.days.sunday')
+  ]
   return days[dayOfWeek] || 'Unknown'
 }
 
@@ -123,13 +132,13 @@ const loadAvailability = async () => {
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      availabilityError.value = 'User ID not found'
+      availabilityError.value = t('auth.userIdNotFound')
       return
     }
     const data = await $fetch<AvailabilitySlot[]>(`${config.public.apiBase}/specialists/${userId}/availability`)
     availability.value = data || []
   } catch (error: any) {
-    availabilityError.value = error.data?.message || error.message || 'Failed to load availability'
+    availabilityError.value = error.data?.message || error.message || t('availability.failedToLoad')
   } finally {
     availabilityLoading.value = false
   }
@@ -141,7 +150,7 @@ const saveAvailability = async () => {
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      availabilityMessage.value = 'User ID not found'
+      availabilityMessage.value = t('auth.userIdNotFound')
       availabilitySuccess.value = false
       return
     }
@@ -156,7 +165,7 @@ const saveAvailability = async () => {
           endTime: availabilityForm.value.endTime
         }
       })
-      availabilityMessage.value = 'Availability updated successfully'
+      availabilityMessage.value = t('availability.updated')
     } else {
       // Add new availability
       await $fetch(`${config.public.apiBase}/specialists/${userId}/availability`, {
@@ -167,7 +176,7 @@ const saveAvailability = async () => {
           endTime: availabilityForm.value.endTime
         }
       })
-      availabilityMessage.value = 'Availability added successfully'
+      availabilityMessage.value = t('availability.added')
     }
     
     availabilitySuccess.value = true
@@ -176,7 +185,7 @@ const saveAvailability = async () => {
       loadAvailability()
     }, 1500)
   } catch (error: any) {
-    availabilityMessage.value = error.data?.message || error.message || 'Failed to save availability'
+    availabilityMessage.value = error.data?.message || error.message || t('availability.failedToSave')
     availabilitySuccess.value = false
   } finally {
     availabilitySaving.value = false
@@ -190,13 +199,13 @@ const cancelEditAvailability = () => {
 }
 
 const deleteAvailability = async (availabilityId: string) => {
-  if (!confirm('Are you sure you want to delete this time slot?')) return
+  if (!confirm(t('availability.confirmDelete'))) return
   
   deletingAvailabilityId.value = availabilityId
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      alert('User ID not found')
+      alert(t('auth.userIdNotFound'))
       return
     }
     await $fetch(`${config.public.apiBase}/specialists/${userId}/availability/${availabilityId}`, {
@@ -204,7 +213,7 @@ const deleteAvailability = async (availabilityId: string) => {
     })
     await loadAvailability()
   } catch (error: any) {
-    alert(error.data?.message || error.message || 'Failed to delete availability')
+    alert(error.data?.message || error.message || t('availability.failedToDelete'))
   } finally {
     deletingAvailabilityId.value = null
   }

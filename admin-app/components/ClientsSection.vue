@@ -1,7 +1,7 @@
 <template>
   <section v-if="visible" class="section">
     <div class="section-header">
-      <h2>Clients</h2>
+      <h2>{{ $t('adminClients.title') }}</h2>
       <button type="button" class="btn" @click="loadClients">🔄 Refresh</button>
     </div>
 
@@ -9,22 +9,22 @@
       <input
         v-model="clientsSearchQuery"
         type="text"
-        placeholder="Search by name, email, or phone..."
+        :placeholder="$t('adminClients.searchPlaceholder')"
         class="search-input"
       />
       <button type="button" class="btn" @click="clearClientsSearch" v-if="clientsSearchQuery">❌ Clear</button>
     </div>
 
-    <div class="list-state" v-if="clientsLoading">Loading clients...</div>
+    <div class="list-state" v-if="clientsLoading">{{ $t('adminClients.loading') }}</div>
     <div class="list-state error" v-else-if="clientsError">{{ clientsError }}</div>
 
     <div class="table" v-else>
       <div class="table-header clients-table">
-        <span>Name</span>
-        <span>Email</span>
-        <span>Phone</span>
-        <span>Consultations</span>
-        <span>Actions</span>
+        <span>{{ $t('common.name') }}</span>
+        <span>{{ $t('common.email') }}</span>
+        <span>{{ $t('common.phone') }}</span>
+        <span>{{ $t('adminClients.consultations') }}</span>
+        <span>{{ $t('common.actions') }}</span>
       </div>
       <div v-for="client in pagedFilteredClients" :key="client.id" class="table-row clients-table">
         <span>{{ client.name }}</span>
@@ -32,8 +32,8 @@
         <span>{{ client.phone }}</span>
         <span>{{ client.consultationIds?.length || 0 }}</span>
         <span class="row-actions">
-          <button type="button" class="btn" @click="startEditClient(client)">✏️ Select</button>
-          <button type="button" class="btn danger" @click="removeClient(client.id)">🗑️ Delete</button>
+          <button type="button" class="btn" @click="startEditClient(client)">✏️ {{ $t('common.edit') }}</button>
+          <button type="button" class="btn danger" @click="removeClient(client.id)">🗑️ {{ $t('common.delete') }}</button>
         </span>
       </div>
     </div>
@@ -62,7 +62,7 @@
 
     <form ref="clientFormRef" class="form" @submit.prevent>
       <div class="form-header" v-if="selectedClientId">
-        <h3>Client Details</h3>
+        <h3>{{ $t('adminClients.clientDetails') }}</h3>
         <span class="form-subtitle" v-if="clientForm.name">{{ clientForm.name }}</span>
       </div>
 
@@ -74,7 +74,7 @@
             :class="{ active: clientDetailsTab === 'general' }"
             @click="clientDetailsTab = 'general'"
           >
-            General
+            {{ $t('adminClients.general') }}
           </button>
           <button
             type="button"
@@ -89,23 +89,23 @@
         <div v-if="clientDetailsTab === 'general'" class="details-panel">
           <div class="form-grid">
             <div class="form-field">
-              <label for="client-name">Name</label>
-              <input id="client-name" v-model="clientForm.name" type="text" placeholder="John Doe" />
+              <label for="client-name">{{ $t('common.name') }}</label>
+              <input id="client-name" v-model="clientForm.name" type="text" :placeholder="$t('adminClients.namePlaceholder')" />
             </div>
             <div class="form-field">
-              <label for="client-email">Email</label>
-              <input id="client-email" v-model="clientForm.email" type="email" placeholder="john@example.com" />
+              <label for="client-email">{{ $t('common.email') }}</label>
+              <input id="client-email" v-model="clientForm.email" type="email" :placeholder="$t('adminClients.emailPlaceholder')" />
             </div>
             <div class="form-field">
-              <label for="client-phone">Phone</label>
-              <input id="client-phone" v-model="clientForm.phone" type="tel" placeholder="+1234567890" />
+              <label for="client-phone">{{ $t('common.phone') }}</label>
+              <input id="client-phone" v-model="clientForm.phone" type="tel" :placeholder="$t('adminClients.phonePlaceholder')" />
             </div>
           </div>
         </div>
 
         <div v-else-if="clientDetailsTab === 'notifications'" class="details-panel">
           <p v-if="!selectedClientId" class="muted">
-            Select a client to manage notification preferences.
+            {{ $t('notifications.selectToManage') }}
           </p>
           <div v-else class="notifications-manager">
             <div class="list-state" v-if="notificationsLoading">Loading notification preferences...</div>
@@ -141,26 +141,26 @@
 
       <div v-else class="form-grid">
         <div class="form-field">
-          <label for="client-name">Name</label>
-          <input id="client-name" v-model="clientForm.name" type="text" placeholder="John Doe" />
+          <label for="client-name">{{ $t('common.name') }}</label>
+          <input id="client-name" v-model="clientForm.name" type="text" :placeholder="$t('adminClients.namePlaceholder')" />
         </div>
         <div class="form-field">
-          <label for="client-email">Email</label>
-          <input id="client-email" v-model="clientForm.email" type="email" placeholder="john@example.com" />
+          <label for="client-email">{{ $t('common.email') }}</label>
+          <input id="client-email" v-model="clientForm.email" type="email" :placeholder="$t('adminClients.emailPlaceholder')" />
         </div>
         <div class="form-field">
-          <label for="client-phone">Phone</label>
-          <input id="client-phone" v-model="clientForm.phone" type="tel" placeholder="+1234567890" />
+          <label for="client-phone">{{ $t('common.phone') }}</label>
+          <input id="client-phone" v-model="clientForm.phone" type="tel" :placeholder="$t('adminClients.phonePlaceholder')" />
         </div>
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn primary" @click="addClient">➕ Add Client</button>
+        <button type="button" class="btn primary" @click="addClient">➕ {{ $t('adminClients.addClient') }}</button>
         <button type="button" class="btn" :disabled="!selectedClientId" @click="updateClient">
-          ✏️ Update Client
+          ✏️ {{ $t('adminClients.updateClient') }}
         </button>
         <button type="button" class="btn danger" :disabled="!selectedClientId" @click="deleteSelectedClient">
-          🗑️ Delete Client
+          🗑️ {{ $t('adminClients.deleteClient') }}
         </button>
         <button type="button" class="btn" @click="resetClientForm">❌ Clear</button>
       </div>
@@ -174,7 +174,7 @@
         <h3>{{ confirmState.title }}</h3>
         <p>{{ confirmState.message }}</p>
         <div class="modal-actions">
-          <button type="button" class="btn" @click="confirmResolver?.(false)">Cancel</button>
+          <button type="button" class="btn" @click="confirmResolver?.(false)">{{ $t('common.cancel') }}</button>
           <button type="button" class="btn primary" @click="confirmResolver?.(true)">Confirm</button>
         </div>
       </div>
@@ -191,6 +191,7 @@ defineProps<{ visible: boolean }>()
 
 const config = useRuntimeConfig()
 const { $fetch } = useApi()
+const { t } = useI18n()
 
 type Client = {
   id: string
@@ -282,7 +283,7 @@ const loadClients = async () => {
     }
   } catch (error) {
     clients.value = []
-    clientsError.value = 'Failed to load clients'
+    clientsError.value = t('adminClients.failedToLoad')
   } finally {
     clientsLoading.value = false
   }
@@ -391,7 +392,7 @@ const getNotificationDescription = (type: string): string => {
 
 const updateNotificationPreference = async (pref: any) => {
   if (!selectedClientId.value) {
-    notificationUpdateMessage.value = 'Select a client to update preferences.'
+    notificationUpdateMessage.value = t('notifications.selectToUpdate')
     notificationUpdateSuccess.value = false
     return
   }
@@ -437,7 +438,7 @@ watch(
 
 const addClient = async () => {
   if (!clientForm.value.name || !clientForm.value.email || !clientForm.value.phone) {
-    clientActionMessage.value = 'Please fill in all required fields'
+    clientActionMessage.value = t('adminClients.fillRequired')
     return
   }
 
@@ -454,22 +455,22 @@ const addClient = async () => {
         role: 'Client',
       },
     })
-    clientActionMessage.value = 'Client added successfully!'
+    clientActionMessage.value = t('adminClients.added')
     resetClientForm()
     await loadClients()
   } catch (error) {
-    clientActionMessage.value = 'Failed to add client'
+    clientActionMessage.value = t('adminClients.failedToAdd')
   }
 }
 
 const updateClient = async () => {
   if (!selectedClientId.value) return
   if (!clientForm.value.name || !clientForm.value.email || !clientForm.value.phone) {
-    clientActionMessage.value = 'Please fill in all required fields'
+    clientActionMessage.value = t('adminClients.fillRequired')
     return
   }
 
-  const confirmed = await confirmAction('Update Client', 'Update this client?')
+  const confirmed = await confirmAction(t('adminClients.updateClient'), t('adminClients.updateConfirm'))
   if (!confirmed) return
 
   try {
@@ -482,15 +483,15 @@ const updateClient = async () => {
         phone: clientForm.value.phone,
       },
     })
-    clientActionMessage.value = 'Client updated successfully!'
+    clientActionMessage.value = t('adminClients.updated')
     await loadClients()
   } catch (error) {
-    clientActionMessage.value = 'Failed to update client'
+    clientActionMessage.value = t('adminClients.failedToUpdate')
   }
 }
 
 const removeClient = async (id: string) => {
-  const confirmed = await confirmAction('Delete Client', 'Are you sure you want to delete this client?')
+  const confirmed = await confirmAction(t('adminClients.deleteClient'), t('adminClients.deleteConfirm'))
   if (!confirmed) return
 
   try {
@@ -498,13 +499,13 @@ const removeClient = async (id: string) => {
     await $fetch(`${config.public.apiBase}/users/${id}`, {
       method: 'DELETE',
     })
-    clientActionMessage.value = 'Client deleted successfully!'
+    clientActionMessage.value = t('adminClients.deleted')
     if (selectedClientId.value === id) {
       resetClientForm()
     }
     await loadClients()
   } catch (error) {
-    clientActionMessage.value = 'Failed to delete client'
+    clientActionMessage.value = t('adminClients.failedToDelete')
   }
 }
 

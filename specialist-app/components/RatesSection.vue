@@ -2,29 +2,29 @@
   <section class="section">
     <div class="section-header">
       <div class="header-content">
-        <h2><span class="icon">💰</span>My Rates</h2>
-        <p class="header-subtitle">Set your hourly rates for different expertise categories</p>
+        <h2><span class="icon">💰</span>{{ $t('rates.title') }}</h2>
+        <p class="header-subtitle">{{ $t('rates.subtitle') }}</p>
       </div>
       <button type="button" class="btn" @click="loadRates">Refresh</button>
     </div>
 
-    <div class="list-state" v-if="ratesLoading">Loading rates...</div>
+    <div class="list-state" v-if="ratesLoading">{{ $t('rates.loading') }}</div>
     <div class="list-state error" v-else-if="ratesError">{{ ratesError }}</div>
 
     <div class="table" v-else-if="paginatedRates.length > 0">
       <div class="table-header rates-table">
-        <span>Category</span>
-        <span>Hourly Rate</span>
-        <span>Experience (years)</span>
-        <span>Actions</span>
+        <span>{{ $t('rates.category') }}</span>
+        <span>{{ $t('rates.hourlyRate') }}</span>
+        <span>{{ $t('rates.experience') }}</span>
+        <span>{{ $t('common.actions') }}</span>
       </div>
       <div v-for="rate in paginatedRates" :key="rate.categoryId" class="table-row rates-table">
         <span>{{ getCategoryName(rate.categoryId) }}</span>
         <span>${{ rate.hourlyRate }}</span>
         <span>{{ rate.experienceYears }}</span>
         <span class="row-actions">
-          <button type="button" class="btn" @click="startEditRate(rate)">Select</button>
-          <button type="button" class="btn danger" @click="removeRate(rate.categoryId)">Delete</button>
+          <button type="button" class="btn" @click="startEditRate(rate)">{{ $t('common.edit') }}</button>
+          <button type="button" class="btn danger" @click="removeRate(rate.categoryId)">{{ $t('common.delete') }}</button>
         </span>
       </div>
     </div>
@@ -50,38 +50,38 @@
         Next
       </button>
     </div>
-    <div v-else class="list-state">No rates configured yet.</div>
+    <div v-else class="list-state">{{ $t('rates.noRates') }}</div>
 
     <!-- Rate Form -->
     <form ref="rateFormRef" class="form" @submit.prevent="saveRate">
-      <h3>{{ editingRateId ? 'Update Rate' : 'Add New Rate' }}</h3>
+      <h3>{{ editingRateId ? $t('rates.updateRate') : $t('rates.addCategoryRate') }}</h3>
       <div class="form-grid">
         <div class="form-field">
-          <label for="rate-category">Category</label>
+          <label for="rate-category">{{ $t('rates.category') }}</label>
           <select id="rate-category" v-model="rateForm.categoryId" required :disabled="!!editingRateId">
-            <option value="">Select category</option>
+            <option value="">{{ $t('rates.selectCategory') }}</option>
             <option v-for="category in (editingRateId ? categories : availableCategories)" :key="category.id" :value="category.id">
               {{ category.name }}
             </option>
           </select>
           <div v-if="isDuplicateCategory" class="form-error">
-            This category has already been added
+            {{ $t('rates.duplicateCategory') }}
           </div>
         </div>
         <div class="form-field">
-          <label for="rate-hourly">Hourly Rate ($)</label>
+          <label for="rate-hourly">{{ $t('rates.hourlyRateDollar') }}</label>
           <input id="rate-hourly" v-model.number="rateForm.hourlyRate" type="number" min="1" step="0.01" required />
         </div>
         <div class="form-field">
-          <label for="rate-experience">Experience (years)</label>
+          <label for="rate-experience">{{ $t('rates.experience') }}</label>
           <input id="rate-experience" v-model.number="rateForm.experienceYears" type="number" min="0" step="1" required />
         </div>
       </div>
       <div class="form-actions">
         <button type="submit" class="btn" :disabled="rateSaving || isDuplicateCategory">
-          {{ rateSaving ? 'Saving...' : (editingRateId ? 'Update Rate' : 'Add Rate') }}
+          {{ rateSaving ? $t('common.saving') : (editingRateId ? $t('rates.updateRate') : $t('rates.addRateButton')) }}
         </button>
-        <button v-if="editingRateId" type="button" class="btn" @click="cancelEditRate">Cancel</button>
+        <button v-if="editingRateId" type="button" class="btn" @click="cancelEditRate">{{ $t('common.cancel') }}</button>
       </div>
       <div v-if="rateMessage" :class="['form-message', rateSuccess ? 'success' : 'error']">
         {{ rateMessage }}
@@ -97,6 +97,7 @@ import { useApi } from '~/composables/useApi'
 
 const config = useRuntimeConfig()
 const { $fetch } = useApi()
+const { t } = useI18n()
 
 type Category = {
   id: string
@@ -139,7 +140,7 @@ const loadRates = async () => {
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      ratesError.value = 'User ID not found'
+      ratesError.value = t('auth.userIdNotFound')
       return
     }
     const specialist = await $fetch<SpecialistProfile>(`${config.public.apiBase}/specialists/${userId}`)
@@ -148,7 +149,7 @@ const loadRates = async () => {
     const categoriesData = await $fetch<Category[]>(`${config.public.apiBase}/categories?page=1&pageSize=100`)
     categories.value = Array.isArray(categoriesData) ? categoriesData : []
   } catch (error: any) {
-    ratesError.value = error.message || 'Failed to load rates'
+    ratesError.value = error.message || t('rates.failedToLoad')
   } finally {
     ratesLoading.value = false
   }
@@ -185,7 +186,7 @@ const saveRate = async () => {
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      rateMessage.value = 'User ID not found'
+      rateMessage.value = t('auth.userIdNotFound')
       rateSuccess.value = false
       return
     }
@@ -199,8 +200,8 @@ const saveRate = async () => {
       if (index !== -1) {
         updatedRates[index] = { 
           ...rateForm.value,
-          rating: updatedRates[index].rating || null,
-          totalConsultations: updatedRates[index].totalConsultations || 0
+          rating: updatedRates[index]!.rating || null,
+          totalConsultations: updatedRates[index]!.totalConsultations || 0
         }
       }
     } else {
@@ -220,12 +221,12 @@ const saveRate = async () => {
       }
     })
     
-    rateMessage.value = editingRateId.value ? 'Rate updated successfully' : 'Rate added successfully'
+    rateMessage.value = editingRateId.value ? t('rates.rateUpdated') : t('rates.rateAdded')
     rateSuccess.value = true
     cancelEditRate()
     await loadRates()
   } catch (error: any) {
-    rateMessage.value = error.message || 'Failed to save rate'
+    rateMessage.value = error.message || t('rates.failedToSave')
     rateSuccess.value = false
   } finally {
     rateSaving.value = false
@@ -233,12 +234,12 @@ const saveRate = async () => {
 }
 
 const removeRate = async (categoryId: string) => {
-  if (!confirm('Are you sure you want to remove this rate?')) return
+  if (!confirm(t('rates.confirmRemove'))) return
   
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      alert('User ID not found')
+      alert(t('auth.userIdNotFound'))
       return
     }
     const specialist = await $fetch<SpecialistProfile>(`${config.public.apiBase}/specialists/${userId}`)
@@ -254,7 +255,7 @@ const removeRate = async (categoryId: string) => {
     
     await loadRates()
   } catch (error: any) {
-    alert(error.message || 'Failed to remove rate')
+    alert(error.message || t('rates.failedToRemove'))
   }
 }
 
