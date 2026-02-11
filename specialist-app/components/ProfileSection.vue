@@ -2,40 +2,40 @@
   <section class="section">
     <div class="section-header">
       <div class="header-content">
-        <h2><span class="icon">👤</span>My Profile</h2>
-        <p class="header-subtitle">Manage your personal information and account settings</p>
+        <h2><span class="icon">👤</span>{{ $t('profile.title') }}</h2>
+        <p class="header-subtitle">{{ $t('profile.subtitle') }}</p>
       </div>
       <button type="button" class="btn" @click="loadProfile">Refresh</button>
     </div>
 
-    <div class="list-state" v-if="profileLoading">Loading profile...</div>
+    <div class="list-state" v-if="profileLoading">{{ $t('profile.loading') }}</div>
     <div class="list-state error" v-else-if="profileError">{{ profileError }}</div>
 
     <form v-else class="form" @submit.prevent="updateProfile">
       <div class="form-grid">
         <div class="form-field">
-          <label for="name">Full Name</label>
-          <input id="name" v-model="profileForm.name" type="text" placeholder="Your name" required />
+          <label for="name">{{ $t('profile.fullName') }}</label>
+          <input id="name" v-model="profileForm.name" type="text" :placeholder="$t('profile.namePlaceholder')" required />
         </div>
         <div class="form-field">
-          <label for="email">Email</label>
-          <input id="email" v-model="profileForm.email" type="email" placeholder="your@email.com" required />
+          <label for="email">{{ $t('common.email') }}</label>
+          <input id="email" v-model="profileForm.email" type="email" :placeholder="$t('profile.emailPlaceholder')" required />
         </div>
         <div class="form-field">
-          <label for="phone">Phone</label>
-          <input id="phone" v-model="profileForm.phone" type="tel" placeholder="+1 555 123 4567" />
+          <label for="phone">{{ $t('common.phone') }}</label>
+          <input id="phone" v-model="profileForm.phone" type="tel" :placeholder="$t('profile.phonePlaceholder')" />
         </div>
         <div class="form-field">
-          <label for="availability">Availability Status</label>
+          <label for="availability">{{ $t('profile.availabilityStatus') }}</label>
           <select id="availability" v-model="profileForm.isAvailable">
-            <option :value="true">Available</option>
-            <option :value="false">Unavailable</option>
+            <option :value="true">{{ $t('common.available') }}</option>
+            <option :value="false">{{ $t('common.unavailable') }}</option>
           </select>
         </div>
       </div>
       <div class="form-actions">
         <button type="submit" class="btn" :disabled="profileUpdating">
-          {{ profileUpdating ? 'Updating...' : 'Update Profile' }}
+          {{ profileUpdating ? $t('common.saving') : $t('profile.updateProfile') }}
         </button>
         <button type="button" class="btn danger" @click="showRemoveAccountConfirm = true">
           Remove Account
@@ -71,6 +71,7 @@ import { useApi } from '~/composables/useApi'
 const router = useRouter()
 const config = useRuntimeConfig()
 const { $fetch } = useApi()
+const { t } = useI18n()
 
 type SpecialistProfile = {
   name?: string
@@ -109,7 +110,7 @@ const loadProfile = async () => {
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      profileError.value = 'User ID not found'
+      profileError.value = t('auth.userIdNotFound')
       return
     }
     const specialist = await $fetch<SpecialistProfile>(`${config.public.apiBase}/specialists/${userId}`)
@@ -122,7 +123,7 @@ const loadProfile = async () => {
       categoryRates: specialist.categoryRates || []
     }
   } catch (error: any) {
-    profileError.value = error.message || 'Failed to load profile'
+    profileError.value = error.message || t('profile.failedToLoad')
   } finally {
     profileLoading.value = false
   }
@@ -134,7 +135,7 @@ const updateProfile = async () => {
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      profileUpdateMessage.value = 'User ID not found'
+      profileUpdateMessage.value = t('auth.userIdNotFound')
       profileUpdateSuccess.value = false
       return
     }
@@ -142,10 +143,10 @@ const updateProfile = async () => {
       method: 'PUT',
       body: profileForm.value
     })
-    profileUpdateMessage.value = 'Profile updated successfully'
+    profileUpdateMessage.value = t('profile.profileUpdated')
     profileUpdateSuccess.value = true
   } catch (error: any) {
-    profileUpdateMessage.value = error.message || 'Failed to update profile'
+    profileUpdateMessage.value = error.message || t('profile.failedToUpdate')
     profileUpdateSuccess.value = false
   } finally {
     profileUpdating.value = false
@@ -157,7 +158,7 @@ const removeAccount = async () => {
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      alert('User ID not found')
+      alert(t('auth.userIdNotFound'))
       return
     }
     await $fetch(`${config.public.apiBase}/specialists/${userId}`, {

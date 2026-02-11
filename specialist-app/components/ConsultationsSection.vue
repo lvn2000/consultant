@@ -2,40 +2,40 @@
   <section class="section">
     <div class="section-header">
       <div class="header-content">
-        <h2><span class="icon">📞</span>My Consultations</h2>
-        <p class="header-subtitle">Track and manage your consultation sessions and client interactions</p>
+        <h2><span class="icon">📞</span>{{ $t('specialist.menu.consultations') }}</h2>
+        <p class="header-subtitle">{{ $t('consultations.headerSubtitle') }}</p>
       </div>
-      <button type="button" class="btn" @click="loadConsultations">Refresh</button>
+      <button type="button" class="btn" @click="loadConsultations">{{ $t('common.refresh') }}</button>
     </div>
 
-    <div class="list-state" v-if="consultationsLoading">Loading consultations...</div>
+    <div class="list-state" v-if="consultationsLoading">{{ $t('consultations.loading') }}</div>
     <div class="list-state error" v-else-if="consultationsError">{{ consultationsError }}</div>
     <div v-else-if="consultations.length === 0" class="empty-state">
       <div class="empty-icon">📋</div>
-      <h3>No consultations yet</h3>
-      <p>You haven't received any consultation requests yet.</p>
+      <h3>{{ $t('consultations.noConsultations') }}</h3>
+      <p>{{ $t('consultations.noConsultationsSpecialist') }}</p>
     </div>
     <div v-else class="consultations-container">
       <!-- Consultations Table -->
       <div class="table" v-if="paginatedConsultations.length > 0">
         <div class="table-header consultations-table">
-          <span>Client</span>
-          <span>Category</span>
-          <span>Date & Time</span>
-          <span>Duration (minutes)</span>
-          <span>Status</span>
-          <span>Price</span>
-          <span>Actions</span>
+          <span>{{ $t('consultations.clientLabel') }}</span>
+          <span>{{ $t('consultations.categoryLabel') }}</span>
+          <span>{{ $t('consultations.dateTimeLabel') }}</span>
+          <span>{{ $t('consultations.durationLabel') }}</span>
+          <span>{{ $t('common.status') }}</span>
+          <span>{{ $t('consultations.priceLabel') }}</span>
+          <span>{{ $t('common.actions') }}</span>
         </div>
         <div v-for="consultation in paginatedConsultations" :key="consultation.id" class="table-row consultations-table">
           <span>{{ consultation.clientName || consultation.userId }}</span>
           <span>{{ consultation.categoryName || consultation.categoryId }}</span>
           <span>{{ formatDateTime(consultation.scheduledAt || '') }}</span>
-          <span>{{ consultation.duration }} min</span>
+          <span>{{ consultation.duration }} {{ $t('consultations.durationMin') }}</span>
           <span :class="['status-badge', consultation.status.toLowerCase()]">
             {{ consultation.status }}
           </span>
-          <span>{{ consultation.price === 0 ? 'Free' : `$${consultation.price}` }}</span>
+          <span>{{ consultation.price === 0 ? $t('common.free') : `$${consultation.price}` }}</span>
           <span class="actions-cell">
             <template v-if="isConsultationActionable(consultation)">
               <template v-if="consultation.status === 'Requested'">
@@ -45,7 +45,7 @@
                   @click="approveConsultation(consultation.id)"
                   :disabled="updatingConsultationId === consultation.id"
                 >
-                  {{ updatingConsultationId === consultation.id ? '...' : '✓ Approve' }}
+                  {{ updatingConsultationId === consultation.id ? '...' : $t('consultations.approve.approveButton') }}
                 </button>
                 <button 
                   type="button" 
@@ -53,7 +53,7 @@
                   @click="declineConsultation(consultation.id)"
                   :disabled="updatingConsultationId === consultation.id"
                 >
-                  {{ updatingConsultationId === consultation.id ? '...' : '✗ Decline' }}
+                  {{ updatingConsultationId === consultation.id ? '...' : $t('consultations.approve.declineButton') }}
                 </button>
               </template>
               <template v-else-if="consultation.status === 'Scheduled'">
@@ -64,7 +64,7 @@
                     @click="declineConsultation(consultation.id)"
                     :disabled="updatingConsultationId === consultation.id"
                   >
-                    {{ updatingConsultationId === consultation.id ? '...' : '✗ Cancel' }}
+                    {{ updatingConsultationId === consultation.id ? '...' : $t('consultations.approve.cancelButton') }}
                   </button>
                 </template>
                 <template v-else>
@@ -74,7 +74,7 @@
                     @click="markAsMissed(consultation.id)"
                     :disabled="updatingConsultationId === consultation.id"
                   >
-                    {{ updatingConsultationId === consultation.id ? '...' : '⏭ Mark Missed' }}
+                    {{ updatingConsultationId === consultation.id ? '...' : $t('consultations.approve.markMissed') }}
                   </button>
                 </template>
               </template>
@@ -83,7 +83,7 @@
               </template>
             </template>
             <template v-else>
-              <span class="text-gray">Expired</span>
+              <span class="text-gray">{{ $t('consultations.approve.expired') }}</span>
             </template>
           </span>
         </div>
@@ -96,18 +96,17 @@
           :disabled="consultationPagination.currentPage === 1"
           @click="goToConsultationPage(consultationPagination.currentPage - 1)"
         >
-          Previous
+          {{ $t('common.previous') }}
         </button>
         <span class="pagination-info">
-          Page {{ consultationPagination.currentPage }} of {{ consultationPagination.totalPages }}
-          ({{ consultationPagination.totalCount }} total)
+          {{ $t('common.pagination.pageWithTotal', { current: consultationPagination.currentPage, total: consultationPagination.totalPages, count: consultationPagination.totalCount }) }}
         </span>
         <button 
           class="pagination-btn" 
           :disabled="consultationPagination.currentPage === consultationPagination.totalPages"
           @click="goToConsultationPage(consultationPagination.currentPage + 1)"
         >
-          Next
+          {{ $t('common.next') }}
         </button>
       </div>
     </div>
@@ -115,10 +114,10 @@
     <!-- Approve Consultation Dialog -->
     <div v-if="showApprovalDialog" class="modal-overlay" @click="showApprovalDialog = false">
       <div class="modal" @click.stop>
-        <h3>Approve Consultation</h3>
-        <p>Estimate the duration for this consultation (in minutes):</p>
+        <h3>{{ $t('consultations.approve.title') }}</h3>
+        <p>{{ $t('consultations.approve.description') }}</p>
         <div class="form-field">
-          <label>Duration (minutes) *</label>
+          <label>{{ $t('consultations.approve.durationLabel') }}</label>
           <input 
             v-model.number="approvingConsultationDuration" 
             type="number" 
@@ -133,9 +132,9 @@
         </div>
         <div class="modal-actions">
           <button type="button" class="btn success" @click="confirmApprove" :disabled="updatingConsultationId !== null">
-            {{ updatingConsultationId !== null ? 'Approving...' : 'Approve' }}
+            {{ updatingConsultationId !== null ? $t('common.approving') : $t('consultations.approve.approveButton') }}
           </button>
-          <button type="button" class="btn" @click="showApprovalDialog = false" :disabled="updatingConsultationId !== null">Cancel</button>
+          <button type="button" class="btn" @click="showApprovalDialog = false" :disabled="updatingConsultationId !== null">{{ $t('common.cancel') }}</button>
         </div>
       </div>
     </div>
@@ -149,6 +148,7 @@ import { useApi } from '~/composables/useApi'
 
 const config = useRuntimeConfig()
 const { $fetch } = useApi()
+const { t } = useI18n()
 
 type Consultation = {
   id: string
@@ -205,7 +205,7 @@ const loadConsultations = async () => {
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      consultationsError.value = 'User ID not found'
+      consultationsError.value = t('auth.userIdNotFound')
       return
     }
     const data = await $fetch<Consultation[]>(`${config.public.apiBase}/consultations/specialist/${userId}`)
@@ -216,24 +216,24 @@ const loadConsultations = async () => {
       consultationsData.map(async (consultation: any) => {
         try {
           // Fetch client name
-          let clientName = 'Unknown Client'
+          let clientName = t('consultations.unknownClient')
           if (consultation.userId) {
             try {
               const clientData = await $fetch<NamedResource>(`${config.public.apiBase}/users/${consultation.userId}`)
               clientName = clientData?.name || consultation.userId
             } catch (e: any) {
-              clientName = `Client (${consultation.userId})`
+              clientName = t('consultations.clientFallback', { id: consultation.userId })
             }
           }
           
           // Fetch category name
-          let categoryName = 'Unknown Category'
+          let categoryName = t('consultations.unknownCategory')
           if (consultation.categoryId) {
             try {
               const categoryData = await $fetch<NamedResource>(`${config.public.apiBase}/categories/${consultation.categoryId}`)
               categoryName = categoryData?.name || consultation.categoryId
             } catch (e: any) {
-              categoryName = `Category (${consultation.categoryId})`
+              categoryName = t('consultations.categoryFallback', { id: consultation.categoryId })
             }
           }
           
@@ -250,7 +250,7 @@ const loadConsultations = async () => {
     
     consultations.value = enrichedConsultations
   } catch (error: any) {
-    consultationsError.value = error.data?.message || error.message || 'Failed to load consultations'
+    consultationsError.value = error.data?.message || error.message || t('consultations.failedToLoad')
   } finally {
     consultationsLoading.value = false
   }
@@ -272,7 +272,7 @@ const approveConsultation = async (consultationId: string) => {
 
 const confirmApprove = async () => {
   if (!approvingConsultationDuration.value || approvingConsultationDuration.value < 15) {
-    approvingConsultationDurationError.value = 'Duration must be at least 15 minutes'
+    approvingConsultationDurationError.value = t('consultations.approve.minDuration')
     return
   }
 
@@ -294,7 +294,7 @@ const confirmApprove = async () => {
     }
     showApprovalDialog.value = false
   } catch (error: any) {
-    approvingConsultationDurationError.value = error.data?.message || error.message || 'Failed to approve consultation'
+    approvingConsultationDurationError.value = error.data?.message || error.message || t('consultations.approve.failedToApprove')
   } finally {
     updatingConsultationId.value = null
   }
@@ -314,7 +314,7 @@ const declineConsultation = async (consultationId: string) => {
       consultation.status = 'Cancelled'
     }
   } catch (error: any) {
-    alert(error.data?.message || error.message || 'Failed to decline consultation')
+    alert(error.data?.message || error.message || t('consultations.approve.failedToDecline'))
   } finally {
     updatingConsultationId.value = null
   }
@@ -334,7 +334,7 @@ const markAsMissed = async (consultationId: string) => {
       consultation.status = 'Missed'
     }
   } catch (error: any) {
-    alert(error.data?.message || error.message || 'Failed to mark consultation as missed')
+    alert(error.data?.message || error.message || t('consultations.approve.failedToMarkMissed'))
   } finally {
     updatingConsultationId.value = null
   }
@@ -365,10 +365,10 @@ const isConsultationInFuture = (consultation: EnrichedConsultation): boolean => 
 }
 
 const formatDateTime = (dateString: string) => {
-  if (!dateString) return 'N/A'
+  if (!dateString) return t('common.unknown')
   try {
     const date = new Date(dateString)
-    if (isNaN(date.getTime())) return 'Invalid Date'
+    if (isNaN(date.getTime())) return t('common.unknown')
     
     return date.toLocaleString('en-US', {
       year: 'numeric',
@@ -380,7 +380,7 @@ const formatDateTime = (dateString: string) => {
       hour12: false
     })
   } catch (e: any) {
-    return 'N/A'
+    return t('common.unknown')
   }
 }
 

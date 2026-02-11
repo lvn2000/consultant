@@ -2,11 +2,11 @@
   <div class="section">
     <div class="section-header">
       <div class="header-content">
-        <h2><span class="icon">🔔</span>Notification Preferences</h2>
-        <p class="header-subtitle">Choose which consultation notifications you want to receive by email</p>
+        <h2><span class="icon">🔔</span>{{ $t('notifications.title') }}</h2>
+        <p class="header-subtitle">{{ $t('notifications.subtitle') }}</p>
       </div>
     </div>
-    <div v-if="notificationsLoading" class="list-state">Loading notification preferences...</div>
+    <div v-if="notificationsLoading" class="list-state">{{ $t('notifications.loading') }}</div>
     <div v-else-if="notificationsError" class="list-state error">{{ notificationsError }}</div>
     <div v-else class="notifications-container">
       <div class="notifications-list">
@@ -21,7 +21,7 @@
               v-model="pref.emailEnabled"
               @change="updateNotificationPreference(pref)"
               :disabled="updatingNotificationId === pref.id"
-              :aria-label="`${formatNotificationType(pref.notificationType)} email notifications`"
+              :aria-label="formatNotificationType(pref.notificationType) + ' ' + $t('notifications.emailNotifications')"
             />
             <span class="toggle-slider"></span>
           </label>
@@ -40,6 +40,7 @@ import { ref, onMounted } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
 import { useApi } from '../composables/useApi'
 
+const { t } = useI18n()
 const config = useRuntimeConfig()
 const { $fetch } = useApi()
 
@@ -58,12 +59,12 @@ const loadNotificationPreferences = async () => {
     const accessToken = sessionStorage.getItem('accessToken')
     
     if (!userId) {
-      notificationsError.value = 'User ID not found - please log in again'
+      notificationsError.value = t('auth.userIdNotFound')
       return
     }
     
     if (!accessToken) {
-      notificationsError.value = 'Authentication token not found - please log in again'
+      notificationsError.value = t('auth.tokenNotFound')
       return
     }
     
@@ -78,9 +79,9 @@ const loadNotificationPreferences = async () => {
     if (process.dev) console.error('Notification preferences load error:', error)
     // Check if error is due to expired token
     if (error?.status === 401 || error?.data?.message?.includes('token') || error?.data?.message?.includes('authentication')) {
-      notificationsError.value = 'Your session has expired - please log in again'
+      notificationsError.value = t('auth.sessionExpired')
     } else {
-      notificationsError.value = error.data?.message || error.message || 'Failed to load notification preferences'
+      notificationsError.value = error.data?.message || error.message || t('notifications.failedToLoad')
     }
   } finally {
     notificationsLoading.value = false
@@ -97,12 +98,12 @@ const updateNotificationPreference = async (preference: any) => {
     const accessToken = sessionStorage.getItem('accessToken')
     
     if (!userId) {
-      notificationUpdateMessage.value = 'User ID not found - please log in again'
+      notificationUpdateMessage.value = t('auth.userIdNotFound')
       return
     }
     
     if (!accessToken) {
-      notificationUpdateMessage.value = 'Your session has expired - please log in again'
+      notificationUpdateMessage.value = t('auth.tokenNotFound')
       return
     }
     
@@ -117,7 +118,7 @@ const updateNotificationPreference = async (preference: any) => {
       }
     })
     
-    notificationUpdateMessage.value = 'Notification preference updated'
+    notificationUpdateMessage.value = t('notifications.preferenceUpdated')
     notificationUpdateSuccess.value = true
     
     setTimeout(() => {
@@ -127,9 +128,9 @@ const updateNotificationPreference = async (preference: any) => {
     if (process.dev) console.error('Error updating notification preference:', error)
     // Check if error is due to expired token
     if (error?.status === 401 || error?.data?.message?.includes('token') || error?.data?.message?.includes('authentication')) {
-      notificationUpdateMessage.value = 'Your session has expired - please log in again'
+      notificationUpdateMessage.value = t('auth.sessionExpired')
     } else {
-      notificationUpdateMessage.value = error.data?.message || error.message || 'Failed to update preference'
+      notificationUpdateMessage.value = error.data?.message || error.message || t('notifications.failedToUpdate')
     }
     notificationUpdateSuccess.value = false
     // Revert the change
@@ -146,13 +147,13 @@ const formatNotificationType = (type: string): string => {
 
 const getNotificationDescription = (type: string): string => {
   const descriptions: { [key: string]: string } = {
-    'ConsultationApproved': 'When a specialist approves your consultation request',
-    'ConsultationDeclined': 'When a specialist declines your consultation request',
-    'ConsultationCompleted': 'When a consultation is marked as completed',
-    'ConsultationMissed': 'When a consultation is marked as missed',
-    'ConsultationCancelled': 'When a consultation is cancelled'
+    'ConsultationApproved': t('notifications.descriptions.approved'),
+    'ConsultationDeclined': t('notifications.descriptions.declined'),
+    'ConsultationCompleted': t('notifications.descriptions.completed'),
+    'ConsultationMissed': t('notifications.descriptions.missed'),
+    'ConsultationCancelled': t('notifications.descriptions.cancelled')
   }
-  return descriptions[type] || 'Notification preference'
+  return descriptions[type] || t('notifications.fallbackDescription')
 }
 
 onMounted(() => {

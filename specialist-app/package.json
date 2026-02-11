@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@nuxt/icon": "^1.10.0",
+    "@nuxtjs/i18n": "^10.2.3",
     "@pinia/nuxt": "^0.7.0",
     "@primevue/nuxt-module": "^4.2.6",
     "nuxt": "^4.2.2",

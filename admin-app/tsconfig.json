@@ -1,16 +1,8 @@
 {
+  "extends": "./.nuxt/tsconfig.json",
   "compilerOptions": {
-    "target": "ES2017",
-    "module": "Node16",
-    "moduleResolution": "node16",
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "lib": ["ESNext", "DOM"],
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "forceConsistentCasingInFileNames": true
+    "skipLibCheck": true,
+    "module": "ESNext"
   }
 }

@@ -1,23 +1,23 @@
 <template>
   <div class="tab-panel">
     <div class="form" @click="closeDropdownsOnFormClick">
-      <h4>Book New Consultation</h4>
+      <h4>{{ $t('consultations.book.title') }}</h4>
 
       <div class="form-grid">
         <!-- Specialist selection -->
         <div class="form-field specialist-field" style="position: relative;">
-          <label>Specialist *</label>
+          <label>{{ $t('consultations.book.specialistLabel') }} *</label>
           <input 
             type="text" 
             v-model="specialistSearch" 
-            placeholder="Type to search specialist"
+            :placeholder="$t('consultations.book.searchSpecialist')"
             @focus="handleSpecialistFocus"
             @click="handleSpecialistClick"
             @input="handleSpecialistInput"
           />
           <div v-if="showSpecialistDropdown" class="dropdown" @click.stop style="display: block; background: white; border: 1px solid #e5e7eb; position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; width: 100%; max-height: 300px; overflow-y: auto; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
             <div v-if="specialistsLoading" style="padding: 0.75rem;">
-              <div class="text-gray-500">Loading specialists...</div>
+              <div class="text-gray-500">{{ $t('consultations.book.loadingSpecialists') }}</div>
             </div>
             <div v-else style="background: white;">
               <div v-if="filteredSpecialists.length > 0" style="padding: 0;">
@@ -33,7 +33,7 @@
                 </div>
               </div>
               <div v-else style="padding: 0.75rem; color: #666; font-size: 14px;">
-                No specialists found
+                {{ $t('consultations.book.noSpecialists') }}
               </div>
             </div>
           </div>
@@ -41,18 +41,18 @@
 
         <!-- Category selection -->
         <div class="form-field category-field" style="position: relative;">
-          <label>Category *</label>
+          <label>{{ $t('consultations.book.categoryLabel') }} *</label>
           <input 
             type="text" 
             :value="selectedCategory?.name || ''" 
             readonly 
-            placeholder="Select category"
+            :placeholder="$t('consultations.book.selectCategory')"
             @focus="handleCategoryFocus"
             @click="handleCategoryClick"
           />
           <div v-if="showCategoryDropdown" class="dropdown" @click.stop style="display: block; background: white; border: 1px solid #e5e7eb; position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; width: 100%; max-height: 300px; overflow-y: auto; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
             <div v-if="categoriesLoading" style="padding: 0.75rem;">
-              <div class="text-gray-500">Loading categories...</div>
+              <div class="text-gray-500">{{ $t('consultations.book.loadingCategories') }}</div>
             </div>
             <div v-else style="background: white;">
               <div v-if="filteredCategories.length > 0" style="padding: 0;">
@@ -68,8 +68,8 @@
                 </div>
               </div>
               <div v-else style="padding: 0.75rem; color: #666; font-size: 14px;">
-                <div v-if="!selectedSpecialist">Select a specialist first</div>
-                <div v-else>No categories available</div>
+                <div v-if="!selectedSpecialist">{{ $t('consultations.book.selectSpecialistFirst') }}</div>
+                <div v-else>{{ $t('consultations.book.noCategories') }}</div>
               </div>
             </div>
           </div>
@@ -77,27 +77,27 @@
 
         <!-- Description -->
         <div class="form-field" style="grid-column: 1 / -1;">
-          <label>Description *</label>
-          <textarea v-model="form.description" rows="3" placeholder="Describe your consultation request"></textarea>
+          <label>{{ $t('consultations.book.descriptionLabel') }} *</label>
+          <textarea v-model="form.description" rows="3" :placeholder="$t('consultations.book.descriptionPlaceholder')"></textarea>
         </div>
 
         <!-- Date -->
         <div class="form-field">
-          <label>Scheduled Date *</label>
+          <label>{{ $t('consultations.book.scheduledDate') }} *</label>
           <input type="date" v-model="form.scheduledDate" />
         </div>
 
         <!-- Time -->
         <div class="form-field">
-          <label>Scheduled Time *</label>
+          <label>{{ $t('consultations.book.scheduledTime') }} *</label>
           <input type="time" v-model="form.scheduledTime" />
         </div>
 
         <!-- Available Slots -->
         <div v-if="selectedSpecialist && form.scheduledDate" class="form-field" style="grid-column: 1 / -1;">
-          <label>Available Slots</label>
+          <label>{{ $t('consultations.book.availableSlots') }}</label>
           <div v-if="slotsLoading" class="slots-container">
-            <div class="slots-spinner">Loading available slots...</div>
+            <div class="slots-spinner">{{ $t('consultations.book.loadingSlots') }}</div>
           </div>
           <div v-else-if="slotsError" class="slots-container error">
             <p>{{ slotsError }}</p>
@@ -117,7 +117,7 @@
             </div>
           </div>
           <div v-else class="slots-container empty">
-            <p>No available slots for the selected date and duration</p>
+            <p>{{ $t('consultations.book.noSlots') }}</p>
           </div>
         </div>
       </div>
@@ -128,7 +128,7 @@
           @click="createConsultation"
           :disabled="!isFormValid"
         >
-          {{ creating ? 'Booking...' : 'Book Consultation' }}
+          {{ creating ? $t('common.booking') : $t('consultations.book.bookButton') }}
         </button>
       </div>
 
@@ -162,6 +162,7 @@ const emit = defineEmits(['consultation-created'])
 
 const config = useRuntimeConfig()
 const { $fetch } = useApi()
+const { t } = useI18n()
 
 const form = ref({
   specialistId: '',
@@ -343,12 +344,12 @@ const loadAvailableSlots = async () => {
     if (response.slots && Array.isArray(response.slots)) {
       availableSlots.value = response.slots
       if (response.slots.length === 0) {
-        slotsError.value = 'No available slots for selected date'
+        slotsError.value = t('consultations.book.noSlotsForDate')
       }
     }
   } catch (error: any) {
     console.error('Slots load error:', error)
-    slotsError.value = error.data?.message || error.message || 'Failed to load available slots'
+    slotsError.value = error.data?.message || error.message || t('consultations.book.failedToLoadSlots')
     availableSlots.value = []
   } finally {
     slotsLoading.value = false
@@ -366,7 +367,7 @@ const createConsultation = async () => {
   try {
     const userId = sessionStorage.getItem('userId')
     if (!userId) {
-      message.value = 'User ID not found'
+      message.value = t('auth.userIdNotFound')
       return
     }
     
@@ -388,7 +389,7 @@ const createConsultation = async () => {
       body
     })
     
-    message.value = 'Consultation created successfully!'
+    message.value = t('consultations.book.created')
     success.value = true
     form.value = {
       specialistId: '',
@@ -406,7 +407,7 @@ const createConsultation = async () => {
     
   } catch (error: any) {
     console.error('Consultation create error:', error)
-    message.value = error.data?.message || error.message || 'Failed to create consultation'
+    message.value = error.data?.message || error.message || t('consultations.book.failedToCreate')
   } finally {
     creating.value = false
   }

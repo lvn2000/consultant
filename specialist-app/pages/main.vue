@@ -1,39 +1,42 @@
 <template>
   <div class="main-container">
     <nav class="menu-panel">
-      <div class="menu-title">Specialist Menu</div>
+      <div class="menu-header">
+        <div class="menu-title">{{ $t('specialist.menu.title') }}</div>
+        <LocaleSwitcher />
+      </div>
       <ul>
         <li :class="{ active: selectedMenu === 'profile' }" @click="selectMenu('profile')">
-          Profile
+          {{ $t('specialist.menu.profile') }}
         </li>
         <li :class="{ active: selectedMenu === 'notifications' }" @click="selectMenu('notifications')">
-          Notifications
+          {{ $t('specialist.menu.notifications') }}
         </li>
         <li :class="{ active: selectedMenu === 'rates' }" @click="selectMenu('rates')">
-          My Rates
+          {{ $t('specialist.menu.rates') }}
         </li>
         <li :class="{ active: selectedMenu === 'availability' }" @click="selectMenu('availability')">
-          Availability
+          {{ $t('specialist.menu.availability') }}
         </li>
         <li :class="{ active: selectedMenu === 'connections' }" @click="selectMenu('connections')">
-          My Connections
+          {{ $t('specialist.menu.connections') }}
         </li>
         <li :class="{ active: selectedMenu === 'consultations' }" @click="selectMenu('consultations')">
-          My Consultations
+          {{ $t('specialist.menu.consultations') }}
         </li>
       </ul>
       <div class="menu-divider"></div>
       <ul>
-        <li class="logout" @click="logout">Logout</li>
+        <li class="logout" @click="logout">{{ $t('common.logout') }}</li>
       </ul>
     </nav>
     <div class="content">
       <div class="welcome-header">
         <div class="welcome-content">
           <h1 class="welcome-title">
-            <span class="wave">👋</span> Welcome back, specialist!
+            <span class="wave">👋</span> {{ $t('specialist.welcome.title') }}
           </h1>
-          <p class="welcome-subtitle">Manage your profile, rates, availability, and consultations</p>
+          <p class="welcome-subtitle">{{ $t('specialist.welcome.subtitle') }}</p>
         </div>
       </div>
 
@@ -169,9 +172,15 @@ onMounted(() => {
 
 .menu-title {
   font-weight: 700;
-  margin-bottom: 0.75rem;
   color: #1f2937;
   font-size: 0.95rem;
+}
+
+.menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
 }
 
 .menu-divider {

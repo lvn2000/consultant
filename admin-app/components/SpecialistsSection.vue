@@ -1,33 +1,33 @@
 <template>
   <section v-if="visible" class="section">
     <div class="section-header">
-      <h2>Specialists</h2>
-      <button type="button" class="btn" @click="loadSpecialists">🔄 Refresh</button>
+      <h2>{{ $t('adminSpecialists.title') }}</h2>
+      <button type="button" class="btn" @click="loadSpecialists">🔄 {{ $t('common.refresh') }}</button>
     </div>
 
     <div class="search-bar">
       <input
         v-model="specialistsSearchQuery"
         type="text"
-        placeholder="Search by name, email, or phone..."
+        :placeholder="$t('adminSpecialists.searchPlaceholder')"
         class="search-input"
       />
-      <button type="button" class="btn" @click="clearSpecialistsSearch" v-if="specialistsSearchQuery">❌ Clear</button>
+      <button type="button" class="btn" @click="clearSpecialistsSearch" v-if="specialistsSearchQuery">❌ {{ $t('common.clear') }}</button>
     </div>
 
-    <div class="list-state" v-if="specialistsLoading">Loading specialists...</div>
+    <div class="list-state" v-if="specialistsLoading">{{ $t('adminSpecialists.loading') }}</div>
     <div class="list-state error" v-else-if="specialistsError">{{ specialistsError }}</div>
 
     <div class="table" v-else>
       <div class="table-header specialists-table">
-        <span>Name</span>
-        <span>Email</span>
-        <span>Phone</span>
-        <span>Categories</span>
-        <span>Rate Items</span>
-        <span>Connections</span>
-        <span>Availability</span>
-        <span>Actions</span>
+        <span>{{ $t('common.name') }}</span>
+        <span>{{ $t('common.email') }}</span>
+        <span>{{ $t('common.phone') }}</span>
+        <span>{{ $t('adminSpecialists.categories') }}</span>
+        <span>{{ $t('adminSpecialists.rateItems') }}</span>
+        <span>{{ $t('common.connections') }}</span>
+        <span>{{ $t('common.availability') }}</span>
+        <span>{{ $t('common.actions') }}</span>
       </div>
       <div v-for="specialist in filteredSpecialists" :key="specialist.id" class="table-row specialists-table">
         <span>{{ specialist.name }}</span>
@@ -36,28 +36,28 @@
         <span>{{ resolveCategoryRates(specialist.categoryRates) }}</span>
         <span>{{ specialist.categoryRates.length }}</span>
         <span>{{ resolveSpecialistConnections(specialist.connections) }}</span>
-        <span>{{ specialist.isAvailable ? 'Available' : 'Unavailable' }}</span>
+        <span>{{ specialist.isAvailable ? $t('common.available') : $t('common.unavailable') }}</span>
         <span class="row-actions">
-          <button type="button" class="btn" @click="startEditSpecialist(specialist)">✏️ Select</button>
-          <button type="button" class="btn danger" @click="removeSpecialist(specialist.id)">🗑️ Delete</button>
+          <button type="button" class="btn" @click="startEditSpecialist(specialist)">✏️ {{ $t('common.select') }}</button>
+          <button type="button" class="btn danger" @click="removeSpecialist(specialist.id)">🗑️ {{ $t('common.delete') }}</button>
         </span>
       </div>
     </div>
 
     <div v-if="!specialistsLoading && !specialistsError" class="pagination">
       <div class="pagination-info">
-        Page {{ currentPage }}
+        {{ $t('common.pagination.pageNumber', { current: currentPage }) }}
       </div>
       <div class="pagination-controls">
         <button type="button" class="btn" :disabled="currentPage === 1" @click="goToPreviousPage">
-          ⬅️ Previous
+          ⬅️ {{ $t('common.previous') }}
         </button>
         <button type="button" class="btn" :disabled="isLastPage" @click="goToNextPage">
-          Next ➡️
+          {{ $t('common.next') }} ➡️
         </button>
       </div>
       <div class="pagination-size">
-        <label for="page-size">Page size</label>
+        <label for="page-size">{{ $t('common.pagination.pageSize') }}</label>
         <select id="page-size" v-model.number="pageSize" @change="handlePageSizeChange">
           <option :value="10">10</option>
           <option :value="20">20</option>
@@ -68,7 +68,7 @@
 
     <form ref="specialistFormRef" class="form" v-if="selectedSpecialistId" @submit.prevent>
       <div class="form-header">
-        <h3>Specialist Details</h3>
+        <h3>{{ $t('adminSpecialists.specialistDetails') }}</h3>
         <span class="form-subtitle" v-if="specialistForm.name">{{ specialistForm.name }}</span>
       </div>
 
@@ -80,7 +80,7 @@
             :class="{ active: specialistDetailsTab === 'general' }"
             @click="specialistDetailsTab = 'general'"
           >
-            General
+            {{ $t('adminSpecialists.general') }}
           </button>
           <button
             type="button"
@@ -88,7 +88,7 @@
             :class="{ active: specialistDetailsTab === 'categoryRates' }"
             @click="specialistDetailsTab = 'categoryRates'"
           >
-            Category Rates
+            {{ $t('adminSpecialists.categoryRates') }}
           </button>
           <button
             type="button"
@@ -96,7 +96,7 @@
             :class="{ active: specialistDetailsTab === 'connections' }"
             @click="specialistDetailsTab = 'connections'"
           >
-            Connections
+            {{ $t('common.connections') }}
           </button>
           <button
             type="button"
@@ -104,33 +104,33 @@
             :class="{ active: specialistDetailsTab === 'notifications' }"
             @click="specialistDetailsTab = 'notifications'"
           >
-            Notifications
+            {{ $t('common.notifications') }}
           </button>
         </div>
 
         <div v-if="specialistDetailsTab === 'general'" class="details-panel">
           <div class="form-grid">
             <div class="form-field">
-              <label for="specialist-name">Full Name</label>
-              <input id="specialist-name" v-model="specialistForm.name" type="text" placeholder="Jane Doe" />
+              <label for="specialist-name">{{ $t('profile.fullName') }}</label>
+              <input id="specialist-name" v-model="specialistForm.name" type="text" :placeholder="$t('adminSpecialists.namePlaceholder')" />
             </div>
             <div class="form-field">
-              <label for="specialist-email">Email</label>
-              <input id="specialist-email" v-model="specialistForm.email" type="email" placeholder="jane@example.com" />
+              <label for="specialist-email">{{ $t('common.email') }}</label>
+              <input id="specialist-email" v-model="specialistForm.email" type="email" :placeholder="$t('adminSpecialists.emailPlaceholder')" />
             </div>
             <div class="form-field">
-              <label for="specialist-phone">Phone</label>
-              <input id="specialist-phone" v-model="specialistForm.phone" type="tel" placeholder="+1 555 123 4567" />
+              <label for="specialist-phone">{{ $t('common.phone') }}</label>
+              <input id="specialist-phone" v-model="specialistForm.phone" type="tel" :placeholder="$t('adminSpecialists.phonePlaceholder')" />
             </div>
             <div class="form-field form-field--full">
-              <label for="specialist-bio">Bio</label>
-              <textarea id="specialist-bio" v-model="specialistForm.bio" placeholder="Professional background..." rows="4"></textarea>
+              <label for="specialist-bio">{{ $t('profile.bio') }}</label>
+              <textarea id="specialist-bio" v-model="specialistForm.bio" :placeholder="$t('profile.bioPlaceholder')" rows="4"></textarea>
             </div>
             <div class="form-field">
-              <label for="specialist-availability">Availability Status</label>
+              <label for="specialist-availability">{{ $t('profile.availabilityStatus') }}</label>
               <select id="specialist-availability" v-model="specialistForm.isAvailable">
-                <option :value="true">Available</option>
-                <option :value="false">Unavailable</option>
+                <option :value="true">{{ $t('common.available') }}</option>
+                <option :value="false">{{ $t('common.unavailable') }}</option>
               </select>
             </div>
           </div>
@@ -139,14 +139,14 @@
         <div v-if="specialistDetailsTab === 'categoryRates'" class="details-panel">
           <div class="rate-rows">
             <div class="rate-header">
-              <span>Category</span>
-              <span>Rate</span>
-              <span>Experience</span>
-              <span>Action</span>
+              <span>{{ $t('rates.category') }}</span>
+              <span>{{ $t('rates.rate') }}</span>
+              <span>{{ $t('rates.experienceShort') }}</span>
+              <span>{{ $t('common.action') }}</span>
             </div>
             <div v-for="(rate, index) in specialistForm.categoryRates" :key="index" class="rate-row">
               <select v-model="rate.categoryId">
-                <option value="">Select category</option>
+                <option value="">{{ $t('rates.selectCategory') }}</option>
                 <option v-for="category in categories" :key="category.id" :value="category.id">
                   {{ category.name }}
                 </option>
@@ -156,37 +156,37 @@
                 type="number"
                 min="1"
                 step="0.01"
-                placeholder="Rate"
+                :placeholder="$t('rates.rate')"
               />
               <input
                 v-model.number="rate.experienceYears"
                 type="number"
                 min="0"
                 step="1"
-                placeholder="Experience"
+                :placeholder="$t('rates.experienceShort')"
               />
-              <button type="button" class="btn" @click="removeCategoryRate(index)">🗑️ Remove</button>
+              <button type="button" class="btn" @click="removeCategoryRate(index)">🗑️ {{ $t('common.remove') }}</button>
             </div>
-            <button type="button" class="btn" @click="addCategoryRate">➕ Add Category Rate</button>
+            <button type="button" class="btn" @click="addCategoryRate">➕ {{ $t('rates.addCategoryRate') }}</button>
           </div>
         </div>
 
         <div v-else-if="specialistDetailsTab === 'connections'" class="details-panel">
           <p v-if="!selectedSpecialistId" class="muted">
-            Select a specialist to manage connections.
+            {{ $t('adminSpecialists.selectToManageConnections') }}
           </p>
           <div v-else class="connections-manager">
-            <div class="list-state" v-if="specialistConnectionsLoading">Loading specialist connections...</div>
+            <div class="list-state" v-if="specialistConnectionsLoading">{{ $t('adminSpecialists.loadingConnections') }}</div>
             <div class="list-state error" v-else-if="specialistConnectionsError">
               {{ specialistConnectionsError }}
             </div>
 
             <div class="table" v-else>
               <div class="table-header specialist-connections-table">
-                <span>Type</span>
-                <span>Value</span>
-                <span>Verified</span>
-                <span>Actions</span>
+                <span>{{ $t('adminSpecialists.type') }}</span>
+                <span>{{ $t('adminSpecialists.value') }}</span>
+                <span>{{ $t('common.verified') }}</span>
+                <span>{{ $t('common.actions') }}</span>
               </div>
               <div
                 v-for="connection in specialistConnections"
@@ -195,39 +195,39 @@
               >
                 <span>{{ resolveConnectionTypeName(connection.connectionTypeId) }}</span>
                 <span>{{ connection.connectionValue }}</span>
-                <span>{{ connection.isVerified ? 'Yes' : 'No' }}</span>
+                <span>{{ connection.isVerified ? $t('common.yes') : $t('common.no') }}</span>
                 <span class="row-actions">
-                  <button type="button" class="btn" @click="startEditConnection(connection)">✏️ Select</button>
-                  <button type="button" class="btn danger" @click="removeConnection(connection.id)">🗑️ Delete</button>
+                  <button type="button" class="btn" @click="startEditConnection(connection)">✏️ {{ $t('common.select') }}</button>
+                  <button type="button" class="btn danger" @click="removeConnection(connection.id)">🗑️ {{ $t('common.delete') }}</button>
                 </span>
               </div>
             </div>
 
             <div ref="connectionFormRef" class="form-grid">
               <div class="form-field">
-                <label for="specialist-connection-type">Connection Type</label>
+                <label for="specialist-connection-type">{{ $t('connections.connectionType') }}</label>
                 <select id="specialist-connection-type" v-model="connectionForm.connectionTypeId">
-                  <option value="">Select type</option>
+                  <option value="">{{ $t('adminSpecialists.selectType') }}</option>
                   <option v-for="type in connectionTypes" :key="type.id" :value="type.id">
                     {{ type.name }}
                   </option>
                 </select>
               </div>
               <div class="form-field">
-                <label for="specialist-connection-value">Connection Value</label>
+                <label for="specialist-connection-value">{{ $t('connections.connectionValue') }}</label>
                 <input
                   id="specialist-connection-value"
                   v-model="connectionForm.connectionValue"
                   type="text"
-                  placeholder="@username or +123456789"
+                  :placeholder="$t('adminSpecialists.connectionValuePlaceholder')"
                 />
               </div>
             </div>
 
             <div class="form-actions">
-              <button type="button" class="btn primary" @click="addConnection">➕ Add Connection</button>
+              <button type="button" class="btn primary" @click="addConnection">➕ {{ $t('adminSpecialists.addConnection') }}</button>
               <button type="button" class="btn" :disabled="!selectedConnectionId" @click="updateConnection">
-                ✏️ Update Connection
+                ✏️ {{ $t('adminSpecialists.updateConnection') }}
               </button>
               <button
                 type="button"
@@ -235,9 +235,9 @@
                 :disabled="!selectedConnectionId"
                 @click="deleteSelectedConnection"
               >
-                🗑️ Delete Connection
+                🗑️ {{ $t('adminSpecialists.deleteConnection') }}
               </button>
-              <button type="button" class="btn" @click="resetConnectionForm">❌ Clear</button>
+              <button type="button" class="btn" @click="resetConnectionForm">❌ {{ $t('common.clear') }}</button>
             </div>
 
             <p v-if="connectionActionMessage" class="form-message">{{ connectionActionMessage }}</p>
@@ -246,10 +246,10 @@
 
         <div v-else-if="specialistDetailsTab === 'notifications'" class="details-panel">
           <p v-if="!selectedSpecialistId" class="muted">
-            Select a specialist to manage notification preferences.
+            {{ $t('adminSpecialists.selectToManageNotifications') }}
           </p>
           <div v-else class="notifications-manager">
-            <div class="list-state" v-if="notificationsLoading">Loading notification preferences...</div>
+            <div class="list-state" v-if="notificationsLoading">{{ $t('notifications.loading') }}</div>
             <div class="list-state error" v-else-if="notificationsError">
               {{ notificationsError }}
             </div>
@@ -266,7 +266,7 @@
                     v-model="pref.emailEnabled"
                     @change="updateNotificationPreference(pref)"
                     :disabled="updatingNotificationId === pref.id"
-                    :aria-label="formatNotificationType(pref.notificationType) + ' email notification'"
+                    :aria-label="formatNotificationType(pref.notificationType) + ' ' + $t('notifications.emailNotifications')"
                   />
                   <span class="toggle-slider"></span>
                 </label>
@@ -281,17 +281,17 @@
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn primary" @click="addSpecialist">➕ Add Specialist</button>
+        <button type="button" class="btn primary" @click="addSpecialist">➕ {{ $t('adminSpecialists.addSpecialist') }}</button>
         <button type="button" class="btn" :disabled="!selectedSpecialistId" @click="updateSpecialist">
-          ✏️ Update Specialist
+          ✏️ {{ $t('adminSpecialists.updateSpecialist') }}
         </button>
         <button type="button" class="btn" :disabled="!selectedSpecialistId || specialistDetailsTab !== 'categoryRates'" @click="updateCategoryRates">
-          💾 Save Category Rates
+          💾 {{ $t('adminSpecialists.saveCategoryRates') }}
         </button>
         <button type="button" class="btn danger" :disabled="!selectedSpecialistId" @click="deleteSelectedSpecialist">
-          🗑️ Delete Specialist
+          🗑️ {{ $t('adminSpecialists.deleteSpecialist') }}
         </button>
-        <button type="button" class="btn" @click="resetSpecialistForm">❌ Clear</button>
+        <button type="button" class="btn" @click="resetSpecialistForm">❌ {{ $t('common.clear') }}</button>
       </div>
 
       <p v-if="specialistActionMessage" class="form-message">{{ specialistActionMessage }}</p>
@@ -303,8 +303,8 @@
         <h3>{{ confirmState.title }}</h3>
         <p>{{ confirmState.message }}</p>
         <div class="modal-actions">
-          <button type="button" class="btn" @click="confirmResolver?.(false)">Cancel</button>
-          <button type="button" class="btn primary" @click="confirmResolver?.(true)">Confirm</button>
+          <button type="button" class="btn" @click="confirmResolver?.(false)">{{ $t('common.cancel') }}</button>
+          <button type="button" class="btn primary" @click="confirmResolver?.(true)">{{ $t('common.confirm') }}</button>
         </div>
       </div>
     </div>
@@ -316,6 +316,7 @@ import { computed, onMounted, ref, watch, nextTick } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
 import { useApi } from '../composables/useApi'
 
+const { t } = useI18n()
 const config = useRuntimeConfig()
 const { $fetch } = useApi()
 defineProps<{ visible: boolean }>()
@@ -442,7 +443,7 @@ const resolveCategoryRates = (
   rates
     .map(rate => {
       const name = categories.value.find(category => category.id === rate.categoryId)?.name ?? rate.categoryId
-      return `${name} (${rate.hourlyRate}, ${rate.experienceYears} yrs)`
+      return `${name} (${rate.hourlyRate}, ${rate.experienceYears} ${t('rates.yearsShort')})`
     })
     .join(', ')
 
@@ -468,7 +469,7 @@ const loadSpecialists = async () => {
     specialists.value = data
     isLastPage.value = data.length < pageSize.value
   } catch (error) {
-    specialistsError.value = 'Failed to load specialists'
+    specialistsError.value = t('adminSpecialists.failedToLoad')
   } finally {
     specialistsLoading.value = false
   }
@@ -511,7 +512,7 @@ const loadSpecialistConnections = async () => {
     specialistConnections.value = data
   } catch (error) {
     specialistConnections.value = []
-    specialistConnectionsError.value = 'Failed to load specialist connections'
+    specialistConnectionsError.value = t('adminSpecialists.failedToLoadConnections')
   } finally {
     specialistConnectionsLoading.value = false
   }
@@ -527,7 +528,7 @@ const loadSpecialistNotifications = async () => {
   try {
     const token = sessionStorage.getItem('accessToken') || sessionStorage.getItem('sessionId')
     if (!token) {
-      notificationsError.value = 'Session not found - please log in again'
+      notificationsError.value = t('auth.sessionNotFound')
       return
     }
     const data = await $fetch<any>(`${config.public.apiBase}/notification-preferences`, {
@@ -541,7 +542,7 @@ const loadSpecialistNotifications = async () => {
   } catch (error: any) {
     console.error('Error loading notifications:', error)
     specialistNotifications.value = []
-    notificationsError.value = error?.message || 'Failed to load notification preferences'
+    notificationsError.value = error?.message || t('notifications.failedToLoad')
   } finally {
     notificationsLoading.value = false
   }
@@ -556,18 +557,18 @@ const formatNotificationType = (type: string): string => {
 
 const getNotificationDescription = (type: string): string => {
   const descriptions: Record<string, string> = {
-    'ConsultationApproved': 'When specialist approves your request',
-    'ConsultationDeclined': 'When specialist declines your request',
-    'ConsultationCompleted': 'When a consultation is completed',
-    'ConsultationMissed': 'When a consultation is marked as missed',
-    'ConsultationCancelled': 'When a consultation is cancelled'
+    'ConsultationApproved': t('notifications.descriptionsAdmin.approved'),
+    'ConsultationDeclined': t('notifications.descriptionsAdmin.declined'),
+    'ConsultationCompleted': t('notifications.descriptionsAdmin.completed'),
+    'ConsultationMissed': t('notifications.descriptionsAdmin.missed'),
+    'ConsultationCancelled': t('notifications.descriptionsAdmin.cancelled')
   }
-  return descriptions[type] || 'Notification preference'
+  return descriptions[type] || t('notifications.fallbackDescription')
 }
 
 const updateNotificationPreference = async (pref: any) => {
   if (!selectedSpecialistId.value) {
-    notificationUpdateMessage.value = 'Select a specialist to update preferences.'
+    notificationUpdateMessage.value = t('adminSpecialists.selectToUpdatePreferences')
     notificationUpdateSuccess.value = false
     return
   }
@@ -576,7 +577,7 @@ const updateNotificationPreference = async (pref: any) => {
   try {
     const token = sessionStorage.getItem('accessToken') || sessionStorage.getItem('sessionId')
     if (!token) {
-      notificationUpdateMessage.value = 'Session not found - please log in again'
+      notificationUpdateMessage.value = t('auth.sessionNotFound')
       notificationUpdateSuccess.value = false
       return
     }
@@ -590,10 +591,10 @@ const updateNotificationPreference = async (pref: any) => {
         'X-User-Id': selectedSpecialistId.value
       }
     })
-    notificationUpdateMessage.value = 'Notification preference updated successfully.'
+    notificationUpdateMessage.value = t('adminSpecialists.notificationUpdated')
     notificationUpdateSuccess.value = true
   } catch (error) {
-    notificationUpdateMessage.value = 'Failed to update notification preference.'
+    notificationUpdateMessage.value = t('adminSpecialists.failedToUpdateNotification')
     notificationUpdateSuccess.value = false
     // Reload preferences to sync UI with actual persisted state
     await loadSpecialistNotifications()
@@ -731,7 +732,7 @@ const removeCategoryRate = (index: number) => {
 
 const addSpecialist = async () => {
   specialistActionMessage.value = ''
-  const confirmed = await confirmAction('Add Specialist', 'Add this specialist?')
+  const confirmed = await confirmAction(t('adminSpecialists.addSpecialist'), t('adminSpecialists.addSpecialistConfirm'))
   if (!confirmed) return
   try {
     await $fetch(`${config.public.apiBase}/specialists`, {
@@ -745,20 +746,20 @@ const addSpecialist = async () => {
         isAvailable: specialistForm.value.isAvailable,
       },
     })
-    specialistActionMessage.value = 'Specialist created successfully.'
+    specialistActionMessage.value = t('adminSpecialists.specialistCreated')
     resetSpecialistForm()
     await loadSpecialists()
   } catch (error) {
-    specialistActionMessage.value = 'Failed to create specialist.'
+    specialistActionMessage.value = t('adminSpecialists.failedToCreate')
   }
 }
 
 const updateSpecialist = async () => {
   if (!selectedSpecialistId.value) {
-    specialistActionMessage.value = 'Select a specialist to update.'
+    specialistActionMessage.value = t('adminSpecialists.selectToUpdate')
     return
   }
-  const confirmed = await confirmAction('Update Specialist', 'Update this specialist?')
+  const confirmed = await confirmAction(t('adminSpecialists.updateSpecialist'), t('adminSpecialists.updateSpecialistConfirm'))
   if (!confirmed) return
   specialistActionMessage.value = ''
   try {
@@ -773,23 +774,23 @@ const updateSpecialist = async () => {
         isAvailable: specialistForm.value.isAvailable,
       },
     })
-    specialistActionMessage.value = 'Specialist updated successfully.'
+    specialistActionMessage.value = t('adminSpecialists.specialistUpdated')
     await loadSpecialists()
   } catch (error) {
-    specialistActionMessage.value = 'Failed to update specialist.'
+    specialistActionMessage.value = t('adminSpecialists.failedToUpdate')
   }
 }
 
 const updateCategoryRates = async () => {
   if (!selectedSpecialistId.value) {
-    specialistActionMessage.value = 'Select a specialist to update.'
+    specialistActionMessage.value = t('adminSpecialists.selectToUpdate')
     return
   }
   if (specialistForm.value.categoryRates.length === 0) {
-    specialistActionMessage.value = 'Add at least one category rate.'
+    specialistActionMessage.value = t('adminSpecialists.addAtLeastOneRate')
     return
   }
-  const confirmed = await confirmAction('Update Category Rates', 'Save these category rates?')
+  const confirmed = await confirmAction(t('adminSpecialists.updateCategoryRates'), t('adminSpecialists.saveCategoryRatesConfirm'))
   if (!confirmed) return
   specialistActionMessage.value = ''
   try {
@@ -804,54 +805,54 @@ const updateCategoryRates = async () => {
         isAvailable: specialistForm.value.isAvailable,
       },
     })
-    specialistActionMessage.value = 'Category rates updated successfully.'
+    specialistActionMessage.value = t('adminSpecialists.ratesUpdated')
     await loadSpecialists()
   } catch (error) {
-    specialistActionMessage.value = 'Failed to update category rates.'
+    specialistActionMessage.value = t('adminSpecialists.failedToUpdateRates')
   }
 }
 
 const deleteSelectedSpecialist = async () => {
   if (!selectedSpecialistId.value) {
-    specialistActionMessage.value = 'Select a specialist to delete.'
+    specialistActionMessage.value = t('adminSpecialists.selectToDelete')
     return
   }
-  const confirmed = await confirmAction('Delete Specialist', 'Delete this specialist?')
+  const confirmed = await confirmAction(t('adminSpecialists.deleteSpecialist'), t('adminSpecialists.deleteSpecialistConfirm'))
   if (!confirmed) return
   try {
     await $fetch(`${config.public.apiBase}/specialists/${selectedSpecialistId.value}`, {
       method: 'DELETE',
     })
-    specialistActionMessage.value = 'Specialist deleted successfully.'
+    specialistActionMessage.value = t('adminSpecialists.specialistDeleted')
     resetSpecialistForm()
     await loadSpecialists()
   } catch (error) {
-    specialistActionMessage.value = 'Failed to delete specialist.'
+    specialistActionMessage.value = t('adminSpecialists.failedToDelete')
   }
 }
 
 const removeSpecialist = async (id: string) => {
-  const confirmed = await confirmAction('Delete Specialist', 'Delete this specialist?')
+  const confirmed = await confirmAction(t('adminSpecialists.deleteSpecialist'), t('adminSpecialists.deleteSpecialistConfirm'))
   if (!confirmed) return
   try {
     await $fetch(`${config.public.apiBase}/specialists/${id}`, { method: 'DELETE' })
     await loadSpecialists()
   } catch (error) {
-    specialistActionMessage.value = 'Failed to delete specialist.'
+    specialistActionMessage.value = t('adminSpecialists.failedToDelete')
   }
 }
 
 const addConnection = async () => {
   connectionActionMessage.value = ''
   if (!selectedSpecialistId.value) {
-    connectionActionMessage.value = 'Select a specialist to add a connection.'
+    connectionActionMessage.value = t('adminSpecialists.selectToAddConnection')
     return
   }
   if (!connectionForm.value.connectionTypeId || !connectionForm.value.connectionValue) {
-    connectionActionMessage.value = 'Select a connection type and provide a value.'
+    connectionActionMessage.value = t('adminSpecialists.selectConnectionTypeAndValue')
     return
   }
-  const confirmed = await confirmAction('Add Connection', 'Add this connection?')
+  const confirmed = await confirmAction(t('adminSpecialists.addConnection'), t('adminSpecialists.addConnectionConfirm'))
   if (!confirmed) return
   try {
     await $fetch(`${config.public.apiBase}/specialists/${selectedSpecialistId.value}/connections`, {
@@ -861,21 +862,21 @@ const addConnection = async () => {
         connectionValue: connectionForm.value.connectionValue,
       },
     })
-    connectionActionMessage.value = 'Connection added successfully.'
+    connectionActionMessage.value = t('adminSpecialists.connectionAdded')
     resetConnectionForm()
     await loadSpecialistConnections()
   } catch (error) {
-    connectionActionMessage.value = 'Failed to add connection.'
+    connectionActionMessage.value = t('adminSpecialists.failedToAddConnection')
   }
 }
 
 const updateConnection = async () => {
   connectionActionMessage.value = ''
   if (!selectedConnectionId.value) {
-    connectionActionMessage.value = 'Select a connection to update.'
+    connectionActionMessage.value = t('adminSpecialists.selectConnectionToUpdate')
     return
   }
-  const confirmed = await confirmAction('Update Connection', 'Update this connection?')
+  const confirmed = await confirmAction(t('adminSpecialists.updateConnection'), t('adminSpecialists.updateConnectionConfirm'))
   if (!confirmed) return
   try {
     await $fetch(`${config.public.apiBase}/specialists/connections/${selectedConnectionId.value}`, {
@@ -885,41 +886,41 @@ const updateConnection = async () => {
         connectionValue: connectionForm.value.connectionValue,
       },
     })
-    connectionActionMessage.value = 'Connection updated successfully.'
+    connectionActionMessage.value = t('adminSpecialists.connectionUpdated')
     resetConnectionForm()
     await loadSpecialistConnections()
   } catch (error) {
-    connectionActionMessage.value = 'Failed to update connection.'
+    connectionActionMessage.value = t('adminSpecialists.failedToUpdateConnection')
   }
 }
 
 const deleteSelectedConnection = async () => {
   if (!selectedConnectionId.value) {
-    connectionActionMessage.value = 'Select a connection to delete.'
+    connectionActionMessage.value = t('adminSpecialists.selectConnectionToDelete')
     return
   }
-  const confirmed = await confirmAction('Delete Connection', 'Delete this connection?')
+  const confirmed = await confirmAction(t('adminSpecialists.deleteConnection'), t('adminSpecialists.deleteConnectionConfirm'))
   if (!confirmed) return
   try {
     await $fetch(`${config.public.apiBase}/specialists/connections/${selectedConnectionId.value}`, {
       method: 'DELETE',
     })
-    connectionActionMessage.value = 'Connection deleted successfully.'
+    connectionActionMessage.value = t('adminSpecialists.connectionDeleted')
     resetConnectionForm()
     await loadSpecialistConnections()
   } catch (error) {
-    connectionActionMessage.value = 'Failed to delete connection.'
+    connectionActionMessage.value = t('adminSpecialists.failedToDeleteConnection')
   }
 }
 
 const removeConnection = async (id: string) => {
-  const confirmed = await confirmAction('Delete Connection', 'Delete this connection?')
+  const confirmed = await confirmAction(t('adminSpecialists.deleteConnection'), t('adminSpecialists.deleteConnectionConfirm'))
   if (!confirmed) return
   try {
     await $fetch(`${config.public.apiBase}/specialists/connections/${id}`, { method: 'DELETE' })
     await loadSpecialistConnections()
   } catch (error) {
-    connectionActionMessage.value = 'Failed to delete connection.'
+    connectionActionMessage.value = t('adminSpecialists.failedToDeleteConnection')
   }
 }
 

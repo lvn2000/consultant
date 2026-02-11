@@ -1,19 +1,11 @@
 {
+  "extends": "./.nuxt/tsconfig.json",
   "compilerOptions": {
-    "strict": true,
     "module": "ESNext",
-    "moduleResolution": "bundler",
-    "target": "ESNext",
-    "lib": ["ESNext", "DOM"],
+    "strict": true,
     "skipLibCheck": true,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
     "types": [
       "vitest/globals"
-    ],
-    "paths": {
-      "~/*": ["./*"]
-    }
+    ]
   }
 }

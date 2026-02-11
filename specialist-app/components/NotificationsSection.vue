@@ -2,12 +2,12 @@
   <section class="section">
     <div class="section-header">
       <div class="header-content">
-        <h2><span class="icon">🔔</span>Notification Preferences</h2>
-        <p class="header-subtitle">Choose which consultation notifications you want to receive by email</p>
+        <h2><span class="icon">🔔</span>{{ $t('notifications.title') }}</h2>
+        <p class="header-subtitle">{{ $t('notifications.subtitle') }}</p>
       </div>
     </div>
 
-    <div class="list-state" v-if="notificationsLoading">Loading notification preferences...</div>
+    <div class="list-state" v-if="notificationsLoading">{{ $t('notifications.loading') }}</div>
     <div class="list-state error" v-else-if="notificationsError">{{ notificationsError }}</div>
 
     <div v-else class="notifications-container">
@@ -23,7 +23,7 @@
               v-model="pref.emailEnabled"
               @change="updateNotificationPreference(pref)"
               :disabled="updatingNotificationId === pref.id"
-              :aria-label="`${formatNotificationType(pref.notificationType)} email notifications`"
+              :aria-label="formatNotificationType(pref.notificationType) + ' ' + $t('notifications.emailNotifications')"
             />
             <span class="toggle-slider"></span>
           </label>
@@ -41,6 +41,8 @@
 import { ref, onMounted } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
 import { useApi } from '~/composables/useApi'
+
+const { t } = useI18n()
 
 const config = useRuntimeConfig()
 const { $fetch } = useApi()
@@ -70,11 +72,11 @@ const loadNotificationPreferences = async () => {
     const userId = sessionStorage.getItem('userId')
     const token = sessionStorage.getItem('accessToken') || sessionStorage.getItem('sessionId')
     if (!userId) {
-      notificationsError.value = 'User ID not found'
+      notificationsError.value = t('auth.userIdNotFound')
       return
     }
     if (!token) {
-      notificationsError.value = 'Session not found - please log in again'
+      notificationsError.value = t('auth.sessionExpired')
       return
     }
     
@@ -87,7 +89,7 @@ const loadNotificationPreferences = async () => {
     notificationPreferences.value = response.preferences || []
   } catch (error: any) {
     console.error('Notification preferences load error:', error)
-    notificationsError.value = error.data?.message || error.message || 'Failed to load notification preferences'
+    notificationsError.value = error.data?.message || error.message || t('notifications.failedToLoad')
   } finally {
     notificationsLoading.value = false
   }
@@ -102,11 +104,11 @@ const updateNotificationPreference = async (preference: NotificationPreference) 
     const userId = sessionStorage.getItem('userId')
     const token = sessionStorage.getItem('accessToken') || sessionStorage.getItem('sessionId')
     if (!userId) {
-      notificationUpdateMessage.value = 'User ID not found'
+      notificationUpdateMessage.value = t('auth.userIdNotFound')
       return
     }
     if (!token) {
-      notificationUpdateMessage.value = 'Session not found - please log in again'
+      notificationUpdateMessage.value = t('auth.sessionExpired')
       return
     }
     
@@ -121,7 +123,7 @@ const updateNotificationPreference = async (preference: NotificationPreference) 
       }
     })
     
-    notificationUpdateMessage.value = 'Notification preference updated'
+    notificationUpdateMessage.value = t('notifications.preferenceUpdated')
     notificationUpdateSuccess.value = true
     
     setTimeout(() => {
@@ -129,7 +131,7 @@ const updateNotificationPreference = async (preference: NotificationPreference) 
     }, 2000)
   } catch (error: any) {
     console.error('Error updating notification preference:', error)
-    notificationUpdateMessage.value = error.data?.message || error.message || 'Failed to update preference'
+    notificationUpdateMessage.value = error.data?.message || error.message || t('notifications.failedToUpdate')
     notificationUpdateSuccess.value = false
     // Revert the change
     await loadNotificationPreferences()
@@ -145,13 +147,13 @@ const formatNotificationType = (type: string): string => {
 
 const getNotificationDescription = (type: string): string => {
   const descriptions: { [key: string]: string } = {
-    'ConsultationApproved': 'When a consultation request is approved',
-    'ConsultationDeclined': 'When a consultation request is declined',
-    'ConsultationCompleted': 'When a consultation is marked as completed',
-    'ConsultationMissed': 'When a consultation is marked as missed',
-    'ConsultationCancelled': 'When a consultation is cancelled'
+    'ConsultationApproved': t('notifications.descriptionsSpecialist.approved'),
+    'ConsultationDeclined': t('notifications.descriptionsSpecialist.declined'),
+    'ConsultationCompleted': t('notifications.descriptions.completed'),
+    'ConsultationMissed': t('notifications.descriptions.missed'),
+    'ConsultationCancelled': t('notifications.descriptions.cancelled')
   }
-  return descriptions[type] || 'Notification preference'
+  return descriptions[type] || t('notifications.fallbackDescription')
 }
 
 onMounted(() => {

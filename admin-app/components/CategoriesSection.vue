@@ -1,7 +1,7 @@
 <template>
   <section v-if="visible" class="section">
     <div class="section-header">
-      <h2>Categories</h2>
+      <h2>{{ $t('adminCategories.title') }}</h2>
       <button type="button" class="btn" @click="loadCategories">🔄 Refresh</button>
     </div>
 
@@ -9,29 +9,29 @@
       <input
         v-model="categoriesSearchQuery"
         type="text"
-        placeholder="Search by name or description..."
+        :placeholder="$t('adminCategories.searchPlaceholder')"
         class="search-input"
       />
       <button type="button" class="btn" @click="clearCategoriesSearch" v-if="categoriesSearchQuery">❌ Clear</button>
     </div>
 
-    <div class="list-state" v-if="categoriesLoading">Loading categories...</div>
+    <div class="list-state" v-if="categoriesLoading">{{ $t('adminCategories.loading') }}</div>
     <div class="list-state error" v-else-if="categoriesError">{{ categoriesError }}</div>
 
     <div class="table" v-else>
       <div class="table-header categories-table">
-        <span>Name</span>
-        <span>Description</span>
-        <span>Parent</span>
-        <span>Actions</span>
+        <span>{{ $t('common.name') }}</span>
+        <span>{{ $t('common.description') }}</span>
+        <span>{{ $t('adminCategories.parent') }}</span>
+        <span>{{ $t('common.actions') }}</span>
       </div>
       <div v-for="category in pagedFilteredCategories" :key="category.id" class="table-row categories-table">
         <span>{{ category.name }}</span>
         <span>{{ category.description || '-' }}</span>
         <span>{{ resolveCategoryName(category.parentId) }}</span>
         <span class="row-actions">
-          <button type="button" class="btn" @click="startEditCategory(category)">✏️ Select</button>
-          <button type="button" class="btn danger" @click="removeCategory(category.id)">🗑️ Delete</button>
+          <button type="button" class="btn" @click="startEditCategory(category)">✏️ {{ $t('common.edit') }}</button>
+          <button type="button" class="btn danger" @click="removeCategory(category.id)">🗑️ {{ $t('common.delete') }}</button>
         </span>
       </div>
     </div>
@@ -61,22 +61,22 @@
     <form ref="categoryFormRef" class="form" @submit.prevent>
       <div class="form-grid">
         <div class="form-field">
-          <label for="category-name">Name</label>
-          <input id="category-name" v-model="categoryForm.name" type="text" placeholder="Strategy" />
+          <label for="category-name">{{ $t('common.name') }}</label>
+          <input id="category-name" v-model="categoryForm.name" type="text" :placeholder="$t('adminCategories.namePlaceholder')" />
         </div>
         <div class="form-field">
-          <label for="category-description">Description</label>
+          <label for="category-description">{{ $t('common.description') }}</label>
           <input
             id="category-description"
             v-model="categoryForm.description"
             type="text"
-            placeholder="Business strategy consulting"
+            :placeholder="$t('adminCategories.descriptionPlaceholder')"
           />
         </div>
         <div class="form-field">
-          <label for="category-parent">Parent Category</label>
+          <label for="category-parent">{{ $t('adminCategories.parentCategory') }}</label>
           <select id="category-parent" v-model="categoryForm.parentId">
-            <option :value="''">No parent</option>
+            <option :value="''">{{ $t('adminCategories.noParent') }}</option>
             <option 
               v-for="category in availableParentCategories" 
               :key="category.id" 
@@ -89,12 +89,12 @@
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn primary" @click="addCategory">➕ Add Category</button>
+        <button type="button" class="btn primary" @click="addCategory">➕ {{ $t('adminCategories.addCategory') }}</button>
         <button type="button" class="btn" :disabled="!selectedCategoryId" @click="updateCategory">
-          ✏️ Update Category
+          ✏️ {{ $t('adminCategories.updateCategory') }}
         </button>
         <button type="button" class="btn danger" :disabled="!selectedCategoryId" @click="deleteSelectedCategory">
-          🗑️ Delete Category
+          🗑️ {{ $t('adminCategories.deleteCategory') }}
         </button>
         <button type="button" class="btn" @click="resetCategoryForm">❌ Clear</button>
       </div>
@@ -108,7 +108,7 @@
         <h3>{{ confirmState.title }}</h3>
         <p>{{ confirmState.message }}</p>
         <div class="modal-actions">
-          <button type="button" class="btn" @click="confirmResolver?.(false)">Cancel</button>
+          <button type="button" class="btn" @click="confirmResolver?.(false)">{{ $t('common.cancel') }}</button>
           <button type="button" class="btn primary" @click="confirmResolver?.(true)">Confirm</button>
         </div>
       </div>
@@ -120,6 +120,8 @@
 import { computed, onMounted, ref, nextTick } from 'vue'
 import { useRuntimeConfig } from 'nuxt/app'
 import { useApi } from '../composables/useApi'
+
+const { t } = useI18n()
 
 defineProps<{
   visible: boolean
@@ -211,7 +213,7 @@ const loadCategories = async () => {
     }
   } catch (error) {
     categories.value = []
-    categoriesError.value = 'Failed to load categories'
+    categoriesError.value = t('adminCategories.failedToLoad')
   } finally {
     categoriesLoading.value = false
   }
@@ -272,18 +274,18 @@ const addCategory = async () => {
 
   // Validate category name is not empty
   if (!categoryForm.value.name.trim()) {
-    categoryActionMessage.value = 'Category name is required.'
+    categoryActionMessage.value = t('adminCategories.nameRequired')
     return
   }
 
   // Check for duplicate category name
   const isDuplicate = categories.value.some(cat => cat.name.toLowerCase() === categoryForm.value.name.toLowerCase())
   if (isDuplicate) {
-    categoryActionMessage.value = 'A category with this name already exists.'
+    categoryActionMessage.value = t('adminCategories.nameExists')
     return
   }
 
-  const confirmed = await confirmAction('Add Category', 'Add this category?')
+  const confirmed = await confirmAction(t('adminCategories.addCategory'), t('adminCategories.addConfirm'))
   if (!confirmed) return
 
   try {
@@ -295,28 +297,28 @@ const addCategory = async () => {
         parentId: categoryForm.value.parentId || null,
       },
     })
-    categoryActionMessage.value = 'Category created successfully.'
+    categoryActionMessage.value = t('adminCategories.created')
     resetCategoryForm()
     await loadCategories()
   } catch (error: any) {
     console.error('Add category error:', error)
     if (error.data?.message) {
-      categoryActionMessage.value = `Failed to create category: ${error.data.message}`
+      categoryActionMessage.value = `${t('adminCategories.failedToCreate')}: ${error.data.message}`
     } else if (error.message) {
-      categoryActionMessage.value = `Failed to create category: ${error.message}`
+      categoryActionMessage.value = `${t('adminCategories.failedToCreate')}: ${error.message}`
     } else {
-      categoryActionMessage.value = 'Failed to create category.'
+      categoryActionMessage.value = t('adminCategories.failedToCreate')
     }
   }
 }
 
 const updateCategory = async () => {
   if (!selectedCategoryId.value) {
-    categoryActionMessage.value = 'Select a category to update.'
+    categoryActionMessage.value = t('adminCategories.selectToUpdate')
     return
   }
 
-  const confirmed = await confirmAction('Update Category', 'Update this category?')
+  const confirmed = await confirmAction(t('adminCategories.updateCategory'), t('adminCategories.updateConfirm'))
   if (!confirmed) return
 
   categoryActionMessage.value = ''
@@ -330,50 +332,50 @@ const updateCategory = async () => {
         parentId: categoryForm.value.parentId || null,
       },
     })
-    categoryActionMessage.value = 'Category updated successfully.'
+    categoryActionMessage.value = t('adminCategories.updated')
     await loadCategories()
   } catch (error: any) {
     console.error('Update category error:', error)
     if (error.data?.message) {
-      categoryActionMessage.value = `Failed to update category: ${error.data.message}`
+      categoryActionMessage.value = `${t('adminCategories.failedToUpdate')}: ${error.data.message}`
     } else if (error.message) {
-      categoryActionMessage.value = `Failed to update category: ${error.message}`
+      categoryActionMessage.value = `${t('adminCategories.failedToUpdate')}: ${error.message}`
     } else {
-      categoryActionMessage.value = 'Failed to update category.'
+      categoryActionMessage.value = t('adminCategories.failedToUpdate')
     }
   }
 }
 
 const deleteSelectedCategory = async () => {
   if (!selectedCategoryId.value) {
-    categoryActionMessage.value = 'Select a category to delete.'
+    categoryActionMessage.value = t('adminCategories.selectToDelete')
     return
   }
 
-  const confirmed = await confirmAction('Delete Category', 'Delete this category?')
+  const confirmed = await confirmAction(t('adminCategories.deleteCategory'), t('adminCategories.deleteConfirm'))
   if (!confirmed) return
 
   try {
     await $fetch(`${config.public.apiBase}/categories/${selectedCategoryId.value}`, {
       method: 'DELETE',
     })
-    categoryActionMessage.value = 'Category deleted successfully.'
+    categoryActionMessage.value = t('adminCategories.deleted')
     resetCategoryForm()
     await loadCategories()
   } catch (error: any) {
     console.error('Delete category error:', error)
     if (error.data?.message) {
-      categoryActionMessage.value = `Failed to delete category: ${error.data.message}`
+      categoryActionMessage.value = `${t('adminCategories.failedToDelete')}: ${error.data.message}`
     } else if (error.message) {
-      categoryActionMessage.value = `Failed to delete category: ${error.message}`
+      categoryActionMessage.value = `${t('adminCategories.failedToDelete')}: ${error.message}`
     } else {
-      categoryActionMessage.value = 'Failed to delete category.'
+      categoryActionMessage.value = t('adminCategories.failedToDelete')
     }
   }
 }
 
 const removeCategory = async (id: string) => {
-  const confirmed = await confirmAction('Delete Category', 'Delete this category?')
+  const confirmed = await confirmAction(t('adminCategories.deleteCategory'), t('adminCategories.deleteConfirm'))
   if (!confirmed) return
 
   try {
@@ -382,11 +384,11 @@ const removeCategory = async (id: string) => {
   } catch (error: any) {
     console.error('Remove category error:', error)
     if (error.data?.message) {
-      categoryActionMessage.value = `Failed to delete category: ${error.data.message}`
+      categoryActionMessage.value = `${t('adminCategories.failedToDelete')}: ${error.data.message}`
     } else if (error.message) {
-      categoryActionMessage.value = `Failed to delete category: ${error.message}`
+      categoryActionMessage.value = `${t('adminCategories.failedToDelete')}: ${error.message}`
     } else {
-      categoryActionMessage.value = 'Failed to delete category.'
+      categoryActionMessage.value = t('adminCategories.failedToDelete')
     }
   }
 }
