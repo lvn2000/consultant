@@ -92,7 +92,7 @@ cd backend
 The script will:
 - Load environment variables from `.env`
 - Start PostgreSQL 16 in Docker
-- Run all Flyway database migrations automatically (24 migrations)
+- Run all Flyway database migrations automatically (2 migrations)
 - Start the API on `http://localhost:8090`
 
 ✅ **That's it!** Database is fully initialized and ready.
@@ -115,7 +115,7 @@ JWT_SECRET=your-secret-key
 ### Database Initialization
 
 **Automatic with Flyway:**
-- All 24 migrations run automatically on API startup
+- All 2 migrations run automatically on API startup
 - Located in: `data/src/main/resources/db/migration/V*.sql`
 - Each migration runs only once (tracked in `flyway_schema_history` table)
 - Includes schema, test data, and constraints
