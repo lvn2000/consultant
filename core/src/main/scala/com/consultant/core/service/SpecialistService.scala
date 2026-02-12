@@ -58,9 +58,7 @@ class SpecialistService(
     }
 
   private def validateAndCreate(request: CreateSpecialistRequest): IO[Either[DomainError, Specialist]] =
-    if request.categoryRates.isEmpty then
-      IO.pure(Left(DomainError.ValidationError("At least one category rate is required")))
-    else if request.categoryRates.exists(_.hourlyRate <= 0) then
+    if request.categoryRates.exists(_.hourlyRate <= 0) then
       val invalidRate = request.categoryRates.find(_.hourlyRate <= 0).map(_.hourlyRate).getOrElse(BigDecimal(0))
       IO.pure(Left(DomainError.InvalidPrice(invalidRate)))
     else if request.categoryRates.exists(_.experienceYears < 0) then

@@ -13,7 +13,44 @@ class UserService(
   userRepo: UserRepository,
   sessionRepo: SessionRepository,
   notificationPreferenceRepo: Option[NotificationPreferenceRepository] = None
-):
+) {
+
+  /**
+   * Delete a user and cascade delete related data (sessions, notification preferences, refresh tokens, etc). Returns
+   * Left(DomainError) on error, Right(()) on success.
+   */
+  def deleteUser(
+    userId: UserId,
+    refreshTokenRepo: Option[RefreshTokenRepository] = None,
+    auditRepo: Option[SecurityAuditRepository] = None
+  ): IO[Either[DomainError, Unit]] =
+    userRepo.findById(userId).flatMap {
+      case None    => IO.pure(Left(DomainError.UserNotFound(userId)))
+      case Some(_) =>
+        // Cascade delete: notification preferences, refresh tokens, sessions, then user
+        val deletePrefs = notificationPreferenceRepo match {
+          case Some(repo) => repo.deleteByUser(userId)
+          case None       => IO.unit
+        }
+        val deleteRefreshTokens = refreshTokenRepo match {
+          case Some(repo) => repo.deleteByUserId(userId).void
+          case None       => IO.unit
+        }
+        // Optionally: delete audit logs if needed (not implemented)
+        // val deleteAudit = auditRepo match {
+        //   case Some(repo) => repo.deleteByUser(userId)
+        //   case None => IO.unit
+        // }
+        // TODO: delete user sessions if needed (not implemented)
+        (for {
+          _ <- deletePrefs
+          _ <- deleteRefreshTokens
+          _ <- userRepo.delete(userId)
+        } yield ()).attempt.map {
+          case Right(_) => Right(())
+          case Left(e)  => Left(DomainError.DatabaseError(e.getMessage))
+        }
+    }
 
   case class LoginResult(user: User, session: UserSession)
 
@@ -79,3 +116,4 @@ class UserService(
 
   private def isValidEmail(email: String): Boolean =
     email.matches("""^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$""")
+}

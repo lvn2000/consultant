@@ -15,36 +15,57 @@ import com.consultant.core.ports.UserRepository
 import java.util.UUID
 import java.time.Instant
 import org.mindrot.jbcrypt.BCrypt
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
+import java.util.Base64
 
 class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
 
   // Doobie Meta instance for UserRole enum
-  // Doobie Meta instance for UserRole enum
   given userRoleMeta: Meta[UserRole] =
     Meta[String].timap(str => UserRole.valueOf(str))(_.toString)
 
+  /** Verify password against either BCrypt or PBKDF2 hash */
+  private def verifyPassword(password: String, hash: String, salt: String): Boolean =
+    if hash.startsWith("$2a$") || hash.startsWith("$2b$") || hash.startsWith("$2y$") then
+      try BCrypt.checkpw(password, hash)
+      catch case _: Exception => false
+    else
+      // PBKDF2 verification
+      try
+        val saltBytes = Base64.getDecoder.decode(salt)
+        val spec      = new PBEKeySpec(password.toCharArray, saltBytes, 210000, 512)
+        val factory   = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
+        val computed  = Base64.getEncoder.encodeToString(factory.generateSecret(spec).getEncoded)
+        computed == hash
+      catch case _: Exception => false
+
   override def login(login: String, password: String): IO[Option[User]] = {
     val userQ = sql"""
-      SELECT u.id, u.login, u.email, u.name, u.phone, u.role, u.country_id, c.password_hash, u.created_at, u.updated_at
+      SELECT u.id, u.login, u.email, u.name, u.phone, u.role, u.country_id,
+             c.password_hash, c.salt, u.created_at, u.updated_at
       FROM users u
       JOIN credentials c ON u.id = c.user_id
       WHERE (LOWER(u.login) = LOWER($login) OR LOWER(u.email) = LOWER($login))
         AND c.is_active = true
-    """.query[(UUID, String, String, String, Option[String], UserRole, Option[UUID], String, Instant, Instant)].option
+    """
+      .query[(UUID, String, String, String, Option[String], UserRole, Option[UUID], String, String, Instant, Instant)]
+      .option
     // NOTE: The LOWER() functions in the WHERE clause are supported by functional indexes
     // idx_users_login_lower and idx_users_email_lower (see V006 migration).
     // These indexes allow efficient case-insensitive lookups without full table scans.
     val action: ConnectionIO[Option[User]] = for {
       userOpt <- userQ
       langs <- userOpt match {
-        case Some((id, _, _, _, _, _, _, _, _, _)) =>
+        case Some((id, _, _, _, _, _, _, _, _, _, _)) =>
           sql"SELECT language_id FROM user_languages WHERE user_id = $id".query[UUID].to[List]
         case None => connection.pure(List.empty[UUID])
       }
-    } yield userOpt.flatMap { case (id, login, email, name, phone, role, countryId, passwordHash, created, updated) =>
-      if (BCrypt.checkpw(password, passwordHash))
-        Some(User(id, login, email, name, phone, role, countryId, langs.toSet, created, updated))
-      else None
+    } yield userOpt.flatMap {
+      case (id, login, email, name, phone, role, countryId, passwordHash, salt, created, updated) =>
+        if verifyPassword(password, passwordHash, salt) then
+          Some(User(id, login, email, name, phone, role, countryId, langs.toSet, created, updated))
+        else None
     }
     action.transact(xa)
   }

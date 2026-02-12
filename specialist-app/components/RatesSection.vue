@@ -138,12 +138,12 @@ const loadRates = async () => {
   ratesError.value = ''
   currentRatePage.value = 1
   try {
-    const userId = sessionStorage.getItem('userId')
-    if (!userId) {
+    const specialistId = sessionStorage.getItem('specialistId')
+    if (!specialistId) {
       ratesError.value = t('auth.userIdNotFound')
       return
     }
-    const specialist = await $fetch<SpecialistProfile>(`${config.public.apiBase}/specialists/${userId}`)
+    const specialist = await $fetch<SpecialistProfile>(`${config.public.apiBase}/specialists/${specialistId}`)
     rates.value = specialist.categoryRates || []
     // Load categories
     const categoriesData = await $fetch<Category[]>(`${config.public.apiBase}/categories?page=1&pageSize=100`)

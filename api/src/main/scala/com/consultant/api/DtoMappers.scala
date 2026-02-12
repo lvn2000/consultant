@@ -167,12 +167,14 @@ object DtoMappers:
       case DomainError.CategoryNotFound(id)       => ErrorResponse("NOT_FOUND", s"Category not found: $id")
       case DomainError.ConsultationNotFound(id)   => ErrorResponse("NOT_FOUND", s"Consultation not found: $id")
       case DomainError.EmailAlreadyExists(email)  => ErrorResponse("CONFLICT", s"Email already exists: $email")
+      case DomainError.LoginAlreadyExists(login)  => ErrorResponse("CONFLICT", s"Login already exists: $login")
       case DomainError.InvalidEmail(email)        => ErrorResponse("VALIDATION_ERROR", s"Invalid email: $email")
       case DomainError.InvalidPhoneNumber(phone)  => ErrorResponse("VALIDATION_ERROR", s"Invalid phone: $phone")
       case DomainError.InvalidPrice(price)        => ErrorResponse("VALIDATION_ERROR", s"Invalid price: $price")
       case DomainError.SpecialistNotAvailable(id) => ErrorResponse("UNAVAILABLE", s"Specialist not available: $id")
       case DomainError.ValidationError(msg)       => ErrorResponse("VALIDATION_ERROR", msg)
       case DomainError.InvalidCredentials         => ErrorResponse("UNAUTHORIZED", "Invalid credentials")
+      case DomainError.Forbidden(msg)             => ErrorResponse("FORBIDDEN", msg)
       case DomainError.DuplicateCategoryRate(catId) =>
         ErrorResponse(
           "CONFLICT",

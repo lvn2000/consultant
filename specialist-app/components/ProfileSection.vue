@@ -108,12 +108,12 @@ const loadProfile = async () => {
   profileLoading.value = true
   profileError.value = ''
   try {
-    const userId = sessionStorage.getItem('userId')
-    if (!userId) {
+    const specialistId = sessionStorage.getItem('specialistId')
+    if (!specialistId) {
       profileError.value = t('auth.userIdNotFound')
       return
     }
-    const specialist = await $fetch<SpecialistProfile>(`${config.public.apiBase}/specialists/${userId}`)
+    const specialist = await $fetch<SpecialistProfile>(`${config.public.apiBase}/specialists/${specialistId}`)
     profileForm.value = {
       name: specialist.name || '',
       email: specialist.email || '',

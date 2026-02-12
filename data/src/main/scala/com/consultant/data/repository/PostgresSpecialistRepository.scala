@@ -21,6 +21,11 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
   override def create(request: CreateSpecialistRequest): IO[Specialist] = {
     val id  = UUID.randomUUID()
     val now = Instant.now()
+    val (hourlyRate, experienceYears) =
+      if request.categoryRates.nonEmpty then
+        val first = request.categoryRates.head
+        (first.hourlyRate, first.experienceYears)
+      else (BigDecimal(0), 0)
     val specialist = Specialist(
       id,
       request.email,
@@ -38,15 +43,14 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
     val action: ConnectionIO[Unit] = for {
       _ <- sql"""
         INSERT INTO specialists (
-          id, email, name, phone, bio, is_available, country_id, created_at, updated_at
+          id, email, name, phone, bio, hourly_rate, experience_years, is_available, country_id, created_at, updated_at
         )
         VALUES (
-          ${specialist.id}, ${specialist.email}, ${specialist.name}, ${specialist.phone},
-          ${specialist.bio}, ${specialist.isAvailable}, ${specialist.countryId}, ${specialist.createdAt}, ${specialist.updatedAt}
+          $id, ${request.email}, ${request.name}, ${request.phone}, ${request.bio}, $hourlyRate, $experienceYears, ${request.isAvailable}, ${request.countryId}, $now, $now
         )
       """.update.run
-      _ <- insertSpecialistCategoryRates(specialist.id, request.categoryRates)
-      _ <- insertSpecialistLanguages(specialist.id, request.languages)
+      _ <- insertSpecialistCategoryRates(id, request.categoryRates)
+      _ <- insertSpecialistLanguages(id, request.languages)
     } yield ()
     action.transact(xa).as(specialist)
   }

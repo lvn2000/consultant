@@ -18,11 +18,31 @@ class AuthRoutes(authService: AuthenticationService, legacyAuthEnabled: Boolean)
 
   // DTOs
   case class RegisterDto(
+    login: String,
     email: String,
     password: String,
     name: String,
     phone: Option[String],
     role: String // "client" or "specialist"
+  ) derives Codec.AsObject
+
+  /** Admin-only registration DTO — allows creating users with any role */
+  case class AdminRegisterDto(
+    login: String,
+    email: String,
+    password: String,
+    name: String,
+    phone: Option[String],
+    role: String // "client", "specialist", or "admin"
+  ) derives Codec.AsObject
+
+  /** Response DTO for admin registration (no auto-login) */
+  case class RegisteredUserDto(
+    userId: UUID,
+    login: String,
+    email: String,
+    name: String,
+    role: String
   ) derives Codec.AsObject
 
   case class LoginDto(
@@ -50,34 +70,40 @@ class AuthRoutes(authService: AuthenticationService, legacyAuthEnabled: Boolean)
   ) derives Codec.AsObject
 
   private val baseEndpoint = endpoint
-    .in("auth")
     .errorOut(
       oneOf[ErrorResponse](
         oneOfVariant(statusCode(sttp.model.StatusCode.BadRequest).and(jsonBody[ErrorResponse])),
         oneOfVariant(statusCode(sttp.model.StatusCode.Unauthorized).and(jsonBody[ErrorResponse])),
+        oneOfVariant(statusCode(sttp.model.StatusCode.Forbidden).and(jsonBody[ErrorResponse])),
         oneOfVariant(statusCode(sttp.model.StatusCode.InternalServerError).and(jsonBody[ErrorResponse]))
       )
     )
 
-  // POST /auth/register - Registration
+  // ---------------------------------------------------------------------------
+  // POST /auth/register — Public registration (Client or Specialist only)
+  // ---------------------------------------------------------------------------
   val registerEndpoint = baseEndpoint.post
     .in("register")
     .in(jsonBody[RegisterDto])
     .out(jsonBody[AuthResponseDto])
-    .description("Register a new user")
+    .description("Public registration — allowed roles: client, specialist")
 
   private def legacyGuard[A](action: => IO[Either[ErrorResponse, A]]): IO[Either[ErrorResponse, A]] =
     if legacyAuthEnabled then action
     else IO.pure(Left(ErrorResponse("LEGACY_AUTH_DISABLED", "Legacy auth endpoints are disabled")))
 
+  private def parseRole(raw: String): UserRole =
+    raw.toLowerCase match
+      case "specialist" => UserRole.Specialist
+      case "admin"      => UserRole.Admin
+      case _            => UserRole.Client
+
   def registerRoute = registerEndpoint.serverLogic { dto =>
     legacyGuard {
-      val role = dto.role.toLowerCase match
-        case "specialist" => UserRole.Specialist
-        case "admin"      => UserRole.Admin
-        case _            => UserRole.Client
+      val role = parseRole(dto.role)
 
       val request = AuthenticationService.RegistrationRequest(
+        login = dto.login,
         email = dto.email,
         password = dto.password,
         name = dto.name,
@@ -87,7 +113,7 @@ class AuthRoutes(authService: AuthenticationService, legacyAuthEnabled: Boolean)
 
       authService.register(request).flatMap {
         case Right(user) =>
-          // Auto login after registration
+          // Auto-login after successful registration
           val loginRequest = AuthenticationService.LoginRequest(
             login = user.login,
             password = dto.password,
@@ -119,7 +145,55 @@ class AuthRoutes(authService: AuthenticationService, legacyAuthEnabled: Boolean)
     }
   }
 
-  // POST /auth/login - Login
+  // ---------------------------------------------------------------------------
+  // POST /auth/register-by-admin — Admin-only registration (any role)
+  // ---------------------------------------------------------------------------
+  val adminRegisterEndpoint = baseEndpoint.post
+    .in("register-by-admin")
+    .in(header[String]("X-User-Role"))
+    .in(jsonBody[AdminRegisterDto])
+    .out(jsonBody[RegisteredUserDto])
+    .description(
+      "Admin-only registration — requires Admin role in X-User-Role header. Allowed roles: client, specialist, admin"
+    )
+
+  def adminRegisterRoute = adminRegisterEndpoint.serverLogic { case (callerRole, dto) =>
+    legacyGuard {
+      // Verify the caller is an admin
+      if callerRole != UserRole.Admin.toString then
+        IO.pure(Left(ErrorResponse("FORBIDDEN", "Only admins can use this endpoint")))
+      else
+        val role = parseRole(dto.role)
+
+        val request = AuthenticationService.RegistrationRequest(
+          login = dto.login,
+          email = dto.email,
+          password = dto.password,
+          name = dto.name,
+          phone = dto.phone,
+          role = role
+        )
+
+        authService.registerByAdmin(request).map {
+          case Right(user) =>
+            Right(
+              RegisteredUserDto(
+                userId = user.id,
+                login = user.login,
+                email = user.email,
+                name = user.name,
+                role = user.role.toString
+              )
+            )
+          case Left(error) =>
+            Left(ErrorResponse("REGISTRATION_ERROR", error))
+        }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // POST /auth/login
+  // ---------------------------------------------------------------------------
   val loginEndpoint = baseEndpoint.post
     .in("login")
     .in(jsonBody[LoginDto])
@@ -155,7 +229,9 @@ class AuthRoutes(authService: AuthenticationService, legacyAuthEnabled: Boolean)
     }
   }
 
-  // POST /auth/refresh - Token refresh
+  // ---------------------------------------------------------------------------
+  // POST /auth/refresh
+  // ---------------------------------------------------------------------------
   val refreshEndpoint = baseEndpoint.post
     .in("refresh")
     .in(jsonBody[RefreshTokenDto])
@@ -184,7 +260,9 @@ class AuthRoutes(authService: AuthenticationService, legacyAuthEnabled: Boolean)
     }
   }
 
-  // POST /auth/logout - Logout
+  // ---------------------------------------------------------------------------
+  // POST /auth/logout
+  // ---------------------------------------------------------------------------
   val logoutEndpoint = baseEndpoint.post
     .in("logout")
     .in(jsonBody[LogoutDto])
@@ -205,6 +283,7 @@ class AuthRoutes(authService: AuthenticationService, legacyAuthEnabled: Boolean)
 
   val endpoints = List(
     registerRoute,
+    adminRegisterRoute,
     loginRoute,
     refreshRoute,
     logoutRoute

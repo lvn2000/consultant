@@ -18,12 +18,19 @@ import scala.concurrent.duration.*
 
 object AuthenticationService:
   case class RegistrationRequest(
+    login: String,
     email: String,
     password: String,
     name: String,
     phone: Option[String],
     role: UserRole
   )
+
+  /** Allowed roles for public (unauthenticated) registration */
+  val publicAllowedRoles: Set[UserRole] = Set(UserRole.Client, UserRole.Specialist)
+
+  /** Allowed roles when an admin creates a new account */
+  val adminAllowedRoles: Set[UserRole] = Set(UserRole.Client, UserRole.Specialist, UserRole.Admin)
 
   case class LoginRequest(
     login: String,
@@ -52,25 +59,47 @@ class AuthenticationService(
   private val maxFailedAttempts = 5
   private val lockDuration      = 15.minutes
 
-  /** Register new user */
+  /** Register new user (public self-registration: Client or Specialist only) */
   def register(request: AuthenticationService.RegistrationRequest): IO[Either[String, User]] =
+    registerWithRoleCheck(request, AuthenticationService.publicAllowedRoles)
+
+  /** Register new user by admin (any role allowed) */
+  def registerByAdmin(request: AuthenticationService.RegistrationRequest): IO[Either[String, User]] =
+    registerWithRoleCheck(request, AuthenticationService.adminAllowedRoles)
+
+  /** Internal registration with configurable role whitelist */
+  private def registerWithRoleCheck(
+    request: AuthenticationService.RegistrationRequest,
+    allowedRoles: Set[UserRole]
+  ): IO[Either[String, User]] =
     (for
+      // Validate role
+      _ <-
+        if !allowedRoles.contains(request.role) then
+          IO.raiseError(new RuntimeException(s"Role '${request.role}' is not allowed for this registration type"))
+        else IO.unit
+
       // Check password complexity
       _ <- passwordService.validatePasswordStrength(request.password).flatMap {
         case Left(error) => IO.raiseError(new RuntimeException(error))
         case Right(_)    => IO.unit
       }
 
-      // Check if user already exists
-      existing <- userRepository.findByEmail(request.email)
-      _ <- existing match
-        case Some(_) => IO.raiseError(new RuntimeException("User already exists"))
+      // Check if email already exists
+      existingByEmail <- userRepository.findByEmail(request.email)
+      _ <- existingByEmail match
+        case Some(_) => IO.raiseError(new RuntimeException("User with this email already exists"))
+        case None    => IO.unit
+
+      // Check if login already exists
+      existingByLogin <- userRepository.findByLogin(request.login)
+      _ <- existingByLogin match
+        case Some(_) => IO.raiseError(new RuntimeException("User with this login already exists"))
         case None    => IO.unit
 
       // Create user
-      userId = UUID.randomUUID()
       createRequest: CreateUserRequest = CreateUserRequest(
-        login = request.email,
+        login = request.login,
         email = request.email,
         name = request.name,
         phone = request.phone,
@@ -89,7 +118,7 @@ class AuthenticationService(
         email = request.email,
         passwordHash = hash,
         salt = salt,
-        userId = userId,
+        userId = createdUser.id,
         role = request.role
       )
       _ <- credentialsRepository.create(credentials)
