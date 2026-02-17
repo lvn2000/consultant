@@ -19,7 +19,7 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
     extends SpecialistRepository:
 
   override def create(request: CreateSpecialistRequest): IO[Specialist] = {
-    val id  = UUID.randomUUID()
+    val id  = request.id.getOrElse(UUID.randomUUID())
     val now = Instant.now()
     val (hourlyRate, experienceYears) =
       if request.categoryRates.nonEmpty then

@@ -187,6 +187,7 @@ const logout = async () => {
     sessionStorage.removeItem('accessToken')
     sessionStorage.removeItem('sessionId')
     sessionStorage.removeItem('userId')
+    sessionStorage.removeItem('specialistId')
     sessionStorage.removeItem('login')
     sessionStorage.removeItem('email')
     sessionStorage.removeItem('role')

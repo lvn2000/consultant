@@ -32,8 +32,17 @@ export async function loginRequest(login: string, password: string): Promise<{ s
       sessionStorage.setItem('userId', data.userId)
       sessionStorage.setItem('login', data.login)
       sessionStorage.setItem('email', data.email)
-      sessionStorage.setItem('role', data.role.toLowerCase())
+      const normalizedRole = data.role.toLowerCase()
+      sessionStorage.setItem('role', normalizedRole)
       sessionStorage.setItem('sessionId', data.sessionId)
+
+      // Keep specialist identity in sync per active session.
+      if (normalizedRole === 'specialist') {
+        sessionStorage.setItem('specialistId', data.userId)
+      } else {
+        sessionStorage.removeItem('specialistId')
+      }
+
       return { success: true }
     }
 

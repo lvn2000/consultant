@@ -52,32 +52,13 @@ export async function registerRequest(
       sessionStorage.setItem('email', data.email)
       sessionStorage.setItem('role', data.role.toLowerCase())
 
-      // Register specialist
-      const specialistData = await $fetch<any>(
-        `${config.public.apiBase}/specialists/register`,
-        {
-          method: 'POST',
-          body: {
-            email: data.email,
-            name: data.name,
-            phone: params.phone || '',
-            bio: '',
-            categoryRates: [],
-            isAvailable: true,
-            countryId: null,
-            languages: [],
-          },
-          headers: {
-            Authorization: `Bearer ${data.accessToken}`,
-          },
-        }
-      )
-      if (specialistData && specialistData.id) {
-        sessionStorage.setItem('specialistId', specialistData.id)
-        return { success: true }
-      } else {
-        return { success: false, error: 'Specialist registration failed' }
+      // Backend creates specialist profile for specialist role during registration.
+      // Specialist id is aligned with user id in backend authorization flow.
+      if (params.role.toLowerCase() === 'specialist') {
+        sessionStorage.setItem('specialistId', data.userId)
       }
+
+      return { success: true }
     }
 
     return { success: false, error: 'Invalid response' }

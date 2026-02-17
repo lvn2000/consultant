@@ -2,18 +2,19 @@ package com.consultant.infrastructure.security
 
 import cats.effect.IO
 import cats.syntax.all.*
+import com.consultant.core.domain.{ CreateSpecialistRequest, CreateUserRequest, User }
 import com.consultant.core.domain.security.*
-import com.consultant.core.domain.User
-import com.consultant.core.domain.{ CreateUserRequest, User }
 import com.consultant.core.domain.types.*
 import com.consultant.core.ports.{
   CredentialsRepository,
   RefreshTokenRepository,
   SecurityAuditRepository,
+  SpecialistRepository,
   UserRepository
 }
 import java.util.UUID
 import java.time.Instant
+import org.mindrot.jbcrypt.BCrypt
 import scala.concurrent.duration.*
 
 object AuthenticationService:
@@ -49,6 +50,7 @@ object AuthenticationService:
 /** Authentication and authorization service */
 class AuthenticationService(
   userRepository: UserRepository,
+  specialistRepository: SpecialistRepository,
   credentialsRepository: CredentialsRepository,
   refreshTokenRepository: RefreshTokenRepository,
   auditRepository: SecurityAuditRepository,
@@ -58,6 +60,11 @@ class AuthenticationService(
 
   private val maxFailedAttempts = 5
   private val lockDuration      = 15.minutes
+
+  private def verifyPassword(password: String, hash: String, salt: String): IO[Boolean] =
+    if hash.startsWith("$2a$") || hash.startsWith("$2b$") || hash.startsWith("$2y$") then
+      IO.blocking(BCrypt.checkpw(password, hash)).handleError(_ => false)
+    else passwordService.verifyPassword(password, hash, salt)
 
   /** Register new user (public self-registration: Client or Specialist only) */
   def register(request: AuthenticationService.RegistrationRequest): IO[Either[String, User]] =
@@ -109,6 +116,30 @@ class AuthenticationService(
       )
       createdUser <- userRepository.create(createRequest)
 
+      // Auto-create specialist profile for specialist role so user/specialist IDs stay aligned.
+      _ <-
+        if request.role == UserRole.Specialist then
+          specialistRepository.findByEmail(request.email).flatMap {
+            case Some(_) => IO.unit
+            case None =>
+              specialistRepository
+                .create(
+                  CreateSpecialistRequest(
+                    email = request.email,
+                    name = request.name,
+                    phone = request.phone.getOrElse(""),
+                    bio = "",
+                    categoryRates = List.empty,
+                    isAvailable = true,
+                    countryId = None,
+                    languages = Set.empty,
+                    id = Some(createdUser.id)
+                  )
+                )
+                .void
+          }
+        else IO.unit
+
       // Hash password
       salt <- passwordService.generateSalt()
       hash <- passwordService.hashPassword(request.password, salt)
@@ -156,7 +187,7 @@ class AuthenticationService(
         else IO.unit
 
       // Verify password
-      validPassword <- passwordService.verifyPassword(request.password, credentials.passwordHash, credentials.salt)
+      validPassword <- verifyPassword(request.password, credentials.passwordHash, credentials.salt)
 
       _ <-
         if !validPassword then

@@ -6,6 +6,9 @@
         <LocaleSwitcher />
       </div>
       <ul>
+        <li :class="{ active: selectedMenu === 'accounts' }" @click="selectMenu('accounts')">
+          Create Accounts
+        </li>
         <li :class="{ active: selectedMenu === 'specialists' }" @click="selectMenu('specialists')">
           {{ $t('admin.menu.specialists') }}
         </li>
@@ -59,6 +62,60 @@
         </div>
       </div>
 
+      <!-- Admin account/user creation -->
+      <section v-if="selectedMenu === 'accounts'" class="create-account-section">
+        <h2>Create Account</h2>
+        <p class="section-subtitle">
+          As an administrator, you can create Client, Specialist, or Administrator accounts.
+        </p>
+
+        <form class="create-account-form" @submit.prevent="createAccountByAdmin">
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="acc-login">Login</label>
+              <input id="acc-login" v-model="createForm.login" type="text" required />
+            </div>
+            <div class="form-field">
+              <label for="acc-email">Email</label>
+              <input id="acc-email" v-model="createForm.email" type="email" required />
+            </div>
+            <div class="form-field">
+              <label for="acc-name">Name</label>
+              <input id="acc-name" v-model="createForm.name" type="text" required />
+            </div>
+            <div class="form-field">
+              <label for="acc-phone">Phone (optional)</label>
+              <input id="acc-phone" v-model="createForm.phone" type="tel" />
+            </div>
+            <div class="form-field">
+              <label for="acc-role">Role</label>
+              <select id="acc-role" v-model="createForm.role" required>
+                <option value="client">Client</option>
+                <option value="specialist">Specialist</option>
+                <option value="admin">Administrator</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="acc-password">Password</label>
+              <input id="acc-password" v-model="createForm.password" type="password" required />
+            </div>
+            <div class="form-field">
+              <label for="acc-confirm">Confirm Password</label>
+              <input id="acc-confirm" v-model="createForm.confirmPassword" type="password" required />
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn primary" :disabled="creatingAccount">
+              {{ creatingAccount ? 'Creating...' : 'Create Account' }}
+            </button>
+          </div>
+
+          <div v-if="createError" class="form-message error">{{ createError }}</div>
+          <div v-if="createSuccess" class="form-message success">{{ createSuccess }}</div>
+        </form>
+      </section>
+
       <!-- Specialists Section Component -->
       <SpecialistsSection :visible="selectedMenu === 'specialists'" />
 
@@ -91,18 +148,32 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRuntimeConfig } from 'nuxt/app'
 import { useApi } from '../composables/useApi'
+import { adminRegisterRequest } from '../composables/useRegister'
 
 const router = useRouter()
 const config = useRuntimeConfig()
 const { $fetch } = useApi()
 
-type MenuKey = 'specialists' | 'clients' | 'connections' | 'categories'
+type MenuKey = 'accounts' | 'specialists' | 'clients' | 'connections' | 'categories'
 
-const selectedMenu = ref<MenuKey>('specialists')
+const selectedMenu = ref<MenuKey>('accounts')
 const specialistsCount = ref(0)
 const categoriesCount = ref(0)
 const connectionTypesCount = ref(0)
 const availableSpecialistsCount = ref(0)
+
+const createForm = ref({
+  login: '',
+  email: '',
+  name: '',
+  phone: '',
+  role: 'client',
+  password: '',
+  confirmPassword: '',
+})
+const creatingAccount = ref(false)
+const createError = ref('')
+const createSuccess = ref('')
 
 const confirmState = ref({
   visible: false,
@@ -133,6 +204,52 @@ const loadStats = async () => {
     connectionTypesCount.value = connectionTypes.length
   } catch (error) {
     console.error('Failed to load statistics:', error)
+  }
+}
+
+const createAccountByAdmin = async () => {
+  createError.value = ''
+  createSuccess.value = ''
+
+  if (!createForm.value.login || !createForm.value.email || !createForm.value.name || !createForm.value.password) {
+    createError.value = 'Please fill in all required fields'
+    return
+  }
+
+  if (createForm.value.password !== createForm.value.confirmPassword) {
+    createError.value = 'Passwords do not match'
+    return
+  }
+
+  creatingAccount.value = true
+  try {
+    const result = await adminRegisterRequest({
+      login: createForm.value.login,
+      email: createForm.value.email,
+      password: createForm.value.password,
+      name: createForm.value.name,
+      phone: createForm.value.phone || undefined,
+      role: createForm.value.role,
+    })
+
+    if (!result.success) {
+      createError.value = result.error || 'Failed to create account'
+      return
+    }
+
+    createSuccess.value = `Created ${result.user?.role || createForm.value.role} account: ${result.user?.login || createForm.value.login}`
+    createForm.value = {
+      login: '',
+      email: '',
+      name: '',
+      phone: '',
+      role: 'client',
+      password: '',
+      confirmPassword: '',
+    }
+    await loadStats()
+  } finally {
+    creatingAccount.value = false
   }
 }
 
@@ -254,6 +371,80 @@ onMounted(() => {
   margin-bottom: 1.5rem;
   font-size: 1.875rem;
   color: #111827;
+}
+
+.create-account-section {
+  margin-bottom: 2rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.create-account-section h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+  color: #111827;
+}
+
+.section-subtitle {
+  margin: 0 0 1rem;
+  color: #6b7280;
+}
+
+.create-account-form {
+  display: block;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-field label {
+  font-size: 0.85rem;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+.form-field input,
+.form-field select {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+}
+
+.form-actions {
+  margin-top: 1rem;
+}
+
+.btn.primary {
+  background: #2563eb;
+  color: #fff;
+  border-color: #1d4ed8;
+}
+
+.form-message {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.form-message.error {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.form-message.success {
+  background: #dcfce7;
+  color: #166534;
 }
 
 .stats-grid {

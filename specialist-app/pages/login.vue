@@ -60,6 +60,7 @@ const onLogin = async () => {
   border: 1px solid #ccc;
   border-radius: 8px;
   background: #fff;
+  color-scheme: light;
 }
 .login-header {
   display: flex;
@@ -82,6 +83,15 @@ input {
   padding: 0.5rem;
   border: 1px solid #ccc;
   border-radius: 4px;
+  background: #fff;
+  color: #1f2937;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset;
+  -webkit-text-fill-color: #1f2937;
 }
 button {
   width: 100%;

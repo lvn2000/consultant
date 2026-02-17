@@ -15,10 +15,6 @@
       </div>
       <button type="submit">{{ $t('auth.loginButton') }}</button>
       <div v-if="error" class="error">{{ error }}</div>
-      <div class="register-link">
-        {{ $t('auth.registerLink') }}
-        <NuxtLink to="/register">{{ $t('auth.registerButton') }}</NuxtLink>
-      </div>
     </form>
   </div>
 </template>
@@ -96,17 +92,5 @@ button {
 .error {
   color: red;
   margin-top: 1rem;
-}
-.register-link {
-  margin-top: 1rem;
-  text-align: center;
-  font-size: 0.9rem;
-}
-.register-link a {
-  color: #007bff;
-  text-decoration: none;
-}
-.register-link a:hover {
-  text-decoration: underline;
 }
 </style>

@@ -244,6 +244,7 @@ object Server extends IOApp:
       // Services
       authService = AuthenticationService(
         userRepo,
+        specialistRepo,
         credentialsRepo,
         refreshTokenRepo,
         auditRepo,
