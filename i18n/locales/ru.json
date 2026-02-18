@@ -137,7 +137,8 @@
       "specialists": "Специалисты",
       "clients": "Клиенты",
       "connectionTypes": "Типы подключений",
-      "categories": "Категории"
+      "categories": "Категории",
+      "createAccounts": "Создать аккаунт"
     },
     "welcome": {
       "title": "Добро пожаловать в панель администратора",
@@ -154,7 +155,42 @@
     },
     "buttons": {
       "manageUsers": "Управление пользователями",
-      "settings": "Настройки"
+      "settings": "Настройки",
+      "createAccount": "Создать аккаунт"
+    },
+    "createAccount": {
+      "title": "Создать аккаунт",
+      "subtitle": "Как администратор, вы можете создавать аккаунты Клиента, Специалиста или Администратора.",
+      "labels": {
+        "login": "Логин",
+        "email": "Email",
+        "name": "Имя",
+        "phone": "Телефон (необязательно)",
+        "role": "Роль",
+        "password": "Пароль",
+        "confirmPassword": "Подтвердите пароль"
+      },
+      "placeholders": {
+        "login": "Введите логин",
+        "email": "Введите email",
+        "name": "Введите имя",
+        "phone": "+71234567890"
+      },
+      "roles": {
+        "client": "Клиент",
+        "specialist": "Специалист",
+        "admin": "Администратор"
+      },
+      "buttons": {
+        "creating": "Создание...",
+        "create": "Создать аккаунт"
+      },
+      "messages": {
+        "fillRequired": "Пожалуйста, заполните все обязательные поля",
+        "passwordsDoNotMatch": "Пароли не совпадают",
+        "createFailed": "Не удалось создать аккаунт",
+        "success": "Создан {role} аккаунт: {login}"
+      }
     }
   },
   "profile": {

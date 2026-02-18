@@ -137,7 +137,8 @@
       "specialists": "Especialistas",
       "clients": "Clientes",
       "connectionTypes": "Tipos de conexión",
-      "categories": "Categorías"
+      "categories": "Categorías",
+      "createAccounts": "Crear cuentas"
     },
     "welcome": {
       "title": "Bienvenido al panel de administración",
@@ -154,7 +155,42 @@
     },
     "buttons": {
       "manageUsers": "Gestionar usuarios",
-      "settings": "Configuración"
+      "settings": "Configuración",
+      "createAccount": "Crear cuenta"
+    },
+    "createAccount": {
+      "title": "Crear cuenta",
+      "subtitle": "Como administrador, puede crear cuentas de Cliente, Especialista o Administrador.",
+      "labels": {
+        "login": "Usuario",
+        "email": "Correo electrónico",
+        "name": "Nombre",
+        "phone": "Teléfono (opcional)",
+        "role": "Rol",
+        "password": "Contraseña",
+        "confirmPassword": "Confirmar contraseña"
+      },
+      "placeholders": {
+        "login": "Ingrese usuario",
+        "email": "Ingrese correo electrónico",
+        "name": "Ingrese nombre",
+        "phone": "+34123456789"
+      },
+      "roles": {
+        "client": "Cliente",
+        "specialist": "Especialista",
+        "admin": "Administrador"
+      },
+      "buttons": {
+        "creating": "Creando...",
+        "create": "Crear cuenta"
+      },
+      "messages": {
+        "fillRequired": "Por favor, complete todos los campos obligatorios",
+        "passwordsDoNotMatch": "Las contraseñas no coinciden",
+        "createFailed": "Error al crear la cuenta",
+        "success": "Cuenta de {role} creada: {login}"
+      }
     }
   },
   "profile": {

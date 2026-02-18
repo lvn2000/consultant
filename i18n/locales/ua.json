@@ -137,7 +137,8 @@
       "specialists": "Спеціалісти",
       "clients": "Клієнти",
       "connectionTypes": "Типи з'єднань",
-      "categories": "Категорії"
+      "categories": "Категорії",
+      "createAccounts": "Створити акаунт"
     },
     "welcome": {
       "title": "Ласкаво просимо до панелі адміністратора",
@@ -154,7 +155,42 @@
     },
     "buttons": {
       "manageUsers": "Керувати користувачами",
-      "settings": "Налаштування"
+      "settings": "Налаштування",
+      "createAccount": "Створити акаунт"
+    },
+    "createAccount": {
+      "title": "Створити акаунт",
+      "subtitle": "Як адміністратор, ви можете створювати акаунти Клієнта, Спеціаліста або Адміністратора.",
+      "labels": {
+        "login": "Логін",
+        "email": "Email",
+        "name": "Ім'я",
+        "phone": "Телефон (необов'язково)",
+        "role": "Роль",
+        "password": "Пароль",
+        "confirmPassword": "Підтвердіть пароль"
+      },
+      "placeholders": {
+        "login": "Введіть логін",
+        "email": "Введіть email",
+        "name": "Введіть ім'я",
+        "phone": "+380501234567"
+      },
+      "roles": {
+        "client": "Клієнт",
+        "specialist": "Спеціаліст",
+        "admin": "Адміністратор"
+      },
+      "buttons": {
+        "creating": "Створення...",
+        "create": "Створити акаунт"
+      },
+      "messages": {
+        "fillRequired": "Будь ласка, заповніть усі обов'язкові поля",
+        "passwordsDoNotMatch": "Паролі не співпадають",
+        "createFailed": "Не вдалося створити акаунт",
+        "success": "Створено {role} акаунт: {login}"
+      }
     }
   },
   "profile": {
