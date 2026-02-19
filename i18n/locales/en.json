@@ -396,7 +396,8 @@
     "failedToRemove": "Failed to remove rate",
     "failedToLoad": "Failed to load rates",
     "addCategoryRate": "Add Category Rate",
-    "yearsShort": "yrs"
+    "yearsShort": "yrs",
+    "allCategoriesUsed": "All categories already have rates. You can update existing rates or remove a category to add a new one."
   },
   "adminCategories": {
     "title": "Categories",

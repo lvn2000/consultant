@@ -1,394 +1,341 @@
 <template>
-  <section class="section">
-    <div class="section-header">
-      <div class="header-content">
-        <h2><span class="icon">👤</span>{{ $t('profile.title') }}</h2>
-        <p class="header-subtitle">{{ $t('profile.subtitle') }}</p>
-      </div>
-      <button type="button" class="btn" @click="loadProfile">Refresh</button>
-    </div>
+    <section class="section">
+        <SectionHeader
+            icon="👤"
+            :title="$t('profile.title')"
+            :subtitle="$t('profile.subtitle')"
+            :show-refresh="true"
+            @refresh="loadProfile"
+        >
+            <template #actions>
+                <AppButton @click="loadProfile">{{
+                    $t("common.refresh")
+                }}</AppButton>
+            </template>
+        </SectionHeader>
 
-    <div class="list-state" v-if="profileLoading">{{ $t('profile.loading') }}</div>
-    <div class="list-state error" v-else-if="profileError">{{ profileError }}</div>
+        <LoadingState v-if="profileLoading" :message="$t('profile.loading')" />
+        <ErrorState v-else-if="profileError" :message="profileError" />
 
-    <form v-else class="form" @submit.prevent="updateProfile">
-      <div class="form-grid">
-        <div class="form-field">
-          <label for="name">{{ $t('profile.fullName') }}</label>
-          <input id="name" v-model="profileForm.name" type="text" :placeholder="$t('profile.namePlaceholder')" required />
-        </div>
-        <div class="form-field">
-          <label for="email">{{ $t('common.email') }}</label>
-          <input id="email" v-model="profileForm.email" type="email" :placeholder="$t('profile.emailPlaceholder')" required />
-        </div>
-        <div class="form-field">
-          <label for="phone">{{ $t('common.phone') }}</label>
-          <input id="phone" v-model="profileForm.phone" type="tel" :placeholder="$t('profile.phonePlaceholder')" />
-        </div>
-        <div class="form-field">
-          <label for="availability">{{ $t('profile.availabilityStatus') }}</label>
-          <select id="availability" v-model="profileForm.isAvailable">
-            <option :value="true">{{ $t('common.available') }}</option>
-            <option :value="false">{{ $t('common.unavailable') }}</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="btn" :disabled="profileUpdating">
-          {{ profileUpdating ? $t('common.saving') : $t('profile.updateProfile') }}
-        </button>
-        <button type="button" class="btn danger" @click="showRemoveAccountConfirm = true">
-          Remove Account
-        </button>
-      </div>
-      <div v-if="profileUpdateMessage" :class="['form-message', profileUpdateSuccess ? 'success' : 'error']">
-        {{ profileUpdateMessage }}
-      </div>
-    </form>
+        <form v-else class="form" @submit.prevent="updateProfile">
+            <FormGrid>
+                <FormField
+                    :label="$t('profile.fullName')"
+                    input-id="name"
+                    type="text"
+                    :placeholder="$t('profile.namePlaceholder')"
+                    :required="true"
+                    :model-value="profileForm.name"
+                    @update:model-value="profileForm.name = $event"
+                />
+                <FormField
+                    :label="$t('common.email')"
+                    input-id="email"
+                    type="email"
+                    :placeholder="$t('profile.emailPlaceholder')"
+                    :required="true"
+                    :model-value="profileForm.email"
+                    @update:model-value="profileForm.email = $event"
+                />
+                <FormField
+                    :label="$t('common.phone')"
+                    input-id="phone"
+                    type="tel"
+                    :placeholder="$t('profile.phonePlaceholder')"
+                    :model-value="profileForm.phone"
+                    @update:model-value="profileForm.phone = $event"
+                />
+                <FormField
+                    :label="$t('profile.availabilityStatus')"
+                    input-id="availability"
+                    type="select"
+                    :model-value="profileForm.isAvailable?.toString()"
+                    @update:model-value="
+                        profileForm.isAvailable = $event === 'true'
+                    "
+                >
+                    <template #options>
+                        <option value="true">
+                            {{ $t("common.available") }}
+                        </option>
+                        <option value="false">
+                            {{ $t("common.unavailable") }}
+                        </option>
+                    </template>
+                </FormField>
+            </FormGrid>
 
-    <!-- Remove Account Confirmation -->
-    <div v-if="showRemoveAccountConfirm" class="modal-overlay" @click="showRemoveAccountConfirm = false">
-      <div class="modal" @click.stop>
-        <h3>Remove Account</h3>
-        <p>Are you sure you want to remove your account? This action cannot be undone.</p>
-        <div class="modal-actions">
-          <button type="button" class="btn danger" @click="removeAccount" :disabled="accountRemoving">
-            {{ accountRemoving ? 'Removing...' : 'Yes, Remove Account' }}
-          </button>
-          <button type="button" class="btn" @click="showRemoveAccountConfirm = false">Cancel</button>
-        </div>
-      </div>
-    </div>
-  </section>
+            <FormActions>
+                <AppButton type="submit" :loading="profileUpdating">
+                    {{
+                        profileUpdating
+                            ? $t("common.saving")
+                            : $t("profile.updateProfile")
+                    }}
+                </AppButton>
+                <AppButton
+                    type="button"
+                    variant="danger"
+                    @click="showRemoveAccountConfirm = true"
+                >
+                    Remove Account
+                </AppButton>
+            </FormActions>
+
+            <div
+                v-if="profileUpdateMessage"
+                :class="[
+                    'update-message',
+                    profileUpdateSuccess ? 'success' : 'error',
+                ]"
+            >
+                <span v-if="profileUpdateSuccess">✓</span>
+                <span v-else>✗</span>
+                {{ profileUpdateMessage }}
+            </div>
+        </form>
+
+        <!-- Remove Account Confirmation -->
+        <Modal
+            v-model="showRemoveAccountConfirm"
+            title="Remove Account"
+            size="md"
+            :show-close="true"
+        >
+            <p>
+                Are you sure you want to remove your account? This action cannot
+                be undone.
+            </p>
+            <template #footer>
+                <AppButton
+                    variant="danger"
+                    :loading="accountRemoving"
+                    @click="removeAccount"
+                >
+                    {{
+                        accountRemoving ? "Removing..." : "Yes, Remove Account"
+                    }}
+                </AppButton>
+                <AppButton
+                    variant="secondary"
+                    @click="showRemoveAccountConfirm = false"
+                >
+                    Cancel
+                </AppButton>
+            </template>
+        </Modal>
+    </section>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useRuntimeConfig } from 'nuxt/app'
-import { useApi } from '~/composables/useApi'
+import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { useRuntimeConfig } from "nuxt/app";
+import { useApi } from "~/composables/useApi";
 
-const router = useRouter()
-const config = useRuntimeConfig()
-const { $fetch } = useApi()
-const { t } = useI18n()
+// Component imports
+import SectionHeader from "~/components/base/SectionHeader.vue";
+import LoadingState from "~/components/base/LoadingState.vue";
+import ErrorState from "~/components/base/ErrorState.vue";
+import FormGrid from "~/components/form/FormGrid.vue";
+import FormField from "~/components/form/FormField.vue";
+import FormActions from "~/components/form/FormActions.vue";
+import FormMessage from "~/components/form/FormMessage.vue";
+import Modal from "~/components/ui/Modal.vue";
+import AppButton from "~/components/ui/AppButton.vue";
+
+const router = useRouter();
+const config = useRuntimeConfig();
+const { $fetch } = useApi();
+const { t } = useI18n();
 
 type SpecialistProfile = {
-  name?: string
-  email?: string
-  phone?: string
-  bio?: string
-  isAvailable?: boolean
-  categoryRates?: Array<{ categoryId: string; hourlyRate: number; experienceYears: number }>
-}
+    name?: string;
+    email?: string;
+    phone?: string;
+    bio?: string;
+    isAvailable?: boolean;
+    categoryRates?: Array<{
+        categoryId: string;
+        hourlyRate: number;
+        experienceYears: number;
+    }>;
+};
 
-const profileLoading = ref(false)
-const profileError = ref('')
 type CategoryRate = {
-  categoryId: string
-  hourlyRate: number
-  experienceYears: number
-}
+    categoryId: string;
+    hourlyRate: number;
+    experienceYears: number;
+};
 
+const profileLoading = ref(false);
+const profileError = ref("");
 const profileForm = ref({
-  name: '',
-  email: '',
-  phone: '',
-  bio: '',
-  isAvailable: true,
-  categoryRates: [] as CategoryRate[]
-})
-const profileUpdating = ref(false)
-const profileUpdateMessage = ref('')
-const profileUpdateSuccess = ref(false)
-const showRemoveAccountConfirm = ref(false)
-const accountRemoving = ref(false)
+    name: "",
+    email: "",
+    phone: "",
+    bio: "",
+    isAvailable: true,
+    categoryRates: [] as CategoryRate[],
+});
+const profileUpdating = ref(false);
+const profileUpdateMessage = ref("");
+const profileUpdateSuccess = ref(false);
+const showRemoveAccountConfirm = ref(false);
+const accountRemoving = ref(false);
 
 const loadProfile = async () => {
-  profileLoading.value = true
-  profileError.value = ''
-  try {
-    const specialistId = sessionStorage.getItem('specialistId')
-    if (!specialistId) {
-      profileError.value = t('auth.userIdNotFound')
-      return
+    profileLoading.value = true;
+    profileError.value = "";
+    try {
+        const specialistId = sessionStorage.getItem("specialistId");
+        if (!specialistId) {
+            profileError.value = t("auth.userIdNotFound");
+            return;
+        }
+        const specialist = await $fetch<SpecialistProfile>(
+            `${config.public.apiBase}/specialists/${specialistId}`,
+        );
+        profileForm.value = {
+            name: specialist.name || "",
+            email: specialist.email || "",
+            phone: specialist.phone || "",
+            bio: specialist.bio || "",
+            isAvailable: specialist.isAvailable ?? true,
+            categoryRates: specialist.categoryRates || [],
+        };
+    } catch (error: any) {
+        profileError.value = error.message || t("profile.failedToLoad");
+    } finally {
+        profileLoading.value = false;
     }
-    const specialist = await $fetch<SpecialistProfile>(`${config.public.apiBase}/specialists/${specialistId}`)
-    profileForm.value = {
-      name: specialist.name || '',
-      email: specialist.email || '',
-      phone: specialist.phone || '',
-      bio: specialist.bio || '',
-      isAvailable: specialist.isAvailable ?? true,
-      categoryRates: specialist.categoryRates || []
-    }
-  } catch (error: any) {
-    profileError.value = error.message || t('profile.failedToLoad')
-  } finally {
-    profileLoading.value = false
-  }
-}
+};
 
 const updateProfile = async () => {
-  profileUpdating.value = true
-  profileUpdateMessage.value = ''
-  try {
-    const userId = sessionStorage.getItem('userId')
-    if (!userId) {
-      profileUpdateMessage.value = t('auth.userIdNotFound')
-      profileUpdateSuccess.value = false
-      return
+    profileUpdating.value = true;
+    profileUpdateMessage.value = "";
+    try {
+        const userId = sessionStorage.getItem("userId");
+        if (!userId) {
+            profileUpdateMessage.value = t("auth.userIdNotFound");
+            profileUpdateSuccess.value = false;
+            return;
+        }
+        await $fetch(`${config.public.apiBase}/specialists/${userId}`, {
+            method: "PUT",
+            body: profileForm.value,
+        });
+        profileUpdateMessage.value = t("profile.profileUpdated");
+        profileUpdateSuccess.value = true;
+        // Auto-hide success message after 5 seconds
+        setTimeout(() => {
+            profileUpdateMessage.value = "";
+        }, 5000);
+    } catch (error: any) {
+        profileUpdateMessage.value =
+            error.message || t("profile.failedToUpdate");
+        profileUpdateSuccess.value = false;
+    } finally {
+        profileUpdating.value = false;
     }
-    await $fetch(`${config.public.apiBase}/specialists/${userId}`, {
-      method: 'PUT',
-      body: profileForm.value
-    })
-    profileUpdateMessage.value = t('profile.profileUpdated')
-    profileUpdateSuccess.value = true
-  } catch (error: any) {
-    profileUpdateMessage.value = error.message || t('profile.failedToUpdate')
-    profileUpdateSuccess.value = false
-  } finally {
-    profileUpdating.value = false
-  }
-}
+};
 
 const removeAccount = async () => {
-  accountRemoving.value = true
-  try {
-    const userId = sessionStorage.getItem('userId')
-    if (!userId) {
-      alert(t('auth.userIdNotFound'))
-      return
+    accountRemoving.value = true;
+    try {
+        const userId = sessionStorage.getItem("userId");
+        if (!userId) {
+            alert(t("auth.userIdNotFound"));
+            return;
+        }
+        await $fetch(`${config.public.apiBase}/specialists/${userId}`, {
+            method: "DELETE",
+        });
+        alert("Account removed successfully");
+        logout();
+    } catch (error: any) {
+        alert(error.message || "Failed to remove account");
+    } finally {
+        accountRemoving.value = false;
+        showRemoveAccountConfirm.value = false;
     }
-    await $fetch(`${config.public.apiBase}/specialists/${userId}`, {
-      method: 'DELETE'
-    })
-    alert('Account removed successfully')
-    logout()
-  } catch (error: any) {
-    alert(error.message || 'Failed to remove account')
-  } finally {
-    accountRemoving.value = false
-    showRemoveAccountConfirm.value = false
-  }
-}
+};
 
 const logout = async () => {
-  const sessionId = sessionStorage.getItem('sessionId')
-  try {
-    if (sessionId) {
-      await $fetch(`${config.public.apiBase}/users/logout`, {
-        method: 'POST',
-        body: { sessionId },
-      })
+    const sessionId = sessionStorage.getItem("sessionId");
+    try {
+        if (sessionId) {
+            await $fetch(`${config.public.apiBase}/users/logout`, {
+                method: "POST",
+                body: { sessionId },
+            });
+        }
+    } finally {
+        sessionStorage.removeItem("accessToken");
+        sessionStorage.removeItem("sessionId");
+        sessionStorage.removeItem("userId");
+        sessionStorage.removeItem("specialistId");
+        sessionStorage.removeItem("login");
+        sessionStorage.removeItem("email");
+        sessionStorage.removeItem("role");
+        localStorage.removeItem("specialist_session");
+        router.push("/login");
     }
-  } finally {
-    sessionStorage.removeItem('accessToken')
-    sessionStorage.removeItem('sessionId')
-    sessionStorage.removeItem('userId')
-    sessionStorage.removeItem('specialistId')
-    sessionStorage.removeItem('login')
-    sessionStorage.removeItem('email')
-    sessionStorage.removeItem('role')
-    localStorage.removeItem('specialist_session')
-    router.push('/login')
-  }
-}
+};
 
 onMounted(() => {
-  loadProfile()
-})
+    loadProfile();
+});
 
 defineExpose({
-  loadProfile
-})
+    loadProfile,
+});
 </script>
 
 <style scoped>
 .section {
-  margin-top: 2rem;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  gap: 1.5rem;
-}
-
-.header-content {
-  flex: 1;
-}
-
-.section-header h2 {
-  color: #1f2937;
-  margin: 0 0 0.35rem 0;
-  font-size: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.header-subtitle {
-  color: #6b7280;
-  margin: 0;
-  font-size: 0.875rem;
-  font-weight: 400;
-}
-
-.icon {
-  font-size: 1.5rem;
-}
-
-.list-state {
-  padding: 2rem 1rem;
-  background: white;
-  border-radius: 12px;
-  text-align: center;
-  color: #6b7280;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.list-state.error {
-  background: #fee2e2;
-  color: #dc2626;
+    margin-top: 2rem;
 }
 
 .form {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+.update-message {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    animation: slideDown 0.3s ease-out;
 }
 
-.form-field {
-  display: flex;
-  flex-direction: column;
+.update-message.success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 2px solid #059669;
 }
 
-.form-field label {
-  font-weight: 500;
-  margin-bottom: 0.5rem;
-  color: #374151;
-  font-size: 0.875rem;
+.update-message.error {
+    background: #fee2e2;
+    color: #dc2626;
+    border: 2px solid #dc2626;
 }
 
-.form-field input,
-.form-field select {
-  padding: 0.625rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  transition: border-color 0.15s, box-shadow 0.15s;
-  background: white;
-  color: #1f2937;
-}
-
-.form-field input:focus,
-.form-field select:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.btn {
-  padding: 0.5rem 1rem;
-  background: #4f46e5;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.btn:hover:not(:disabled) {
-  background: #4338ca;
-}
-
-.btn.danger {
-  background: #dc2626;
-}
-
-.btn.danger:hover:not(:disabled) {
-  background: #b91c1c;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.form-message {
-  padding: 0.75rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-}
-
-.form-message.success {
-  background: #d1fae5;
-  color: #065f46;
-  border-left: 4px solid #059669;
-}
-
-.form-message.error {
-  background: #fee2e2;
-  color: #dc2626;
-  border-left: 4px solid #dc2626;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  max-width: 500px;
-  width: 90%;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-}
-
-.modal h3 {
-  margin-top: 0;
-  color: #1f2937;
-}
-
-.modal p {
-  color: #6b7280;
-  margin: 1rem 0;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 1.5rem;
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 </style>
