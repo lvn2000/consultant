@@ -9,11 +9,13 @@ enum DomainError:
   case CategoryNotFound(id: CategoryId)
   case ConsultationNotFound(id: ConsultationId)
   case EmailAlreadyExists(email: String)
+  case LoginAlreadyExists(login: String)
   case InvalidEmail(email: String)
   case InvalidPhoneNumber(phone: String)
   case InvalidPrice(price: BigDecimal)
   case SpecialistNotAvailable(id: SpecialistId)
   case ValidationError(message: String)
   case InvalidCredentials
+  case Forbidden(message: String)
   case DuplicateCategoryRate(categoryId: String)
   case DatabaseError(message: String)

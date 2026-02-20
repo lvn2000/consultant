@@ -65,7 +65,26 @@
     "sessionNotFound": "Session not found - please log in again",
     "userIdNotFound": "User ID not found",
     "tokenNotFound": "Authentication token not found - please log in again",
-    "pleaseLogIn": "Please log in again"
+    "pleaseLogIn": "Please log in again",
+    "registerLink": "Register account",
+    "registerTitle": "Register",
+    "registerButton": "Register",
+    "registerLogin": "Username",
+    "registerEmail": "Email",
+    "registerName": "Full name",
+    "registerPhone": "Phone (optional)",
+    "registerPassword": "Password",
+    "registerConfirmPassword": "Confirm password",
+    "registerRole": "Account type",
+    "registerRoleClient": "Client",
+    "registerRoleSpecialist": "Specialist",
+    "registerRoleAdmin": "Administrator",
+    "registerSuccess": "Registration successful",
+    "registerFailed": "Registration failed",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "pleaseEnterAllFields": "Please fill in all required fields",
+    "alreadyHaveAccount": "Already have an account?",
+    "loginLink": "Log in"
   },
   "landing": {
     "title": "Welcome to Consultant Platform",
@@ -118,7 +137,8 @@
       "specialists": "Specialists",
       "clients": "Clients",
       "connectionTypes": "Type Connections",
-      "categories": "Categories"
+      "categories": "Categories",
+      "createAccounts": "Create Accounts"
     },
     "welcome": {
       "title": "Welcome to Admin Panel",
@@ -135,7 +155,42 @@
     },
     "buttons": {
       "manageUsers": "Manage Users",
-      "settings": "Settings"
+      "settings": "Settings",
+      "createAccount": "Create Account"
+    },
+    "createAccount": {
+      "title": "Create Account",
+      "subtitle": "As an administrator, you can create Client, Specialist, or Administrator accounts.",
+      "labels": {
+        "login": "Login",
+        "email": "Email",
+        "name": "Name",
+        "phone": "Phone (optional)",
+        "role": "Role",
+        "password": "Password",
+        "confirmPassword": "Confirm Password"
+      },
+      "placeholders": {
+        "login": "Enter login",
+        "email": "Enter email",
+        "name": "Enter name",
+        "phone": "+1234567890"
+      },
+      "roles": {
+        "client": "Client",
+        "specialist": "Specialist",
+        "admin": "Administrator"
+      },
+      "buttons": {
+        "creating": "Creating...",
+        "create": "Create Account"
+      },
+      "messages": {
+        "fillRequired": "Please fill in all required fields",
+        "passwordsDoNotMatch": "Passwords do not match",
+        "createFailed": "Failed to create account",
+        "success": "Created {role} account: {login}"
+      }
     }
   },
   "profile": {
@@ -341,7 +396,8 @@
     "failedToRemove": "Failed to remove rate",
     "failedToLoad": "Failed to load rates",
     "addCategoryRate": "Add Category Rate",
-    "yearsShort": "yrs"
+    "yearsShort": "yrs",
+    "allCategoriesUsed": "All categories already have rates. You can update existing rates or remove a category to add a new one."
   },
   "adminCategories": {
     "title": "Categories",

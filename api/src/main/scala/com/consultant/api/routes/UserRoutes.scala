@@ -145,6 +145,19 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
     IO.pure(Right("API is working!"))
   }
 
-  val endpoints = List(test, createUser, getUser, updateUser, listUsers, login, logout)
+  // Delete user
+  val deleteUserEndpoint = baseEndpoint.delete
+    .in(path[UUID]("userId"))
+    .out(stringBody)
+    .errorOut(jsonBody[ErrorResponse])
+
+  val deleteUser = deleteUserEndpoint.serverLogic { userId =>
+    userService.deleteUser(userId, None, None).map {
+      case Right(_)    => Right("User deleted successfully")
+      case Left(error) => Left(toErrorResponse(error))
+    }
+  }
+
+  val endpoints = List(test, createUser, getUser, updateUser, listUsers, login, logout, deleteUser)
 
   val routes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(endpoints)

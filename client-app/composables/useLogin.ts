@@ -13,7 +13,7 @@ export async function loginRequest(login: string, password: string): Promise<{ s
   const config = useRuntimeConfig()
   try {
     // Call /api/users/login which returns both sessionId (legacy) and accessToken (JWT)
-    const data = await $fetch<LoginResponse>(`${config.public.apiBase}/users/login`, {
+    const data = await $fetch<LoginResponse>(`${config.public.apiBase}/auth/login`, {
       method: 'POST',
       body: { login, password },
     })

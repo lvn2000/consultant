@@ -40,7 +40,8 @@ case class CreateSpecialistRequest(
   categoryRates: List[SpecialistCategoryRate],
   isAvailable: Boolean,
   countryId: Option[CountryId],
-  languages: Set[LanguageId]
+  languages: Set[LanguageId],
+  id: Option[SpecialistId] = None
 )
 
 case class SpecialistSearchCriteria(

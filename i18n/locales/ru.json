@@ -65,7 +65,26 @@
     "sessionNotFound": "Сессия не найдена — пожалуйста, войдите снова",
     "userIdNotFound": "ID пользователя не найден",
     "tokenNotFound": "Токен аутентификации не найден — пожалуйста, войдите снова",
-    "pleaseLogIn": "Пожалуйста, войдите снова"
+    "pleaseLogIn": "Пожалуйста, войдите снова",
+    "registerLink": "Зарегистрироваться",
+    "registerTitle": "Регистрация",
+    "registerButton": "Зарегистрироваться",
+    "registerLogin": "Имя пользователя",
+    "registerEmail": "Электронная почта",
+    "registerName": "Полное имя",
+    "registerPhone": "Телефон (необязательно)",
+    "registerPassword": "Пароль",
+    "registerConfirmPassword": "Подтвердите пароль",
+    "registerRole": "Тип аккаунта",
+    "registerRoleClient": "Клиент",
+    "registerRoleSpecialist": "Специалист",
+    "registerRoleAdmin": "Администратор",
+    "registerSuccess": "Регистрация прошла успешно",
+    "registerFailed": "Ошибка регистрации",
+    "passwordsDoNotMatch": "Пароли не совпадают",
+    "pleaseEnterAllFields": "Пожалуйста, заполните все обязательные поля",
+    "alreadyHaveAccount": "Уже есть аккаунт?",
+    "loginLink": "Войти"
   },
   "landing": {
     "title": "Добро пожаловать в Consultant Platform",
@@ -118,7 +137,8 @@
       "specialists": "Специалисты",
       "clients": "Клиенты",
       "connectionTypes": "Типы подключений",
-      "categories": "Категории"
+      "categories": "Категории",
+      "createAccounts": "Создать аккаунт"
     },
     "welcome": {
       "title": "Добро пожаловать в панель администратора",
@@ -135,7 +155,42 @@
     },
     "buttons": {
       "manageUsers": "Управление пользователями",
-      "settings": "Настройки"
+      "settings": "Настройки",
+      "createAccount": "Создать аккаунт"
+    },
+    "createAccount": {
+      "title": "Создать аккаунт",
+      "subtitle": "Как администратор, вы можете создавать аккаунты Клиента, Специалиста или Администратора.",
+      "labels": {
+        "login": "Логин",
+        "email": "Email",
+        "name": "Имя",
+        "phone": "Телефон (необязательно)",
+        "role": "Роль",
+        "password": "Пароль",
+        "confirmPassword": "Подтвердите пароль"
+      },
+      "placeholders": {
+        "login": "Введите логин",
+        "email": "Введите email",
+        "name": "Введите имя",
+        "phone": "+71234567890"
+      },
+      "roles": {
+        "client": "Клиент",
+        "specialist": "Специалист",
+        "admin": "Администратор"
+      },
+      "buttons": {
+        "creating": "Создание...",
+        "create": "Создать аккаунт"
+      },
+      "messages": {
+        "fillRequired": "Пожалуйста, заполните все обязательные поля",
+        "passwordsDoNotMatch": "Пароли не совпадают",
+        "createFailed": "Не удалось создать аккаунт",
+        "success": "Создан {role} аккаунт: {login}"
+      }
     }
   },
   "profile": {
@@ -341,7 +396,8 @@
     "failedToRemove": "Не удалось удалить тариф",
     "failedToLoad": "Не удалось загрузить тарифы",
     "addCategoryRate": "Добавить тариф категории",
-    "yearsShort": "л."
+    "yearsShort": "л.",
+    "allCategoriesUsed": "Все категории уже имеют тарифы. Вы можете обновить существующие тарифы или удалить категорию, чтобы добавить новую."
   },
   "adminCategories": {
     "title": "Категории",

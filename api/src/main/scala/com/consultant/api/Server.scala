@@ -22,10 +22,12 @@ import com.consultant.api.middleware.TokenAuthMiddleware
 import com.consultant.infrastructure.config.AppConfig
 import com.consultant.infrastructure.local.MockNotificationService
 import com.consultant.infrastructure.security.{
+  AuthenticationService,
   CompositeTokenVerifier,
   JwtTokenService,
   LegacyJwtTokenVerifier,
   OidcTokenVerifier,
+  PasswordHashingService,
   TokenVerifier
 }
 import org.flywaydb.core.Flyway
@@ -38,6 +40,7 @@ object Server extends IOApp:
             config,
             tokenVerifier,
             jwtService,
+            authenticationService,
             userService,
             specialistService,
             consultationService,
@@ -47,6 +50,7 @@ object Server extends IOApp:
             notificationPreferenceRepository,
             sessionRepository
           ) =>
+        val authRoutes         = AuthRoutes(authenticationService, config.legacyAuthEnabled)
         val userRoutes         = UserRoutes(userService, Some(jwtService))
         val specialistRoutes   = SpecialistRoutes(specialistService)
         val consultationRoutes = ConsultationRoutes(consultationService)
@@ -58,7 +62,7 @@ object Server extends IOApp:
         val healthRoutes = HealthRoutes()
 
         // Swagger documentation - include all endpoints
-        val allEndpoints = userRoutes.endpoints ++ specialistRoutes.endpoints ++
+        val allEndpoints = authRoutes.endpoints ++ userRoutes.endpoints ++ specialistRoutes.endpoints ++
           consultationRoutes.endpoints ++ categoryRoutes.endpoints ++ connectionRoutes.endpoints ++
           availabilityRoutes.endpoints ++ notificationPreferenceRoutes.endpoints
 
@@ -74,6 +78,7 @@ object Server extends IOApp:
         }
 
         val apiRoutes = Router(
+          "/api/auth"  -> authRoutes.routes,
           "/api/users" -> (connectionRoutes.clientConnectionRoutes <+> userRoutes.routes),
           "/api/specialists" -> (availabilityRoutes.routes <+> connectionRoutes.specialistConnectionRoutes <+> specialistRoutes.routes),
           "/api/consultations"            -> consultationRoutes.routes,
@@ -95,6 +100,9 @@ object Server extends IOApp:
           path.startsWith("/docs") ||
           path.startsWith("/health") ||
           // Explicit public user endpoints
+          path.startsWith("/api/auth/register") ||
+          path == "/api/auth/login" ||
+          path == "/api/auth/refresh" ||
           path == "/api/users/register" ||
           path == "/api/users/login"
         }
@@ -177,6 +185,7 @@ object Server extends IOApp:
       AppConfig,
       TokenVerifier,
       JwtTokenService,
+      AuthenticationService,
       UserService,
       SpecialistService,
       ConsultationService,
@@ -217,6 +226,9 @@ object Server extends IOApp:
       // Repositories
       userRepo                   = PostgresUserRepository(xa)
       sessionRepo                = PostgresSessionRepository(xa)
+      credentialsRepo            = PostgresCredentialsRepository(xa)
+      refreshTokenRepo           = PostgresRefreshTokenRepository(xa)
+      auditRepo                  = PostgresSecurityAuditRepository(xa)
       connectionTypeRepo         = PostgresConnectionTypeRepository(xa)
       connectionRepo             = PostgresConnectionRepository(xa)
       specialistRepo             = PostgresSpecialistRepository(xa, connectionRepo)
@@ -226,9 +238,19 @@ object Server extends IOApp:
       notificationPreferenceRepo = PostgresNotificationPreferenceRepository(xa)
 
       // Infrastructure services
+      passwordService     = PasswordHashingService()
       notificationService = MockNotificationService()
 
       // Services
+      authService = AuthenticationService(
+        userRepo,
+        specialistRepo,
+        credentialsRepo,
+        refreshTokenRepo,
+        auditRepo,
+        passwordService,
+        jwtService
+      )
       userService       = UserService(userRepo, sessionRepo, Some(notificationPreferenceRepo))
       specialistService = SpecialistService(specialistRepo, categoryRepo)
       consultationService = ConsultationService(
@@ -244,6 +266,7 @@ object Server extends IOApp:
       config,
       tokenVerifier,
       jwtService,
+      authService,
       userService,
       specialistService,
       consultationService,

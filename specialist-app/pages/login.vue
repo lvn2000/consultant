@@ -15,6 +15,10 @@
       </div>
       <button type="submit">{{ $t('auth.loginButton') }}</button>
       <div v-if="error" class="error">{{ error }}</div>
+      <div class="register-link">
+        {{ $t('auth.registerLink') }}
+        <NuxtLink to="/register">{{ $t('auth.registerButton') }}</NuxtLink>
+      </div>
     </form>
   </div>
 </template>
@@ -56,6 +60,7 @@ const onLogin = async () => {
   border: 1px solid #ccc;
   border-radius: 8px;
   background: #fff;
+  color-scheme: light;
 }
 .login-header {
   display: flex;
@@ -78,6 +83,15 @@ input {
   padding: 0.5rem;
   border: 1px solid #ccc;
   border-radius: 4px;
+  background: #fff;
+  color: #1f2937;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset;
+  -webkit-text-fill-color: #1f2937;
 }
 button {
   width: 100%;
@@ -92,5 +106,17 @@ button {
 .error {
   color: red;
   margin-top: 1rem;
+}
+.register-link {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+.register-link a {
+  color: #4f46e5;
+  text-decoration: none;
+}
+.register-link a:hover {
+  text-decoration: underline;
 }
 </style>

@@ -65,7 +65,26 @@
     "sessionNotFound": "Sitzung nicht gefunden — bitte melden Sie sich erneut an",
     "userIdNotFound": "Benutzer-ID nicht gefunden",
     "tokenNotFound": "Authentifizierungstoken nicht gefunden — bitte melden Sie sich erneut an",
-    "pleaseLogIn": "Bitte melden Sie sich erneut an"
+    "pleaseLogIn": "Bitte melden Sie sich erneut an",
+    "registerLink": "Konto registrieren",
+    "registerTitle": "Registrierung",
+    "registerButton": "Registrieren",
+    "registerLogin": "Benutzername",
+    "registerEmail": "E-Mail",
+    "registerName": "Vollständiger Name",
+    "registerPhone": "Telefon (optional)",
+    "registerPassword": "Passwort",
+    "registerConfirmPassword": "Passwort bestätigen",
+    "registerRole": "Kontotyp",
+    "registerRoleClient": "Kunde",
+    "registerRoleSpecialist": "Spezialist",
+    "registerRoleAdmin": "Administrator",
+    "registerSuccess": "Registrierung erfolgreich",
+    "registerFailed": "Registrierung fehlgeschlagen",
+    "passwordsDoNotMatch": "Passwörter stimmen nicht überein",
+    "pleaseEnterAllFields": "Bitte füllen Sie alle Pflichtfelder aus",
+    "alreadyHaveAccount": "Bereits ein Konto?",
+    "loginLink": "Anmelden"
   },
   "landing": {
     "title": "Willkommen bei Consultant Platform",
@@ -118,7 +137,8 @@
       "specialists": "Spezialisten",
       "clients": "Kunden",
       "connectionTypes": "Verbindungstypen",
-      "categories": "Kategorien"
+      "categories": "Kategorien",
+      "createAccounts": "Konto erstellen"
     },
     "welcome": {
       "title": "Willkommen im Administrationspanel",
@@ -135,7 +155,42 @@
     },
     "buttons": {
       "manageUsers": "Benutzer verwalten",
-      "settings": "Einstellungen"
+      "settings": "Einstellungen",
+      "createAccount": "Konto erstellen"
+    },
+    "createAccount": {
+      "title": "Konto erstellen",
+      "subtitle": "Als Administrator können Sie Kunden-, Spezialisten- oder Administratorkonten erstellen.",
+      "labels": {
+        "login": "Benutzername",
+        "email": "E-Mail",
+        "name": "Name",
+        "phone": "Telefon (optional)",
+        "role": "Rolle",
+        "password": "Passwort",
+        "confirmPassword": "Passwort bestätigen"
+      },
+      "placeholders": {
+        "login": "Benutzername eingeben",
+        "email": "E-Mail eingeben",
+        "name": "Name eingeben",
+        "phone": "+49123456789"
+      },
+      "roles": {
+        "client": "Kunde",
+        "specialist": "Spezialist",
+        "admin": "Administrator"
+      },
+      "buttons": {
+        "creating": "Erstellen...",
+        "create": "Konto erstellen"
+      },
+      "messages": {
+        "fillRequired": "Bitte füllen Sie alle erforderlichen Felder aus",
+        "passwordsDoNotMatch": "Passwörter stimmen nicht überein",
+        "createFailed": "Kontoerstellung fehlgeschlagen",
+        "success": "{role}-Konto erstellt: {login}"
+      }
     }
   },
   "profile": {

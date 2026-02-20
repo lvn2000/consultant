@@ -1,4 +1,4 @@
-import { useRuntimeConfig, useFetch } from 'nuxt/app'
+import { useRuntimeConfig } from 'nuxt/app'
 
 // Types for login
 interface LoginResponse {
@@ -14,34 +14,34 @@ interface LoginResponse {
 export async function loginRequest(login: string, password: string): Promise<{ success: boolean; error?: string }> {
   const config = useRuntimeConfig()
   try {
-    const { data, error } = await useFetch<LoginResponse>(`${config.public.apiBase}/users/login`, {
-      method: 'POST',
-      body: JSON.stringify({ login, password }),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
+    const normalizedLogin = login.trim().toLowerCase()
+    const normalizedPassword = password.trim()
 
-    if (error.value) {
-      return { success: false, error: 'Login failed' }
+    if (!normalizedLogin || !normalizedPassword) {
+      return { success: false, error: 'Please enter login and password' }
     }
 
-    if (data.value) {
-      const token = data.value.accessToken || data.value.sessionId
+    const data = await $fetch<LoginResponse>(`${config.public.apiBase}/auth/login`, {
+      method: 'POST',
+      body: { login: normalizedLogin, password: normalizedPassword },
+    })
+
+    if (data) {
+      const token = data.accessToken || data.sessionId
       if (token) {
         sessionStorage.setItem('accessToken', token)
       }
       // Store session data
-      sessionStorage.setItem('userId', data.value.userId)
-      sessionStorage.setItem('login', data.value.login)
-      sessionStorage.setItem('email', data.value.email)
-      sessionStorage.setItem('role', data.value.role)
-      sessionStorage.setItem('sessionId', data.value.sessionId)
+      sessionStorage.setItem('userId', data.userId)
+      sessionStorage.setItem('login', data.login)
+      sessionStorage.setItem('email', data.email)
+      sessionStorage.setItem('role', data.role)
+      sessionStorage.setItem('sessionId', data.sessionId)
       return { success: true }
     }
 
     return { success: false, error: 'Invalid response' }
-  } catch (e) {
-    return { success: false, error: 'Network error' }
+  } catch (e: any) {
+    return { success: false, error: e.data?.message || e.message || 'Login failed' }
   }
 }

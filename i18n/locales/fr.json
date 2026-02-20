@@ -65,7 +65,26 @@
     "sessionNotFound": "Session introuvable — veuillez vous reconnecter",
     "userIdNotFound": "ID utilisateur introuvable",
     "tokenNotFound": "Jeton d'authentification introuvable — veuillez vous reconnecter",
-    "pleaseLogIn": "Veuillez vous reconnecter"
+    "pleaseLogIn": "Veuillez vous reconnecter",
+    "registerLink": "Créer un compte",
+    "registerTitle": "Inscription",
+    "registerButton": "S'inscrire",
+    "registerLogin": "Nom d'utilisateur",
+    "registerEmail": "E-mail",
+    "registerName": "Nom complet",
+    "registerPhone": "Téléphone (facultatif)",
+    "registerPassword": "Mot de passe",
+    "registerConfirmPassword": "Confirmer le mot de passe",
+    "registerRole": "Type de compte",
+    "registerRoleClient": "Client",
+    "registerRoleSpecialist": "Spécialiste",
+    "registerRoleAdmin": "Administrateur",
+    "registerSuccess": "Inscription réussie",
+    "registerFailed": "Échec de l'inscription",
+    "passwordsDoNotMatch": "Les mots de passe ne correspondent pas",
+    "pleaseEnterAllFields": "Veuillez remplir tous les champs obligatoires",
+    "alreadyHaveAccount": "Vous avez déjà un compte ?",
+    "loginLink": "Se connecter"
   },
   "landing": {
     "title": "Bienvenue sur Consultant Platform",
@@ -118,7 +137,8 @@
       "specialists": "Spécialistes",
       "clients": "Clients",
       "connectionTypes": "Types de connexion",
-      "categories": "Catégories"
+      "categories": "Catégories",
+      "createAccounts": "Créer des comptes"
     },
     "welcome": {
       "title": "Bienvenue dans le panneau d'administration",
@@ -135,7 +155,42 @@
     },
     "buttons": {
       "manageUsers": "Gérer les utilisateurs",
-      "settings": "Paramètres"
+      "settings": "Paramètres",
+      "createAccount": "Créer un compte"
+    },
+    "createAccount": {
+      "title": "Créer un compte",
+      "subtitle": "En tant qu'administrateur, vous pouvez créer des comptes Client, Spécialiste ou Administrateur.",
+      "labels": {
+        "login": "Identifiant",
+        "email": "E-mail",
+        "name": "Nom",
+        "phone": "Téléphone (facultatif)",
+        "role": "Rôle",
+        "password": "Mot de passe",
+        "confirmPassword": "Confirmer le mot de passe"
+      },
+      "placeholders": {
+        "login": "Entrez l'identifiant",
+        "email": "Entrez l'e-mail",
+        "name": "Entrez le nom",
+        "phone": "+33123456789"
+      },
+      "roles": {
+        "client": "Client",
+        "specialist": "Spécialiste",
+        "admin": "Administrateur"
+      },
+      "buttons": {
+        "creating": "Création...",
+        "create": "Créer un compte"
+      },
+      "messages": {
+        "fillRequired": "Veuillez remplir tous les champs obligatoires",
+        "passwordsDoNotMatch": "Les mots de passe ne correspondent pas",
+        "createFailed": "Échec de la création du compte",
+        "success": "Compte {role} créé : {login}"
+      }
     }
   },
   "profile": {

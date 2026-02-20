@@ -2,28 +2,36 @@ package com.consultant.infrastructure.security
 
 import cats.effect.IO
 import cats.syntax.all.*
+import com.consultant.core.domain.{ CreateSpecialistRequest, CreateUserRequest, User }
 import com.consultant.core.domain.security.*
-import com.consultant.core.domain.User
-import com.consultant.core.domain.{ CreateUserRequest, User }
 import com.consultant.core.domain.types.*
 import com.consultant.core.ports.{
   CredentialsRepository,
   RefreshTokenRepository,
   SecurityAuditRepository,
+  SpecialistRepository,
   UserRepository
 }
 import java.util.UUID
 import java.time.Instant
+import org.mindrot.jbcrypt.BCrypt
 import scala.concurrent.duration.*
 
 object AuthenticationService:
   case class RegistrationRequest(
+    login: String,
     email: String,
     password: String,
     name: String,
     phone: Option[String],
     role: UserRole
   )
+
+  /** Allowed roles for public (unauthenticated) registration */
+  val publicAllowedRoles: Set[UserRole] = Set(UserRole.Client, UserRole.Specialist)
+
+  /** Allowed roles when an admin creates a new account */
+  val adminAllowedRoles: Set[UserRole] = Set(UserRole.Client, UserRole.Specialist, UserRole.Admin)
 
   case class LoginRequest(
     login: String,
@@ -42,6 +50,7 @@ object AuthenticationService:
 /** Authentication and authorization service */
 class AuthenticationService(
   userRepository: UserRepository,
+  specialistRepository: SpecialistRepository,
   credentialsRepository: CredentialsRepository,
   refreshTokenRepository: RefreshTokenRepository,
   auditRepository: SecurityAuditRepository,
@@ -52,25 +61,52 @@ class AuthenticationService(
   private val maxFailedAttempts = 5
   private val lockDuration      = 15.minutes
 
-  /** Register new user */
+  private def verifyPassword(password: String, hash: String, salt: String): IO[Boolean] =
+    if hash.startsWith("$2a$") || hash.startsWith("$2b$") || hash.startsWith("$2y$") then
+      IO.blocking(BCrypt.checkpw(password, hash)).handleError(_ => false)
+    else passwordService.verifyPassword(password, hash, salt)
+
+  /** Register new user (public self-registration: Client or Specialist only) */
   def register(request: AuthenticationService.RegistrationRequest): IO[Either[String, User]] =
+    registerWithRoleCheck(request, AuthenticationService.publicAllowedRoles)
+
+  /** Register new user by admin (any role allowed) */
+  def registerByAdmin(request: AuthenticationService.RegistrationRequest): IO[Either[String, User]] =
+    registerWithRoleCheck(request, AuthenticationService.adminAllowedRoles)
+
+  /** Internal registration with configurable role whitelist */
+  private def registerWithRoleCheck(
+    request: AuthenticationService.RegistrationRequest,
+    allowedRoles: Set[UserRole]
+  ): IO[Either[String, User]] =
     (for
+      // Validate role
+      _ <-
+        if !allowedRoles.contains(request.role) then
+          IO.raiseError(new RuntimeException(s"Role '${request.role}' is not allowed for this registration type"))
+        else IO.unit
+
       // Check password complexity
       _ <- passwordService.validatePasswordStrength(request.password).flatMap {
         case Left(error) => IO.raiseError(new RuntimeException(error))
         case Right(_)    => IO.unit
       }
 
-      // Check if user already exists
-      existing <- userRepository.findByEmail(request.email)
-      _ <- existing match
-        case Some(_) => IO.raiseError(new RuntimeException("User already exists"))
+      // Check if email already exists
+      existingByEmail <- userRepository.findByEmail(request.email)
+      _ <- existingByEmail match
+        case Some(_) => IO.raiseError(new RuntimeException("User with this email already exists"))
+        case None    => IO.unit
+
+      // Check if login already exists
+      existingByLogin <- userRepository.findByLogin(request.login)
+      _ <- existingByLogin match
+        case Some(_) => IO.raiseError(new RuntimeException("User with this login already exists"))
         case None    => IO.unit
 
       // Create user
-      userId = UUID.randomUUID()
       createRequest: CreateUserRequest = CreateUserRequest(
-        login = request.email,
+        login = request.login,
         email = request.email,
         name = request.name,
         phone = request.phone,
@@ -79,6 +115,30 @@ class AuthenticationService(
         languages = Set.empty
       )
       createdUser <- userRepository.create(createRequest)
+
+      // Auto-create specialist profile for specialist role so user/specialist IDs stay aligned.
+      _ <-
+        if request.role == UserRole.Specialist then
+          specialistRepository.findByEmail(request.email).flatMap {
+            case Some(_) => IO.unit
+            case None =>
+              specialistRepository
+                .create(
+                  CreateSpecialistRequest(
+                    email = request.email,
+                    name = request.name,
+                    phone = request.phone.getOrElse(""),
+                    bio = "",
+                    categoryRates = List.empty,
+                    isAvailable = true,
+                    countryId = None,
+                    languages = Set.empty,
+                    id = Some(createdUser.id)
+                  )
+                )
+                .void
+          }
+        else IO.unit
 
       // Hash password
       salt <- passwordService.generateSalt()
@@ -89,7 +149,7 @@ class AuthenticationService(
         email = request.email,
         passwordHash = hash,
         salt = salt,
-        userId = userId,
+        userId = createdUser.id,
         role = request.role
       )
       _ <- credentialsRepository.create(credentials)
@@ -127,7 +187,7 @@ class AuthenticationService(
         else IO.unit
 
       // Verify password
-      validPassword <- passwordService.verifyPassword(request.password, credentials.passwordHash, credentials.salt)
+      validPassword <- verifyPassword(request.password, credentials.passwordHash, credentials.salt)
 
       _ <-
         if !validPassword then
