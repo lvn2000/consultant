@@ -18,7 +18,7 @@
 
 ### Get Available Slots
 ```bash
-GET /api/specialists/{specialistId}/available-slots?date=2026-02-10&durationMinutes=60
+GET /api/specialists/{specialistId}/availability/slots?date=2026-02-10&durationMinutes=60
 
 Response:
 {
@@ -34,7 +34,7 @@ Response:
 
 ### Check Specific Time
 ```bash
-POST /api/specialists/{specialistId}/check-availability
+POST /api/specialists/{specialistId}/availability/check
 
 Body:
 {
@@ -55,8 +55,8 @@ Response:
 | `core/src/main/scala/com/consultant/core/service/AvailabilityService.scala` | Calculates free slots |
 | `api/src/main/scala/com/consultant/api/routes/AvailabilitySlotRoutes.scala` | REST API endpoints |
 | `data/src/main/scala/com/consultant/data/repository/PostgresAvailabilityRepository.scala` | Database access |
-| `client-app/pages/main.vue` | Booking form with slot selection |
-| `specialist-app/pages/main.vue` | Availability management |
+| `client-app/components/ConsultationsBookTab.vue` | Booking form with slot selection |
+| `specialist-app/components/AvailabilitySection.vue` | Availability management |
 
 ## 🛠️ Development
 
@@ -70,19 +70,20 @@ sbt test            # Test
 
 ### Run
 ```bash
-docker-compose up --build
-# Backend: http://localhost:8080
+bash start-https.sh
+# Backend: http://localhost:8090
 # Client: http://localhost:3000
-# Specialist: http://localhost:3001
+# Admin: http://localhost:3001
+# Specialist: http://localhost:3002
 ```
 
 ### Test API
 ```bash
 # Get slots
-curl "http://localhost:8080/api/specialists/{id}/available-slots?date=2026-02-10"
+curl "http://localhost:8090/api/specialists/{id}/availability/slots?date=2026-02-10"
 
 # Check availability
-curl -X POST http://localhost:8080/api/specialists/{id}/check-availability \
+curl -X POST http://localhost:8090/api/specialists/{id}/availability/check \
   -H "Content-Type: application/json" \
   -d '{"specialistId":"{id}","date":"2026-02-10","startTime":"14:00","durationMinutes":60}'
 ```

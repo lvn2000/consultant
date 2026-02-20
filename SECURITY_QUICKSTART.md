@@ -26,15 +26,15 @@
 #### Public
 
 ```bash
-POST /auth/register  # Registration (legacy)
-POST /auth/login     # Login (legacy)
-POST /auth/refresh   # Token refresh (legacy)
+POST /api/auth/register  # Registration (legacy)
+POST /api/auth/login     # Login (legacy)
+POST /api/auth/refresh   # Token refresh (legacy)
 ```
 
 #### Protected (JWT required)
 
 ```bash
-POST /auth/logout    # Logout (legacy)
+POST /api/auth/logout    # Logout (legacy)
 GET  /api/users      # With Bearer token
 ```
 
@@ -43,7 +43,7 @@ GET  /api/users      # With Bearer token
 ### 1. Registration
 
 ```bash
-curl -X POST http://localhost/auth/register \
+curl -X POST http://localhost/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -69,7 +69,7 @@ curl -X POST http://localhost/auth/register \
 ### 2. Login
 
 ```bash
-curl -X POST http://localhost/auth/login \
+curl -X POST http://localhost/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -87,7 +87,7 @@ curl -X GET http://localhost/api/users \
 ### 4. Token Refresh (every 15 minutes)
 
 ```bash
-curl -X POST http://localhost/auth/refresh \
+curl -X POST http://localhost/api/auth/refresh \
   -H "Content-Type: application/json" \
   -d '{
     "refreshToken": "uuid-from-login"
@@ -134,8 +134,8 @@ export LEGACY_AUTH_ENABLED=true
 ### 4. DB Migration
 
 ```bash
-# Apply V002__security_tables.sql
-docker-compose exec postgres-master psql -U consultant_user -d consultant -f /docker-entrypoint-initdb.d/V002__security_tables.sql
+# Apply V001__baseline_schema.sql
+docker-compose exec postgres-master psql -U consultant_user -d consultant -f /docker-entrypoint-initdb.d/V001__baseline_schema.sql
 ```
 
 ### 5. HTTPS in Production

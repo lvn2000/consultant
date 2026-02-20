@@ -4,25 +4,26 @@
 These endpoints allow authenticated users to manage their notification preferences. Users can enable or disable notifications by channel (email, SMS) for each notification type.
 
 **Security Requirements:**
-- All endpoints require Authorization header with Bearer token (sessionId)
-- X-User-Id header identifies whose preferences to access
+- All endpoints require authentication headers
+- `X-Auth-User-Id` header: UUID of the authenticated user
+- `X-User-Role` header: Role of the authenticated user (Client, Specialist, Admin)
 - Users can access their own preferences
 - Administrators can access any user's preferences (role-based, enforced server-side)
 
-### Endpoint 1: Get All Preferences
+### Endpoint 1: Get Current User's Preferences
 
 **Endpoint:** `GET /api/notification-preferences`
 
 **Authentication Requirements:**
-- `Authorization` header: Bearer token (sessionId from login response)
-- `X-User-Id` header: UUID of the user whose preferences to retrieve
+- `X-Auth-User-Id` header: UUID of the authenticated user
+- `X-User-Role` header: Role of the authenticated user
 
-**Description:** Retrieves all notification preferences for the specified user. If no preferences exist, they are automatically created with default values (email notifications enabled, SMS disabled).
+**Description:** Retrieves all notification preferences for the current authenticated user. If no preferences exist, they are automatically created with default values (email notifications enabled, SMS disabled).
 
 ```bash
 curl -X GET http://localhost:8090/api/notification-preferences \
-  -H "Authorization: Bearer <sessionId>" \
-  -H "X-User-Id: 550e8400-e29b-41d4-a716-446655440000"
+  -H "X-Auth-User-Id: 550e8400-e29b-41d4-a716-446655440000" \
+  -H "X-User-Role: Client"
 ```
 
 **Response:**
@@ -99,13 +100,14 @@ Missing X-User-Id header:
 
 ### Endpoint 2: Update Preference by Notification Type
 
-**Endpoint:** `PUT /api/notification-preferences/{notificationType}`
+**Endpoint:** `PUT /api/notification-preferences/{userId}/{notificationType}`
 
 **Authentication Requirements:**
-- `Authorization` header: Bearer token (sessionId from login response)
-- `X-User-Id` header: UUID of the user whose preference to update
+- `X-Auth-User-Id` header: UUID of the authenticated user
+- `X-User-Role` header: Role of the authenticated user
 
 **Path Parameters:**
+- `userId`: UUID of the user whose preference to update
 - `notificationType`: One of: `ConsultationApproved`, `ConsultationDeclined`, `ConsultationCompleted`, `ConsultationMissed`, `ConsultationCancelled`
 
 **Request Body:**
@@ -119,9 +121,9 @@ Missing X-User-Id header:
 **Description:** Updates notification preferences for a specific notification type. Users can update their own preferences, and administrators can update any user's preferences.
 
 ```bash
-curl -X PUT http://localhost:8090/api/notification-preferences/ConsultationApproved \
-  -H "Authorization: Bearer <sessionId>" \
-  -H "X-User-Id: 550e8400-e29b-41d4-a716-446655440000" \
+curl -X PUT http://localhost:8090/api/notification-preferences/550e8400-e29b-41d4-a716-446655440000/ConsultationApproved \
+  -H "X-Auth-User-Id: 550e8400-e29b-41d4-a716-446655440000" \
+  -H "X-User-Role: Client" \
   -H "Content-Type: application/json" \
   -d '{
     "emailEnabled": false,
@@ -144,19 +146,19 @@ curl -X PUT http://localhost:8090/api/notification-preferences/ConsultationAppro
 
 **Error Responses:**
 
-Unauthorized (missing or invalid Authorization header):
+Unauthorized (missing authentication headers):
 ```json
 {
   "type": "UNAUTHORIZED",
-  "message": "Missing or invalid Authorization header"
+  "message": "Missing authentication headers"
 }
 ```
 
-Missing X-User-Id header:
+Forbidden (not authorized to modify these preferences):
 ```json
 {
-  "type": "BAD_REQUEST",
-  "message": "Missing X-User-Id header"
+  "type": "FORBIDDEN",
+  "message": "Not authorized to modify these preferences"
 }
 ```
 
@@ -168,11 +170,11 @@ Preference not found:
 }
 ```
 
-Invalid notification type:
+Invalid notification type or user ID:
 ```json
 {
   "type": "VALIDATION_ERROR",
-  "message": "Invalid notification type"
+  "message": "Invalid notification type or user ID"
 }
 ```
 
@@ -193,23 +195,22 @@ The system supports the following notification types:
 ## Security Implementation
 
 ### Authentication Flow
-1. **User logs in** → Receives `sessionId` in login response
-2. **Client stores** `sessionId` in sessionStorage
-3. **All requests to notification endpoints** include:
-   - `Authorization: Bearer <sessionId>` - Server validates the session is valid
-   - `X-User-Id: <userId>` - Identifies whose preferences to access
+1. **User logs in** → Server sets authentication headers
+2. **All requests to notification endpoints** include:
+   - `X-Auth-User-Id: <userId>` - UUID of the authenticated user
+   - `X-User-Role: <role>` - Role of the authenticated user (Client, Specialist, Admin)
 
 ### Authorization Rules
 - **Users**: Can access and modify their own preferences only
-- **Admins**: Can access and modify preferences for any user  
+- **Admins**: Can access and modify preferences for any user
 - **Server-side validation**: Enforces role-based access control (admins vs. regular users)
 
 ### Important Security Notes
-1. **Never share your sessionId** - It validates your identity
-2. **Authorization header is required** - Client-only supply of X-User-Id is insufficient
+1. **Never share your authentication headers** - They validate your identity
+2. **Both headers are required** - X-Auth-User-Id and X-User-Role must be supplied
 3. **Session validation happens server-side** - The server verifies the session before allowing access
 4. **Role checking happens server-side** - Only authorized users can access other users' preferences
-5. **HTTPS required in production** - Protect sessionId in transit
+5. **HTTPS required in production** - Protect authentication headers in transit
 
 ---
 
@@ -219,12 +220,12 @@ The system supports the following notification types:
 ```python
 import requests
 
-session_id = "your-session-id-from-login"
 user_id = "550e8400-e29b-41d4-a716-446655440000"
+user_role = "Client"
 
 headers = {
-    "Authorization": f"Bearer {session_id}",
-    "X-User-Id": user_id
+    "X-Auth-User-Id": user_id,
+    "X-User-Role": user_role
 }
 
 # Get preferences
@@ -236,7 +237,7 @@ print(response.json())
 
 # Update preference
 response = requests.put(
-    "http://localhost:8090/api/notification-preferences/ConsultationApproved",
+    f"http://localhost:8090/api/notification-preferences/{user_id}/ConsultationApproved",
     headers=headers,
     json={"emailEnabled": False, "smsEnabled": False}
 )
@@ -245,12 +246,12 @@ print(response.json())
 
 ### JavaScript/Fetch (User accessing their own preferences)
 ```javascript
-const sessionId = sessionStorage.getItem('sessionId');
-const userId = sessionStorage.getItem('userId');
+const userId = "550e8400-e29b-41d4-a716-446655440000";
+const userRole = "Client";
 
 const headers = {
-  "Authorization": `Bearer ${sessionId}`,
-  "X-User-Id": userId
+  "X-Auth-User-Id": userId,
+  "X-User-Role": userRole
 };
 
 // Get preferences
@@ -262,7 +263,7 @@ fetch("http://localhost:8090/api/notification-preferences", {
 .then(data => console.log(data));
 
 // Update preference
-fetch("http://localhost:8090/api/notification-preferences/ConsultationApproved", {
+fetch(`http://localhost:8090/api/notification-preferences/${userId}/ConsultationApproved`, {
   method: "PUT",
   headers: {
     ...headers,
@@ -279,16 +280,17 @@ fetch("http://localhost:8090/api/notification-preferences/ConsultationApproved",
 
 ### JavaScript/Fetch (Admin accessing other user's preferences)
 ```javascript
-const adminSessionId = sessionStorage.getItem('sessionId');
+const adminUserId = "admin-uuid";
+const adminRole = "Admin";
 const targetUserId = "550e8400-e29b-41d4-a716-446655440001"; // Another user's ID
 
 const headers = {
-  "Authorization": `Bearer ${adminSessionId}`,
-  "X-User-Id": targetUserId  // Different from the logged-in user
+  "X-Auth-User-Id": adminUserId,
+  "X-User-Role": adminRole
 };
 
 // Admin loads another user's preferences
-fetch("http://localhost:8090/api/notification-preferences", {
+fetch(`http://localhost:8090/api/notification-preferences/${targetUserId}`, {
   method: "GET",
   headers: headers
 })

@@ -2,65 +2,60 @@
 
 ## 📊 Current Status
 
-✅ **Docker PostgreSQL**: `consultant-db-master` (PostgreSQL 16.11)  
-✅ **Local PostgreSQL**: System service (optional)
+✅ **Docker PostgreSQL**: Running via `start-https.sh` or `docker-compose up`
+✅ **Database**: PostgreSQL 16+ with Flyway migrations
 
-Both are configured with **same credentials**:
-- **User**: `consultant_user`
-- **Password**: `consultant_pass`
+**Current credentials** (from `.env.example`):
+- **User**: `postgres`
+- **Password**: `postgres`
 - **Database**: `consultant`
 - **Port**: `5432`
 
 ---
 
-## 🚀 Quick Commands
+## 🚀 Quick Start
 
-### Check Database Status
+### Start Database and API
+
 ```bash
-./scripts/db-manager.sh status
+# Recommended: Start entire stack with HTTPS
+bash start-https.sh
+
+# Or use docker-compose directly
+docker-compose up -d
+
+# Or start API only (PostgreSQL must be running separately)
+cd /home/lvn/prg/scala/Consultant/backend
+./run.sh
 ```
 
-### Switch to Docker
-```bash
-./scripts/db-manager.sh docker
-```
+### Access Database
 
-### Switch to Local
 ```bash
-./scripts/db-manager.sh local
-```
+# Connect via psql
+PGPASSWORD=postgres psql -h localhost -U postgres -d consultant
 
-### Backup Database
-```bash
-./scripts/db-manager.sh backup
-# Creates: backups/consultant_backup_YYYYMMDD_HHMMSS.sql
-```
-
-### Run Migrations
-```bash
-./scripts/db-manager.sh migrate
+# Or via Docker (if using docker-compose)
+docker exec -it <container-name> psql -U postgres -d consultant
 ```
 
 ---
 
 ## 💻 Direct Database Access
 
-### Docker
-```bash
-# Via psql
-psql postgresql://consultant_user:consultant_pass@localhost:5432/consultant
-
-# Via Docker
-docker exec -it consultant-db-master psql -U consultant_user -d consultant
+### Connection String
+```
+postgresql://postgres:postgres@localhost:5432/consultant
 ```
 
-### Local
+### Using psql
 ```bash
-# Via psql
-psql postgresql://consultant_user:consultant_pass@localhost:5432/consultant
+# With password in command
+PGPASSWORD=postgres psql -h localhost -U postgres -d consultant
 
-# Via sudo
-sudo -u postgres psql
+# Or interactively
+psql -h localhost -U postgres -d consultant
+# Then enter password when prompted
 ```
 
 ---
@@ -68,22 +63,35 @@ sudo -u postgres psql
 ## 🔄 Recommended Workflow
 
 ### For Development
-1. **Use Docker** (no local PostgreSQL needed)
+
+1. **Using Docker (Recommended)**:
    ```bash
-   ./scripts/db-manager.sh docker
+   # Start entire stack
    bash start-https.sh
+   
+   # API will be available at http://localhost:8090
+   # Database migrations run automatically
    ```
 
-2. **Use Local** (if you prefer local database)
+2. **Using Local PostgreSQL**:
    ```bash
-   ./scripts/db-manager.sh local
-   sbt api/run
+   # Ensure PostgreSQL is running
+   sudo systemctl start postgresql
+   
+   # Create database and user
+   sudo -u postgres psql -c "CREATE DATABASE consultant;"
+   sudo -u postgres psql -c "CREATE USER postgres WITH PASSWORD 'postgres';"
+   sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE consultant TO postgres;"
+   
+   # Run API
+   ./run.sh
    ```
 
 ### For Production
-- Keep Docker option as backup
-- Use managed database (RDS, etc.) in production
+
+- Use managed database services (AWS RDS, Google Cloud SQL, etc.)
 - Update `.env` with production credentials
+- Never use development credentials in production
 
 ---
 
@@ -92,66 +100,68 @@ sudo -u postgres psql
 | File | Purpose |
 |------|---------|
 | [DATABASE_CONFIG.md](DATABASE_CONFIG.md) | Detailed setup guide |
-| [scripts/db-manager.sh](scripts/db-manager.sh) | Database management script |
-| [start-https.sh](start-https.sh) | Full HTTPS stack (includes Docker DB) |
+| [start-https.sh](start-https.sh) | Full HTTPS stack startup script |
 | [docker-compose.yml](docker-compose.yml) | Docker Compose configuration |
+| [.env.example](.env.example) | Environment variables template |
 
 ---
 
 ## 🛠️ Managing Docker Database
 
-### Start
+### View Running Containers
 ```bash
-docker start consultant-db-master
+docker ps | grep postgres
 ```
 
-### Stop
+### Start Container
 ```bash
-docker stop consultant-db-master
+docker start <container-name>
+```
+
+### Stop Container
+```bash
+docker stop <container-name>
 ```
 
 ### View Logs
 ```bash
-docker logs consultant-db-master
+docker logs <container-name>
 ```
 
 ### Remove Container
 ```bash
-docker rm consultant-db-master
-# Volume preserved: consultant-db-data
+docker rm -f <container-name>
 ```
 
-### Remove Everything
+### Remove Volume (deletes all data!)
 ```bash
-docker rm consultant-db-master
-docker volume rm consultant-db-data
+docker volume rm <volume-name>
 ```
 
 ---
 
 ## 📝 Environment Variables
 
-In your `.env`:
-```bash
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=consultant
-DB_USER=consultant_user
-DB_PASSWORD=consultant_pass
-```
+In your `.env` file:
 
-No changes needed when switching between Docker and Local (same credentials!)
+```bash
+# Database configuration
+DB_DRIVER=org.postgresql.Driver
+DB_URL=jdbc:postgresql://localhost:5432/consultant
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_POOL_SIZE=32
+```
 
 ---
 
 ## ✨ Key Features
 
-✅ **Zero-configuration switching** - Same credentials for both  
-✅ **Automated backups** - One command backup  
-✅ **Health checks** - Verify database availability  
-✅ **Easy cleanup** - Complete removal without orphaned data  
-✅ **Cross-platform** - Works on Linux, Mac, Windows  
+✅ **Automatic migrations** - Flyway runs all migrations on startup
+✅ **Test data included** - Default test users created automatically
+✅ **Docker support** - Easy setup with docker-compose
+✅ **Local support** - Works with local PostgreSQL installation
+✅ **Health checks** - Database health monitored in Docker
 
 ---
 
@@ -159,36 +169,41 @@ No changes needed when switching between Docker and Local (same credentials!)
 
 ### "Connection refused"
 ```bash
-./scripts/db-manager.sh status
-# Check which database is actually running
+# Check if PostgreSQL is running
+docker ps | grep postgres
+# or
+sudo systemctl status postgresql
 ```
 
 ### "Port 5432 already in use"
 ```bash
-# Kill the process
-fuser -k 5432/tcp
+# Find process using port 5432
+lsof -i :5432
 
-# Or use different port
-# Edit docker-compose.yml or postgresql.conf
+# Kill the process
+kill -9 <PID>
 ```
 
 ### "Database consultant does not exist"
 ```bash
-# Create it (Docker)
-docker exec consultant-db-master psql -U consultant_user -c "CREATE DATABASE consultant WITH OWNER consultant_user;"
-
-# Or create it (Local)
-sudo -u postgres createdb -O consultant_user consultant
+# Create it
+PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE consultant;"
 ```
 
-### "Authentication failed for user"
+### "Authentication failed for user postgres"
 ```bash
-# Reset password (Docker)
-docker exec consultant-db-master psql -U consultant_user -d consultant
+# Check your .env file matches the actual password
+# Default: postgres / postgres
+```
 
-# Reset password (Local)  
-sudo -u postgres psql
-ALTER USER consultant_user WITH PASSWORD 'consultant_pass';
+### Migration errors
+```bash
+# Check migration status in database
+PGPASSWORD=postgres psql -h localhost -U postgres -d consultant -c "SELECT * FROM flyway_schema_history;"
+
+# To reset (DEVELOPMENT ONLY - deletes all data!)
+docker-compose down -v
+docker-compose up -d
 ```
 
 ---
@@ -196,7 +211,6 @@ ALTER USER consultant_user WITH PASSWORD 'consultant_pass';
 ## 📚 More Information
 
 - [DATABASE_CONFIG.md](DATABASE_CONFIG.md) - Full configuration guide
-- [README.md](README.md) - Project overview with HTTPS section
-- [HTTPS_QUICKSTART.md](HTTPS_QUICKSTART.md) - HTTPS setup guide  
-- [HTTPS_SETUP_STATUS.md](HTTPS_SETUP_STATUS.md) - HTTPS implementation details
-
+- [README.md](README.md) - Project overview
+- [HTTPS_QUICKSTART.md](HTTPS_QUICKSTART.md) - HTTPS setup guide
+- [TEST_CREDENTIALS.md](TEST_CREDENTIALS.md) - Default test users

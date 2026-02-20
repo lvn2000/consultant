@@ -7,10 +7,12 @@ This document contains the default test credentials loaded during database migra
 Before using these credentials, ensure the backend is configured with the correct database connection:
 
 ```bash
-# Database credentials in .env file:
-DB_USER=consultant
-DB_PASSWORD=bW1g55n9
-DB_URL=jdbc:postgresql://localhost:5432/consultant_db
+# Database credentials in .env file (from .env.example):
+DB_DRIVER=org.postgresql.Driver
+DB_URL=jdbc:postgresql://localhost:5432/consultant
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_POOL_SIZE=32
 ```
 
 ## Test Accounts
@@ -44,17 +46,18 @@ DB_URL=jdbc:postgresql://localhost:5432/consultant_db
 
 ## Database Migration
 
-These credentials are created by the database migration scripts:
+These credentials are created by the database migration script:
+
 ```
-V005__initial_test_data.sql
+V002__seed_data.sql
 ```
 
 The migration:
 1. Creates the admin, test user, and specialist user accounts
 2. Inserts bcrypt-hashed passwords into the credentials table
 3. Creates the specialist profile record
-4. Adds a connection type (WhatsApp) for the specialist
-5. Links the specialist to the first available category
+4. Adds connection types and specialist connections
+5. Creates categories and links the specialist to categories
 
 ## Password Hashes
 

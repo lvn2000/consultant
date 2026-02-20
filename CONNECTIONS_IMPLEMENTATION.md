@@ -6,7 +6,7 @@ Successfully implemented a one-to-many relationship between Specialists and Conn
 ## Files Created
 
 ### 1. Database Migration
-**File:** [data/src/main/resources/db/migration/V003__connection_types_tables.sql](data/src/main/resources/db/migration/V003__connection_types_tables.sql)
+**File:** [data/src/main/resources/db/migration/V001__baseline_schema.sql](data/src/main/resources/db/migration/V001__baseline_schema.sql)
 
 Creates two new tables:
 

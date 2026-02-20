@@ -168,7 +168,7 @@ Wait for the message:
 This single command automatically:
 - ✅ Loads environment variables
 - ✅ Starts PostgreSQL in Docker
-- ✅ Runs all 24 Flyway migrations
+- ✅ Runs all 2 Flyway migrations (V001, V002)
 - ✅ Seeds test data
 - ✅ Starts API server
 

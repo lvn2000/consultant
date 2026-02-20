@@ -41,7 +41,7 @@ calculateFreeSlots(dayStart: LocalTime, dayEnd: LocalTime,
 
 #### 3. **API Endpoints** (`api/routes/AvailabilitySlotRoutes.scala`)
 
-**GET /api/specialists/{specialistId}/available-slots**
+**GET /api/specialists/{specialistId}/availability/slots**
 - Query parameters:
   - `date` (required): YYYY-MM-DD format (e.g., "2026-02-10")
   - `durationMinutes` (optional): Minimum duration, defaults to 60
@@ -59,7 +59,7 @@ calculateFreeSlots(dayStart: LocalTime, dayEnd: LocalTime,
 }
 ```
 
-**POST /api/specialists/{specialistId}/check-availability**
+**POST /api/specialists/{specialistId}/availability/check**
 - Body:
 ```json
 {
@@ -85,7 +85,7 @@ CREATE TABLE specialist_availability (
 );
 ```
 
-#### 5. **Frontend Integration** (`client-app/pages/main.vue`)
+#### 5. **Frontend Integration** (`client-app/components/ConsultationsBookTab.vue`)
 The client-app consultation booking form now:
 1. **Auto-fetches available slots** when specialist and date are selected
 2. **Displays slot buttons** for easy selection
@@ -101,7 +101,7 @@ Client selects specialist
     ↓
 Client selects date
     ↓
-Frontend calls: GET /api/specialists/{id}/available-slots?date=...&durationMinutes=...
+Frontend calls: GET /api/specialists/{id}/availability/slots?date=...&durationMinutes=...
     ↓
 Backend calculates free slots (availability - booked consultations)
     ↓

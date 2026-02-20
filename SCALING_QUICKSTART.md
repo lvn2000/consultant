@@ -1,5 +1,17 @@
 # Scaling Components - Quick Start
 
+## ⚠️ Implementation Status
+
+**Most scaling components are currently stubs/not integrated:**
+- ❌ `RedisCacheService` - Returns `IO.pure(None)` for all operations (non-functional stub)
+- ❌ Components are NOT wired into `Server.scala`
+- ✅ `CircuitBreakerService` - Implemented but not integrated
+- ✅ `MetricsCollector` - Implemented but not integrated
+- ✅ `DatabasePoolConfig` - Functional
+- ✅ Docker/Kubernetes configs - Available but need Redis integration
+
+**These components require additional work before production use.**
+
 ## 🎯 What's Added
 
 ### 1. Redis Cache (RedisCacheService)

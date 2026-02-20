@@ -223,8 +223,8 @@ WHERE expires_at < NOW();
 ### Public (no authentication)
 
 ```
-POST /auth/register     - Registration (legacy)
-POST /auth/login        - Login (legacy)
+POST /api/auth/register     - Registration (legacy)
+POST /api/auth/login        - Login (legacy)
 POST /auth/refresh      - Token refresh (legacy)
 GET  /health           - Health check
 ```
@@ -244,7 +244,7 @@ POST /api/consultations - Create consultation (Client+)
 ### 1. Registration
 
 ```bash
-curl -X POST http://localhost/auth/register \
+curl -X POST http://localhost/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -269,7 +269,7 @@ curl -X POST http://localhost/auth/register \
 ### 2. Login
 
 ```bash
-curl -X POST http://localhost/auth/login \
+curl -X POST http://localhost/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",

@@ -1,5 +1,14 @@
 # Scaling the Consultant System
 
+## ⚠️ Implementation Status
+
+**Important:** Most scaling components described in this document are **stubs or not integrated**:
+- ❌ `RedisCacheService` - Non-functional stub (returns `IO.pure(None)` for all operations)
+- ❌ Components are NOT wired into `Server.scala`
+- ⚠️ Additional integration work required before production use
+
+This document describes the **planned architecture** and **implementation approach**.
+
 ## Architectural Approach
 
 The system is designed for **horizontal scaling** using stateless application instances.

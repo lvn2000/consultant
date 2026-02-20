@@ -67,7 +67,7 @@ const slotsError = ref('')             // Error message
 ```typescript
 // Auto-fetch available slots
 const loadAvailableSlots = async () {
-  // Calls: GET /api/specialists/{id}/available-slots?date=...&durationMinutes=...
+  // Calls: GET /api/specialists/{id}/availability/slots?date=...&durationMinutes=...
 }
 
 // Handle slot button click
@@ -126,7 +126,7 @@ watch([
 The client-app makes requests to:
 
 ```
-GET /api/specialists/{specialistId}/available-slots?date=2026-02-10&durationMinutes=60
+GET /api/specialists/{specialistId}/availability/slots?date=2026-02-10&durationMinutes=60
 
 Response:
 {
@@ -214,7 +214,7 @@ New CSS classes for slots display:
 ## File Changes
 
 **Modified Files:**
-- `client-app/pages/main.vue` - Main consultation page
+- `client-app/components/ConsultationsBookTab.vue` - Main consultation page
 
 **No new files created** - All changes integrated into existing component.
 
