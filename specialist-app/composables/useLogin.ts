@@ -1,4 +1,4 @@
-import { useRuntimeConfig, useFetch } from 'nuxt/app'
+import { useRuntimeConfig } from 'nuxt/app'
 
 interface LoginResponse {
   userId: string
@@ -47,8 +47,8 @@ export async function loginRequest(login: string, password: string): Promise<{ s
     }
 
     return { success: false, error: 'Invalid response' }
-  } catch (e: any) {
+  } catch (error: unknown) {
     console.error('Login error:', e)
-    return { success: false, error: e.data?.message || e.message || 'Login failed' }
+    return { success: false, error: error instanceof Error ? error.message : 'Login failed' }
   }
 }

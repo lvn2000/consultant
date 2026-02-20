@@ -5,20 +5,21 @@ export interface ModalOptions {
   defaultSize?: "sm" | "md" | "lg" | "xl";
 }
 
-export interface ModalResult {
+export interface ModalResult<T = unknown> {
   isOpen: Ref<boolean>;
-  open: (data?: any) => void;
+  open: (data?: T) => void;
   close: () => void;
   toggle: () => void;
-  modalData: Ref<any>;
+  modalData: Ref<T | null>;
 }
 
-export function useModal(options: ModalOptions = {}): ModalResult {
-  const { closeOnOverlay = true, defaultSize = "md" } = options;
+export function useModal<T = unknown>(
+  _options: ModalOptions = {},
+): ModalResult<T> {
   const isOpen = ref(false);
-  const modalData = ref<any>(null);
+  const modalData = ref<T | null>(null);
 
-  const open = (data?: any) => {
+  const open = (data?: T) => {
     modalData.value = data;
     isOpen.value = true;
   };

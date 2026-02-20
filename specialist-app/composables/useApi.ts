@@ -1,7 +1,7 @@
 import { $fetch as ofetch } from 'ofetch'
 
 export function useApi() {
-  async function $fetch<T>(url: string, options?: any): Promise<T> {
+  async function $fetch<T>(url: string, options?: Record<string, unknown>): Promise<T> {
     // Guard sessionStorage access behind process.client to prevent SSR errors
     // sessionStorage is only available in the browser, not on the server
     let token: string | null = null
@@ -25,9 +25,9 @@ export function useApi() {
         ...options,
         headers
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (process.dev) {
-        console.error(`[API Error] ${options?.method || 'GET'} ${url}:`, error?.message || error)
+        console.error(`[API Error] ${(options as Record<string, unknown>)?.method || 'GET'} ${url}:`, error instanceof Error ? error.message : error)
       }
       throw error
     }

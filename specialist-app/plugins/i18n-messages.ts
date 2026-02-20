@@ -15,7 +15,7 @@ export default defineNuxtPlugin({
   dependsOn: ['i18n:plugin'],
   enforce: 'pre',
   setup(nuxtApp) {
-    const i18n = nuxtApp.$i18n as any
+    const i18n = nuxtApp.$i18n as unknown as { locale: { value: string }; mergeLocaleMessage: (locale: string, messages: Record<string, unknown>) => void }
     if (i18n) {
       const messages: Record<string, Record<string, unknown>> = { en, ua, ru, es, fr, de }
       for (const [locale, msgs] of Object.entries(messages)) {

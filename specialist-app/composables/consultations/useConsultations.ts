@@ -4,69 +4,80 @@
  * along with state for loading, error, and paginated consultations.
  */
 
-import { ref, computed } from 'vue'
-import { useRuntimeConfig } from 'nuxt/app'
-import { useApi } from '../useApi'
+import { ref, computed } from "vue";
+import { useRuntimeConfig } from "nuxt/app";
+import { useApi } from "../useApi";
 
 export interface Consultation {
-  id: string
-  clientId: string
-  categoryId: string
-  scheduledAt: string
-  status: string
-  duration: number
-  description?: string
-  rating?: number
-  review?: string
+  id: string;
+  clientId: string;
+  categoryId: string;
+  scheduledAt: string;
+  status: string;
+  duration: number;
+  description?: string;
+  rating?: number;
+  review?: string;
 }
 
 export function useConsultations() {
-  const config = useRuntimeConfig()
-  const { $fetch } = useApi()
+  const config = useRuntimeConfig();
+  const { $fetch } = useApi();
 
-  const consultations = ref<Consultation[]>([])
-  const loading = ref(false)
-  const error = ref<string | null>(null)
-  const currentPage = ref(1)
-  const itemsPerPage = ref(10)
+  const consultations = ref<Consultation[]>([]);
+  const loading = ref(false);
+  const error = ref<string | null>(null);
+  const currentPage = ref(1);
+  const itemsPerPage = ref(10);
 
   /**
    * Loads consultations for the current specialist.
    */
   async function loadConsultations() {
-    loading.value = true
-    error.value = null
+    loading.value = true;
+    error.value = null;
     try {
-      const specialistId = sessionStorage.getItem('userId')
+      const specialistId = sessionStorage.getItem("userId");
       if (!specialistId) {
-        error.value = 'Specialist ID not found'
-        consultations.value = []
-        return
+        error.value = "Specialist ID not found";
+        consultations.value = [];
+        return;
       }
-      const data = await $fetch<Consultation[]>(`${config.public.apiBase}/consultations/specialist/${specialistId}`)
-      consultations.value = Array.isArray(data) ? data : []
-    } catch (e: any) {
-      error.value = e.data?.message || e.message || 'Failed to load consultations'
-      consultations.value = []
+      const data = await $fetch<Consultation[]>(
+        `${config.public.apiBase}/consultations/specialist/${specialistId}`,
+      );
+      consultations.value = Array.isArray(data) ? data : [];
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to load consultations";
+      error.value = message;
+      consultations.value = [];
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
 
   /**
    * Approves a consultation with a specified duration.
    */
-  async function approveConsultation(consultationId: string, duration: number): Promise<boolean> {
+  async function approveConsultation(
+    consultationId: string,
+    duration: number,
+  ): Promise<boolean> {
     try {
-      await $fetch(`${config.public.apiBase}/consultations/${consultationId}/approve`, {
-        method: 'POST',
-        body: { duration }
-      })
-      await loadConsultations()
-      return true
-    } catch (e: any) {
-      error.value = e.data?.message || e.message || 'Failed to approve consultation'
-      return false
+      await $fetch(
+        `${config.public.apiBase}/consultations/${consultationId}/approve`,
+        {
+          method: "POST",
+          body: { duration },
+        },
+      );
+      await loadConsultations();
+      return true;
+    } catch (error: unknown) {
+      error.value =
+        error instanceof Error ? error.message : "Failed to approve consultation";
+      return false;
     }
   }
 
@@ -75,14 +86,18 @@ export function useConsultations() {
    */
   async function declineConsultation(consultationId: string): Promise<boolean> {
     try {
-      await $fetch(`${config.public.apiBase}/consultations/${consultationId}/decline`, {
-        method: 'POST'
-      })
-      await loadConsultations()
-      return true
-    } catch (e: any) {
-      error.value = e.data?.message || e.message || 'Failed to decline consultation'
-      return false
+      await $fetch(
+        `${config.public.apiBase}/consultations/${consultationId}/decline`,
+        {
+          method: "POST",
+        },
+      );
+      await loadConsultations();
+      return true;
+    } catch (error: unknown) {
+      error.value =
+        error instanceof Error ? error.message : "Failed to decline consultation";
+      return false;
     }
   }
 
@@ -91,14 +106,18 @@ export function useConsultations() {
    */
   async function markAsMissed(consultationId: string): Promise<boolean> {
     try {
-      await $fetch(`${config.public.apiBase}/consultations/${consultationId}/missed`, {
-        method: 'POST'
-      })
-      await loadConsultations()
-      return true
-    } catch (e: any) {
-      error.value = e.data?.message || e.message || 'Failed to mark consultation as missed'
-      return false
+      await $fetch(
+        `${config.public.apiBase}/consultations/${consultationId}/missed`,
+        {
+          method: "POST",
+        },
+      );
+      await loadConsultations();
+      return true;
+    } catch (error: unknown) {
+      error.value =
+        error instanceof Error ? error.message : "Failed to mark consultation as missed";
+      return false;
     }
   }
 
@@ -106,30 +125,30 @@ export function useConsultations() {
    * Returns paginated consultations for the current page.
    */
   const paginatedConsultations = computed(() => {
-    const start = (currentPage.value - 1) * itemsPerPage.value
-    const end = start + itemsPerPage.value
-    return consultations.value.slice(start, end)
-  })
+    const start = (currentPage.value - 1) * itemsPerPage.value;
+    const end = start + itemsPerPage.value;
+    return consultations.value.slice(start, end);
+  });
 
   /**
    * Pagination info.
    */
   const pagination = computed(() => {
-    const total = consultations.value.length
-    const totalPages = Math.ceil(total / itemsPerPage.value)
+    const total = consultations.value.length;
+    const totalPages = Math.ceil(total / itemsPerPage.value);
     return {
       currentPage: currentPage.value,
       totalPages: totalPages || 1,
-      totalCount: total
-    }
-  })
+      totalCount: total,
+    };
+  });
 
   /**
    * Changes the current page.
    */
   function goToPage(page: number) {
     if (page >= 1 && page <= pagination.value.totalPages) {
-      currentPage.value = page
+      currentPage.value = page;
     }
   }
 
@@ -145,6 +164,6 @@ export function useConsultations() {
     markAsMissed,
     goToPage,
     itemsPerPage,
-    currentPage
-  }
+    currentPage,
+  };
 }

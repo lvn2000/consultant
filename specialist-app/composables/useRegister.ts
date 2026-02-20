@@ -62,10 +62,10 @@ export async function registerRequest(
     }
 
     return { success: false, error: 'Invalid response' }
-  } catch (e: any) {
+  } catch (error: unknown) {
     if (process.dev) console.error('Register error:', e)
     const msg =
-      e.data?.message || e.data?.error || e.message || 'Registration failed'
+      error instanceof Error ? error.message : 'Registration failed'
     return { success: false, error: msg }
   }
 }

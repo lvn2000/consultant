@@ -3,7 +3,7 @@ import { useApi } from "./useApi";
 
 export interface FetchOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
-  body?: any;
+  body?: Record<string, unknown>;
   headers?: Record<string, string>;
   requireAuth?: boolean;
 }
@@ -65,8 +65,8 @@ export function useFetchWithAuth<T>(
 
       data.value = result;
       return result;
-    } catch (e: any) {
-      error.value = e.data?.message || e.message || "An error occurred";
+    } catch (error: unknown) {
+      error.value = error instanceof Error ? error.message : "An error occurred";
       return null;
     } finally {
       loading.value = false;

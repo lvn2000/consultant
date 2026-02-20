@@ -35,7 +35,11 @@ export default [
       },
     },
     rules: {
-      // Add custom rules here
+      // Allow underscore-prefixed unused vars (e.g., _options)
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_" },
+      ],
     },
   },
   {
