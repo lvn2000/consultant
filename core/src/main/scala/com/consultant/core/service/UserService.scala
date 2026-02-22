@@ -17,40 +17,69 @@ class UserService(
 
   /**
    * Delete a user and cascade delete related data (sessions, notification preferences, refresh tokens, etc). Returns
-   * Left(DomainError) on error, Right(()) on success.
+   * Left(DomainError) on error, Right(()) on success. Cannot delete the last admin user.
    */
   def deleteUser(
     userId: UserId,
     refreshTokenRepo: Option[RefreshTokenRepository] = None,
     auditRepo: Option[SecurityAuditRepository] = None
   ): IO[Either[DomainError, Unit]] =
-    userRepo.findById(userId).flatMap {
-      case None    => IO.pure(Left(DomainError.UserNotFound(userId)))
-      case Some(_) =>
-        // Cascade delete: notification preferences, refresh tokens, sessions, then user
-        val deletePrefs = notificationPreferenceRepo match {
-          case Some(repo) => repo.deleteByUser(userId)
-          case None       => IO.unit
-        }
-        val deleteRefreshTokens = refreshTokenRepo match {
-          case Some(repo) => repo.deleteByUserId(userId).void
-          case None       => IO.unit
-        }
-        // Optionally: delete audit logs if needed (not implemented)
-        // val deleteAudit = auditRepo match {
-        //   case Some(repo) => repo.deleteByUser(userId)
-        //   case None => IO.unit
-        // }
-        // TODO: delete user sessions if needed (not implemented)
-        (for {
-          _ <- deletePrefs
-          _ <- deleteRefreshTokens
-          _ <- userRepo.delete(userId)
-        } yield ()).attempt.map {
-          case Right(_) => Right(())
-          case Left(e)  => Left(DomainError.DatabaseError(e.getMessage))
-        }
+    for
+      // Check if user exists and is admin
+      userOpt <- userRepo.findById(userId)
+      result <- userOpt match
+        case None       => IO.pure(Left(DomainError.UserNotFound(userId)))
+        case Some(user) =>
+          // Check if this is an admin user
+          if user.role == UserRole.Admin then
+            // Count total admins
+            userRepo.countAdmins().flatMap { adminCount =>
+              if adminCount <= 1 then
+                // Cannot delete the last admin
+                IO.pure(
+                  Left(DomainError.Forbidden("Cannot delete the last admin user. At least one admin must exist."))
+                )
+              else
+                // Safe to delete this admin
+                performDeleteUser(userId, refreshTokenRepo, auditRepo)
+            }
+          else
+            // Not an admin, safe to delete
+            performDeleteUser(userId, refreshTokenRepo, auditRepo)
+    yield result
+
+  private def performDeleteUser(
+    userId: UserId,
+    refreshTokenRepo: Option[RefreshTokenRepository],
+    auditRepo: Option[SecurityAuditRepository]
+  ): IO[Either[DomainError, Unit]] = {
+    // Cascade delete: notification preferences, refresh tokens, sessions, then user
+    val deletePrefs = notificationPreferenceRepo match {
+      case Some(repo) => repo.deleteByUser(userId)
+      case None       => IO.unit
     }
+    val deleteRefreshTokens = refreshTokenRepo match {
+      case Some(repo) => repo.deleteByUserId(userId).void
+      case None       => IO.unit
+    }
+    // Optionally: delete audit logs if needed (not implemented)
+    // val deleteAudit = auditRepo match {
+    //   case Some(repo) => repo.deleteByUser(userId)
+    //   case None => IO.unit
+    // }
+    // TODO: delete user sessions if needed (not implemented)
+    (for {
+      _ <- deletePrefs
+      _ <- deleteRefreshTokens
+      _ <- userRepo.delete(userId)
+    } yield ()).attempt.map {
+      case Right(_) => Right(())
+      case Left(e)  => Left(DomainError.DatabaseError(e.getMessage))
+    }
+  }
+
+  /** Get the count of admin users in the system */
+  def getAdminCount(): IO[Int] = userRepo.countAdmins()
 
   case class LoginResult(user: User, session: UserSession)
 

@@ -88,31 +88,89 @@ const {
 
 const availableSlots = slots;
 
+// Show all categories - backend validates if specialist offers this category
 const filteredCategories = computed(() => {
-    if (!form.value.specialistId) return categories.value;
-    // Optionally filter by specialist's categories if needed
     return categories.value;
 });
 
 function onSpecialistSelect(specialist) {
     form.value.specialistId = specialist.id;
-    loadCategories();
-    form.value.categoryId = "";
-    loadSlots(specialist.id, form.value.categoryId, form.value.scheduledDate);
+    form.value.categoryId = ""; // Reset category when specialist changes
+    form.value.scheduledTime = ""; // Reset slot when specialist changes
+    // Use today's date when specialist is selected
+    form.value.scheduledDate = new Date().toISOString().split("T")[0];
+
+    console.log("[ConsultationsBookTab] Specialist selected:", specialist.id);
+    // Don't load slots yet - wait for category selection
 }
 
 function onSlotSelect(slotId) {
     form.value.scheduledTime = slotId;
+    console.log("[ConsultationsBookTab] Slot selected:", {
+        date: form.value.scheduledDate,
+        time: slotId,
+    });
 }
 
+// Watch for category changes and load slots when both specialist and category are selected
+watch(
+    () => form.value.categoryId,
+    (newCategoryId) => {
+        if (form.value.specialistId && newCategoryId) {
+            console.log(
+                "[ConsultationsBookTab] Category selected, loading slots...",
+            );
+            loadSlots(
+                form.value.specialistId,
+                newCategoryId,
+                form.value.scheduledDate,
+            );
+        }
+    },
+);
+
 async function handleBookingSubmit(payload) {
+    console.log(
+        "[ConsultationsBookTab] handleBookingSubmit called with payload:",
+        payload,
+    );
+
     form.value.description = payload.description;
+
+    // Validate required fields
+    if (!form.value.specialistId) {
+        console.error("[ConsultationsBookTab] No specialist selected");
+        alert("Please select a specialist first");
+        return;
+    }
+    if (!form.value.categoryId) {
+        console.error("[ConsultationsBookTab] No category selected");
+        alert("Please select a category first");
+        return;
+    }
+    if (!form.value.scheduledTime) {
+        console.error("[ConsultationsBookTab] No time slot selected");
+        alert("Please select a time slot first");
+        return;
+    }
+
+    // Use today's date if not selected
+    const slotDate =
+        form.value.scheduledDate || new Date().toISOString().split("T")[0];
+
     const scheduledAt =
-        form.value.scheduledDate && form.value.scheduledTime
-            ? new Date(
-                  `${form.value.scheduledDate}T${form.value.scheduledTime}`,
-              ).toISOString()
+        slotDate && form.value.scheduledTime
+            ? new Date(`${slotDate}T${form.value.scheduledTime}`).toISOString()
             : null;
+
+    console.log("[ConsultationsBookTab] Booking params:", {
+        specialistId: form.value.specialistId,
+        categoryId: form.value.categoryId,
+        description: form.value.description,
+        scheduledAt,
+        scheduledDate: slotDate,
+        scheduledTime: form.value.scheduledTime,
+    });
 
     const bookingParams = {
         specialistId: form.value.specialistId,
@@ -132,24 +190,15 @@ async function handleBookingSubmit(payload) {
             scheduledDate: "",
             scheduledTime: "",
         };
+    } else {
+        console.error("[ConsultationsBookTab] Booking failed:", result.error);
+        alert("Booking failed: " + result.error);
     }
 }
 
 onMounted(() => {
     loadSpecialists();
     loadCategories();
-    watch(
-        [
-            () => form.value.specialistId,
-            () => form.value.categoryId,
-            () => form.value.scheduledDate,
-        ],
-        ([specialistId, categoryId, date]) => {
-            if (specialistId && date) {
-                loadSlots(specialistId, categoryId, date);
-            }
-        },
-    );
 });
 </script>
 

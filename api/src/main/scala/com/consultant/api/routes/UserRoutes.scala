@@ -145,6 +145,19 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
     IO.pure(Right("API is working!"))
   }
 
+  // Get admin count (separate path to avoid conflicts)
+  // Using empty string for path since Router provides the full path
+  val getAdminCountEndpoint = endpoint.get
+    .in("")
+    .out(jsonBody[AdminCountDto])
+    .errorOut(jsonBody[ErrorResponse])
+
+  val getAdminCount = getAdminCountEndpoint.serverLogic { _ =>
+    userService.getAdminCount().flatMap { count =>
+      IO.println(s"[ADMIN-COUNT] Count from DB: $count").as(Right(AdminCountDto(count)))
+    }
+  }
+
   // Delete user
   val deleteUserEndpoint = baseEndpoint.delete
     .in(path[UUID]("userId"))
@@ -158,6 +171,19 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
     }
   }
 
-  val endpoints = List(test, createUser, getUser, updateUser, listUsers, login, logout, deleteUser)
+  val endpoints = List(
+    test,
+    createUser,
+    getUser,
+    updateUser,
+    listUsers,
+    login,
+    logout,
+    getAdminCount,
+    deleteUser
+  )
 
   val routes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(endpoints)
+
+  // Exposed for separate routing
+  val getAdminCountRoute = Http4sServerInterpreter[IO]().toRoutes(List(getAdminCount))

@@ -54,3 +54,7 @@ case class UpdateUserDto(
   email: String,
   phone: Option[String]
 ) derives Codec.AsObject
+
+case class AdminCountDto(
+  count: Int
+) derives Codec.AsObject

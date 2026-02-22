@@ -63,8 +63,28 @@
 
         <LoadingState v-else :message="$t('rates.noRates')" />
 
-        <!-- Rate Form -->
-        <form ref="rateFormRef" class="form" @submit.prevent="saveRate">
+        <!-- Info message when all categories are already used -->
+        <div
+            v-if="
+                !editingRateId &&
+                availableCategories.length === 0 &&
+                categories.length > 0
+            "
+            class="info-message"
+        >
+            <span class="info-icon">ℹ️</span>
+            <p>
+                {{ $t("rates.allCategoriesUsed") }}
+            </p>
+        </div>
+
+        <!-- Rate Form - Only show when adding is possible OR when editing -->
+        <form
+            v-if="editingRateId || availableCategories.length > 0"
+            ref="rateFormRef"
+            class="form"
+            @submit.prevent="saveRate"
+        >
             <h3>
                 {{
                     editingRateId
@@ -73,22 +93,8 @@
                 }}
             </h3>
 
-            <!-- Show message when all categories are used -->
-            <div
-                v-if="
-                    !editingRateId &&
-                    availableCategories.length === 0 &&
-                    categories.length > 0
-                "
-                class="info-message"
-            >
-                <span class="info-icon">ℹ️</span>
-                <p>
-                    {{ $t("rates.allCategoriesUsed") }}
-                </p>
-            </div>
-
-            <FormGrid v-else>
+            <!-- Category selector - disabled when editing (shows current category) -->
+            <FormGrid>
                 <div class="form-field">
                     <label for="rate-category">{{
                         $t("rates.category")
@@ -117,10 +123,10 @@
                             {{ category.name }}
                         </option>
                     </select>
-                    <p v-if="isDuplicateCategory" class="form-error">
-                        {{ $t("rates.duplicateCategory") }}
-                    </p>
                 </div>
+                <p v-if="isDuplicateCategory" class="form-error">
+                    {{ $t("rates.duplicateCategory") }}
+                </p>
                 <FormField
                     :label="$t('rates.hourlyRateDollar')"
                     input-id="rate-hourly"
@@ -378,8 +384,22 @@ const saveRate = async () => {
             : t("rates.rateAdded");
         rateSuccess.value = true;
         console.log("Rate saved successfully");
-        cancelEditRate();
+
+        // Save current page before resetting form
+        const savedPage = currentRatePage.value;
+
+        // Reset form and exit edit mode after successful save
+        rateForm.value = {
+            categoryId: "",
+            hourlyRate: 0,
+            experienceYears: 0,
+        };
+        editingRateId.value = "";
+
         await loadRates();
+
+        // Restore the page we were on
+        currentRatePage.value = savedPage;
     } catch (error: any) {
         console.error("Error saving rate:", error);
         rateMessage.value = error.message || t("rates.failedToSave");

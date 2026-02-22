@@ -1061,7 +1061,12 @@ const addCategoryRate = () => {
     });
 };
 
-const removeCategoryRate = (index: number) => {
+const removeCategoryRate = async (index: number) => {
+    const confirmed = await confirmAction(
+        t("adminSpecialists.deleteCategory"),
+        t("adminSpecialists.removeCategoryRateConfirm"),
+    );
+    if (!confirmed) return;
     specialistForm.value.categoryRates.splice(index, 1);
 };
 
