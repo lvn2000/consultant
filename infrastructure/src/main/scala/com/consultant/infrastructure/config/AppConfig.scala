@@ -12,6 +12,7 @@ case class AppConfig(
   storage: StorageConfig,
   oidc: OidcConfig,
   jwt: JwtConfig,
+  security: SecurityConfig,
   legacyAuthEnabled: Boolean
 )
 
@@ -55,6 +56,11 @@ case class JwtConfig(
   issuer: String,
   accessTtl: FiniteDuration,
   refreshTtl: FiniteDuration
+)
+
+case class SecurityConfig(
+  maxFailedLoginAttempts: Int,
+  accountLockDuration: FiniteDuration
 )
 
 object AppConfig:
@@ -155,7 +161,7 @@ object AppConfig:
     }
 
     val jwtConfig = (
-      env("JWT_SECRET").as[String], // Required: no default for security-critical keys
+      env("JWT_SECRET").as[String],
       env("JWT_ISSUER").as[String].default("consultant-api"),
       env("JWT_ACCESS_TTL").as[String].default("15m"),
       env("JWT_REFRESH_TTL").as[String].default("7d")
@@ -171,18 +177,31 @@ object AppConfig:
       )
     }
 
+    val securityConfig = (
+      env("SECURITY_MAX_FAILED_LOGIN_ATTEMPTS").as[Int].default(5),
+      env("SECURITY_ACCOUNT_LOCK_DURATION").as[String].default("15m")
+    ).parMapN { (maxAttempts, lockDuration) =>
+      val lockDur = parseDuration(lockDuration, "SECURITY_ACCOUNT_LOCK_DURATION")
+      SecurityConfig(
+        maxFailedLoginAttempts = maxAttempts,
+        accountLockDuration = lockDur
+      )
+    }
+
     val legacyAuthEnabled = env("LEGACY_AUTH_ENABLED").as[Boolean].default(true)
 
-    (baseConfig, oidcConfig, jwtConfig, legacyAuthEnabled).parMapN { (base, oidc, jwt, legacy) =>
-      AppConfig(
-        base.server,
-        base.database,
-        base.aws,
-        base.storage,
-        oidc,
-        jwt,
-        legacyAuthEnabled = legacy
-      )
+    (baseConfig, oidcConfig, jwtConfig, securityConfig, legacyAuthEnabled).parMapN {
+      (base, oidc, jwt, security, legacy) =>
+        AppConfig(
+          base.server,
+          base.database,
+          base.aws,
+          base.storage,
+          oidc,
+          jwt,
+          security,
+          legacyAuthEnabled = legacy
+        )
     }.load[IO]
 
   private def parseDuration(value: String, name: String): FiniteDuration =

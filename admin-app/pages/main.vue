@@ -13,6 +13,12 @@
                     {{ $t("admin.menu.createAccounts") }}
                 </li>
                 <li
+                    :class="{ active: selectedMenu === 'admins' }"
+                    @click="selectMenu('admins')"
+                >
+                    {{ $t("admin.menu.admins") }}
+                </li>
+                <li
                     :class="{ active: selectedMenu === 'specialists' }"
                     @click="selectMenu('specialists')"
                 >
@@ -230,6 +236,9 @@
                 </form>
             </section>
 
+            <!-- Administrators Section Component -->
+            <AdminsSection :visible="selectedMenu === 'admins'" />
+
             <!-- Specialists Section Component -->
             <SpecialistsSection :visible="selectedMenu === 'specialists'" />
 
@@ -279,6 +288,7 @@ const { $fetch } = useApi();
 
 type MenuKey =
     | "accounts"
+    | "admins"
     | "specialists"
     | "clients"
     | "connections"

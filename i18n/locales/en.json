@@ -136,6 +136,7 @@
       "title": "Admin Menu",
       "specialists": "Specialists",
       "clients": "Clients",
+      "admins": "Administrators",
       "connectionTypes": "Type Connections",
       "categories": "Categories",
       "createAccounts": "Create Accounts"
@@ -215,7 +216,12 @@
     "failedToUpdate": "Failed to update profile",
     "accountRemoved": "Account removed successfully",
     "failedToRemove": "Failed to remove account",
-    "accountDeletionNotAvailable": "Account deletion not yet available. API endpoint needs to be implemented."
+    "accountDeletionNotAvailable": "Account deletion not yet available.",
+    "warningTitle": "Important Warning",
+    "warningDataLoss": "All your personal data will be permanently deleted",
+    "warningConsultations": "All scheduled and past consultations will be lost",
+    "warningConnections": "All your connections will be removed",
+    "warningIrreversible": "This action is irreversible - you cannot recover your account"
   },
   "connections": {
     "title": "My Connections",
@@ -357,6 +363,7 @@
     "addSlotButton": "Add Slot",
     "updated": "Availability updated successfully",
     "added": "Availability added successfully",
+    "duplicateSlot": "This time slot already exists for the selected day",
     "failedToSave": "Failed to save availability",
     "confirmDelete": "Are you sure you want to delete this time slot?",
     "failedToDelete": "Failed to delete availability",
@@ -450,6 +457,22 @@
     "failedToDelete": "Failed to delete client",
     "failedToLoad": "Failed to load clients"
   },
+  "adminAdmins": {
+    "title": "Administrators",
+    "searchPlaceholder": "Search by name, email, or login...",
+    "loading": "Loading administrators...",
+    "adminDetails": "Administrator Details",
+    "namePlaceholder": "Admin Name",
+    "emailPlaceholder": "admin{'@'}example.com",
+    "deleteAdmin": "Delete Admin",
+    "deleteConfirm": "Are you sure you want to delete administrator {name}? This action cannot be undone.",
+    "deleteSelfConfirm": "You are trying to delete your own admin account. After deletion, your session will be closed and you will be logged out. Are you sure you want to continue?",
+    "deletingSelfWarning": "You are trying to delete your current session. After deletion, this session will be closed and you will be logged out.",
+    "cannotDeleteLast": "Cannot delete the last admin user. At least one admin must exist.",
+    "deleted": "Administrator deleted successfully!",
+    "failedToDelete": "Failed to delete administrator",
+    "failedToLoad": "Failed to load administrators"
+  },
   "adminConnectionTypes": {
     "title": "Type Connections",
     "loading": "Loading connection types...",
@@ -501,6 +524,7 @@
     "addSpecialistConfirm": "Add this specialist?",
     "updateSpecialistConfirm": "Update this specialist?",
     "deleteSpecialistConfirm": "Delete this specialist?",
+    "removeCategoryRateConfirm": "Remove this category rate?",
     "addConnectionConfirm": "Add this connection?",
     "updateConnectionConfirm": "Update this connection?",
     "deleteConnectionConfirm": "Delete this connection?",

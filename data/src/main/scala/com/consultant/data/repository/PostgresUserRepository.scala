@@ -212,14 +212,19 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
   private def deleteUserLanguages(userId: UUID): ConnectionIO[Unit] =
     sql"DELETE FROM user_languages WHERE user_id = $userId".update.run.void
 
-  // (Removed duplicate/broken findById)
-  // (Removed duplicate/broken findByEmail)
-  // (Removed duplicate/broken update)
   override def delete(id: UserId): IO[Unit] =
     sql"DELETE FROM users WHERE id = $id".update.run
       .transact(xa)
       .void
 
+  override def countAdmins(): IO[Int] =
+    sql"SELECT COUNT(*) FROM users WHERE UPPER(role) = ${UserRole.Admin.toString.toUpperCase}"
+      .query[Int]
+      .unique
+      .transact(xa)
+  // (Removed duplicate/broken findById)
+  // (Removed duplicate/broken findByEmail)
+  // (Removed duplicate/broken update)
   // (Removed duplicate/broken list)
   // TODO: Reimplement login method to match new User mapping if needed.
 // End of file

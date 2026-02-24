@@ -320,16 +320,35 @@ const saveAvailability = async () => {
         }
 
         availabilitySuccess.value = true;
+
+        // Only auto-clear on success, not on error
         setTimeout(() => {
-            cancelEditAvailability();
-            loadAvailability();
+            if (availabilitySuccess.value) {
+                cancelEditAvailability();
+                loadAvailability();
+            }
         }, 1500);
     } catch (error: any) {
-        availabilityMessage.value =
-            error.data?.message ||
-            error.message ||
-            t("availability.failedToSave");
+        console.error("Error saving availability:", error);
+        console.log("Error data:", error.data);
+        console.log("Error message:", error.message);
+
+        const errorMsg = error.data?.message || error.message || "";
+
+        // Check for duplicate slot error (database constraint violation)
+        if (
+            errorMsg.includes("already exists") ||
+            errorMsg.includes("duplicate") ||
+            errorMsg.includes("unique constraint") ||
+            errorMsg.includes("Failed to create availability")
+        ) {
+            availabilityMessage.value = t("availability.duplicateSlot");
+        } else {
+            availabilityMessage.value =
+                errorMsg || t("availability.failedToSave");
+        }
         availabilitySuccess.value = false;
+        // Don't auto-clear error messages - let user read them
     } finally {
         availabilitySaving.value = false;
     }

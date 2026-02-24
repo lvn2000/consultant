@@ -87,6 +87,11 @@ object Server extends IOApp:
           "/api/notification-preferences" -> notificationPreferenceRoutes.routes
         )
 
+        // Separate admin-count endpoint to avoid path conflicts with UUID paths
+        val adminCountRoutes = Router(
+          "/api/admin-count" -> userRoutes.getAdminCountRoute
+        )
+
         // swaggerRoutes already serve under /docs by default; do not double-prefix in Router
         // Mount everything at root to avoid pathInfo mismatches that lead to 404s
         val isPublic: Request[IO] => Boolean = { req =>
@@ -135,8 +140,9 @@ object Server extends IOApp:
         // - healthHttpRoutes: serves /health endpoint (public, no auth required)
         // - swaggerRoutes: serves /docs/* (public Swagger UI)
         // - protectedApiRoutes: serves /api/* endpoints (auth required, with public exceptions)
+        // - adminCountRoutes: serves /api/admin-count (auth required)
         val routes = Router(
-          "/" -> (preflightHandler <+> rootRedirect <+> healthHttpRoutes <+> swaggerRoutes <+> protectedApiRoutes)
+          "/" -> (preflightHandler <+> rootRedirect <+> healthHttpRoutes <+> swaggerRoutes <+> protectedApiRoutes <+> adminCountRoutes)
         ).orNotFound
 
         val corsRoutes = CORS.policy.withAllowOriginAll
@@ -243,6 +249,7 @@ object Server extends IOApp:
 
       // Services
       authService = AuthenticationService(
+        config,
         userRepo,
         specialistRepo,
         credentialsRepo,

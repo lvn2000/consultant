@@ -12,6 +12,7 @@ import com.consultant.core.ports.{
   SpecialistRepository,
   UserRepository
 }
+import com.consultant.infrastructure.config.AppConfig
 import java.util.UUID
 import java.time.Instant
 import org.mindrot.jbcrypt.BCrypt
@@ -49,6 +50,7 @@ object AuthenticationService:
 
 /** Authentication and authorization service */
 class AuthenticationService(
+  config: AppConfig,
   userRepository: UserRepository,
   specialistRepository: SpecialistRepository,
   credentialsRepository: CredentialsRepository,
@@ -58,8 +60,8 @@ class AuthenticationService(
   jwtService: JwtTokenService
 ):
 
-  private val maxFailedAttempts = 5
-  private val lockDuration      = 15.minutes
+  private val maxFailedAttempts = config.security.maxFailedLoginAttempts
+  private val lockDuration      = config.security.accountLockDuration
 
   private def verifyPassword(password: String, hash: String, salt: String): IO[Boolean] =
     if hash.startsWith("$2a$") || hash.startsWith("$2b$") || hash.startsWith("$2y$") then

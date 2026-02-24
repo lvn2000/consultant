@@ -215,7 +215,12 @@
     "failedToUpdate": "Не удалось обновить профиль",
     "accountRemoved": "Аккаунт успешно удалён",
     "failedToRemove": "Не удалось удалить аккаунт",
-    "accountDeletionNotAvailable": "Удаление аккаунта пока недоступно. Необходимо реализовать API."
+    "accountDeletionNotAvailable": "Удаление аккаунта пока недоступно.",
+    "warningTitle": "Важное предупреждение",
+    "warningDataLoss": "Все ваши персональные данные будут безвозвратно удалены",
+    "warningConsultations": "Все запланированные и прошлые консультации будут потеряны",
+    "warningConnections": "Все ваши подключения будут удалены",
+    "warningIrreversible": "Это действие необратимо - вы не сможете восстановить аккаунт"
   },
   "connections": {
     "title": "Мои подключения",
@@ -357,6 +362,7 @@
     "addSlotButton": "Добавить слот",
     "updated": "Доступность успешно обновлена",
     "added": "Доступность успешно добавлена",
+    "duplicateSlot": "Этот временной слот уже существует для выбранного дня",
     "failedToSave": "Не удалось сохранить доступность",
     "confirmDelete": "Вы уверены, что хотите удалить этот временной слот?",
     "failedToDelete": "Не удалось удалить доступность",
@@ -501,6 +507,7 @@
     "addSpecialistConfirm": "Добавить этого специалиста?",
     "updateSpecialistConfirm": "Обновить этого специалиста?",
     "deleteSpecialistConfirm": "Удалить этого специалиста?",
+    "removeCategoryRateConfirm": "Удалить этот тариф по категории?",
     "addConnectionConfirm": "Добавить это подключение?",
     "updateConnectionConfirm": "Обновить это подключение?",
     "deleteConnectionConfirm": "Удалить это подключение?",
