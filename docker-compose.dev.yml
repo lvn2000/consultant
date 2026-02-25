@@ -58,9 +58,9 @@ services:
       NODE_ENV: development
       NUXT_PUBLIC_API_BASE: http://localhost:8090/api
       NUXT_HOST: 0.0.0.0
-      NUXT_PORT: 3000
+      NUXT_PORT: 3001
     ports:
-      - "3001:3000"
+      - "3001:3001"
     volumes:
       - ./client-app:/app:cached
       - ./i18n:/app/i18n:cached
@@ -81,9 +81,9 @@ services:
       NODE_ENV: development
       NUXT_PUBLIC_API_BASE: http://localhost:8090/api
       NUXT_HOST: 0.0.0.0
-      NUXT_PORT: 3000
+      NUXT_PORT: 3003
     ports:
-      - "3002:3000"
+      - "3002:3003"
     volumes:
       - ./specialist-app:/app:cached
       - ./i18n:/app/i18n:cached

@@ -157,8 +157,11 @@ docker compose -f docker-compose.app.yml build
 
 ### Start Services
 
+> **Important:** Always use **both** compose files together. The base file (`docker-compose.app.yml`) contains service definitions, while the overlay files (`docker-compose.dev.yml` or `docker-compose.prod.yml`) provide environment-specific configuration.
+
 ```bash
 # Development mode (no nginx)
+# MUST use both files: base + dev
 docker compose -f docker-compose.app.yml -f docker-compose.dev.yml up
 
 # Production mode with nginx (detached)
@@ -168,7 +171,7 @@ docker compose -f docker-compose.app.yml -f docker-compose.prod.yml --profile pr
 docker compose -f docker-compose.app.yml -f docker-compose.prod.yml up -d
 
 # Specific service only
-docker compose -f docker-compose.app.yml up -d backend
+docker compose -f docker-compose.app.yml -f docker-compose.dev.yml up -d backend
 ```
 
 > **Note:** Nginx is disabled by default in development mode. It only starts when using the `--profile production` flag. This prevents port 80 conflicts during local development.
@@ -184,6 +187,27 @@ docker compose -f docker-compose.app.yml -f docker-compose.dev.yml down -v
 
 # Stop specific service
 docker compose -f docker-compose.app.yml stop backend
+```
+
+### Restart Services
+
+```bash
+# Restart all services (fast - keeps containers)
+docker compose -f docker-compose.app.yml -f docker-compose.dev.yml restart
+
+# Full restart (recreates containers)
+docker compose -f docker-compose.app.yml -f docker-compose.dev.yml down
+docker compose -f docker-compose.app.yml -f docker-compose.dev.yml up -d
+
+# Or as one-liner
+docker compose -f docker-compose.app.yml -f docker-compose.dev.yml down && docker compose -f docker-compose.app.yml -f docker-compose.dev.yml up -d
+
+# Restart specific service only
+docker compose -f docker-compose.app.yml restart backend
+docker compose -f docker-compose.app.yml restart postgres
+
+# Force recreate all containers
+docker compose -f docker-compose.app.yml -f docker-compose.dev.yml up -d --force-recreate
 ```
 
 ### View Logs
@@ -222,7 +246,26 @@ docker compose -f docker-compose.app.yml ps
 
 # Detailed info
 docker inspect consultant-backend
+
+# Check service health
+docker compose -f docker-compose.app.yml ps --format json
 ```
+
+### Quick Reference Table
+
+| Action | Command |
+|--------|---------|
+| Start all (dev) | `docker compose -f docker-compose.app.yml -f docker-compose.dev.yml up -d` |
+| Start all (prod) | `docker compose -f docker-compose.app.yml -f docker-compose.prod.yml --profile production up -d` |
+| Stop all | `docker compose -f docker-compose.app.yml -f docker-compose.dev.yml down` |
+| Restart all | `docker compose -f docker-compose.app.yml -f docker-compose.dev.yml restart` |
+| Full restart | `docker compose -f docker-compose.app.yml -f docker-compose.dev.yml down && docker compose -f docker-compose.app.yml -f docker-compose.dev.yml up -d` |
+| Restart one | `docker compose -f docker-compose.app.yml -f docker-compose.dev.yml restart <service>` |
+| View logs | `docker compose -f docker-compose.app.yml -f docker-compose.dev.yml logs -f` |
+| Check status | `docker compose -f docker-compose.app.yml -f docker-compose.dev.yml ps` |
+| Rebuild | `docker compose -f docker-compose.app.yml -f docker-compose.dev.yml up --build` |
+
+> **Note:** Always include both `-f docker-compose.app.yml` (base) and `-f docker-compose.dev.yml` (overlay) for development, or `-f docker-compose.prod.yml` for production.
 
 ## 🗂️ Nginx Configuration (Optional)
 

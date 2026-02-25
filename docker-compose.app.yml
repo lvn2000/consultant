@@ -17,7 +17,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./data/src/main/resources/db/migration:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U consultant_user"]
+      test: ["CMD-SHELL", "pg_isready -U consultant_user -d consultant"]
       interval: 10s
       timeout: 5s
       retries: 5
