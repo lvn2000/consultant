@@ -1,0 +1,98 @@
+# Development overrides
+# Usage: docker compose -f docker-compose.app.yml -f docker-compose.dev.yml up
+
+services:
+  # Backend with debug port and local code mounting
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      # Enable development mode
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8090
+      # Database (use Docker service name)
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: consultant
+      DB_USER: consultant_user
+      DB_PASSWORD: consultant_pass
+      DB_URL: jdbc:postgresql://postgres:5432/consultant
+      # Allow CORS for local frontend development
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003"
+    ports:
+      - "8090:8090"
+
+  # Admin App - Development mode with hot reload
+  admin-app:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+      target: builder
+      args:
+        APP_DIR: admin-app
+    environment:
+      NODE_ENV: development
+      NUXT_PUBLIC_API_BASE: http://localhost:8090/api
+      NUXT_HOST: 0.0.0.0
+      NUXT_PORT: 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./admin-app:/app:cached
+      - ./i18n:/app/i18n:cached
+      - /app/node_modules
+      - /app/.nuxt
+      - /app/.output
+    command: npm run dev
+
+  # Client App - Development mode with hot reload
+  client-app:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+      target: builder
+      args:
+        APP_DIR: client-app
+    environment:
+      NODE_ENV: development
+      NUXT_PUBLIC_API_BASE: http://localhost:8090/api
+      NUXT_HOST: 0.0.0.0
+      NUXT_PORT: 3000
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./client-app:/app:cached
+      - ./i18n:/app/i18n:cached
+      - /app/node_modules
+      - /app/.nuxt
+      - /app/.output
+    command: npm run dev
+
+  # Specialist App - Development mode with hot reload
+  specialist-app:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+      target: builder
+      args:
+        APP_DIR: specialist-app
+    environment:
+      NODE_ENV: development
+      NUXT_PUBLIC_API_BASE: http://localhost:8090/api
+      NUXT_HOST: 0.0.0.0
+      NUXT_PORT: 3000
+    ports:
+      - "3002:3000"
+    volumes:
+      - ./specialist-app:/app:cached
+      - ./i18n:/app/i18n:cached
+      - /app/node_modules
+      - /app/.nuxt
+      - /app/.output
+    command: npm run dev
+
+  # Nginx disabled in dev mode (access apps directly)
+  nginx:
+    profiles:
+      - disabled

@@ -61,14 +61,14 @@ object Server extends IOApp:
           NotificationPreferenceRoutes(notificationPreferenceRepository)
         val healthRoutes = HealthRoutes()
 
-        // Swagger documentation - include all endpoints
-        val allEndpoints = authRoutes.endpoints ++ userRoutes.endpoints ++ specialistRoutes.endpoints ++
-          consultationRoutes.endpoints ++ categoryRoutes.endpoints ++ connectionRoutes.endpoints ++
-          availabilityRoutes.endpoints ++ notificationPreferenceRoutes.endpoints
-
-        val docEndpoints = SwaggerInterpreter()
-          .fromServerEndpoints(allEndpoints, "Consultant API", "1.0.0")
-        val swaggerRoutes    = Http4sServerInterpreter[IO]().toRoutes(docEndpoints)
+        // Swagger documentation - TEMPORARILY DISABLED FOR DOCKER BUILD
+        // val allEndpoints = authRoutes.endpoints ++ userRoutes.endpoints ++ specialistRoutes.endpoints ++
+        //   consultationRoutes.endpoints ++ categoryRoutes.endpoints ++ connectionRoutes.endpoints ++
+        //   availabilityRoutes.endpoints ++ notificationPreferenceRoutes.endpoints
+        // val docEndpoints = SwaggerInterpreter()
+        //   .fromServerEndpoints(allEndpoints, "Consultant API", "1.0.0")
+        // val swaggerRoutes    = Http4sServerInterpreter[IO]().toRoutes(docEndpoints)
+        val swaggerRoutes    = HttpRoutes.empty[IO] // Temporary placeholder
         val healthHttpRoutes = Http4sServerInterpreter[IO]().toRoutes(healthRoutes.routes)
 
         val rootRedirect: HttpRoutes[IO] = HttpRoutes.of[IO] {
@@ -178,8 +178,7 @@ object Server extends IOApp:
           .use { _ =>
             // Keep startup logs concise to avoid noisy console output
             IO.println(
-              s"Server up at http://${config.server.host}:${config.server.port} | Swagger: /docs | " +
-                s"Total endpoints: ${allEndpoints.size}"
+              s"Server up at http://${config.server.host}:${config.server.port} | Swagger: /docs (temporarily disabled)"
             ) >> IO.never
           }
           .as(ExitCode.Success)
@@ -224,6 +223,7 @@ object Server extends IOApp:
           .dataSource(dbConfig.url, dbConfig.user, dbConfig.password)
           .locations("classpath:db/migration")
           .cleanDisabled(true)
+          .baselineOnMigrate(true)
           .load()
         flyway.migrate()
       })
