@@ -36,7 +36,7 @@ lazy val commonSettings = Seq(
     "org.typelevel" %% "cats-core"   % catsVersion,
     "org.typelevel" %% "cats-effect" % catsEffectVersion,
     "org.scalatest" %% "scalatest"   % "3.2.17" % Test,
-    "org.scalamock" %% "scalamock"   % "7.5.4" % Test
+    "org.scalamock" %% "scalamock"   % "7.5.4"  % Test
   )
 )
 
@@ -70,11 +70,11 @@ lazy val data = (project in file("data"))
       "io.circe"     %% "circe-generic"    % circeVersion,
       "io.circe"     %% "circe-parser"     % circeVersion,
       "org.tpolecat" %% "doobie-scalatest" % doobieVersion % Test,
-      "org.flywaydb" % "flyway-core" % "9.22.3"
+      "org.flywaydb"  % "flyway-core"      % "9.22.3"
     ),
-    flywayUrl := sys.env.getOrElse("DB_URL", "jdbc:postgresql://localhost:5432/consultant"),
-    flywayUser := sys.env.getOrElse("DB_USER", "consultant_user"),
-    flywayPassword := sys.env.getOrElse("DB_PASSWORD", "consultant_pass"),
+    flywayUrl       := sys.env.getOrElse("DB_URL", "jdbc:postgresql://localhost:5432/consultant"),
+    flywayUser      := sys.env.getOrElse("DB_USER", "consultant_user"),
+    flywayPassword  := sys.env.getOrElse("DB_PASSWORD", "consultant_pass"),
     flywayLocations := Seq("filesystem:data/src/main/resources/db/migration")
   )
   .dependsOn(core)
@@ -118,11 +118,11 @@ lazy val infrastructure = (project in file("infrastructure"))
 lazy val api = (project in file("api"))
   .settings(commonSettings)
   .settings(
-    name := "api",
+    name                 := "api",
     Compile / run / fork := true,
     Compile / run / envVars := Map(
-      "DB_URL" -> "jdbc:postgresql://localhost:5432/consultant",
-      "DB_USER" -> "consultant_user",
+      "DB_URL"      -> "jdbc:postgresql://localhost:5432/consultant",
+      "DB_USER"     -> "consultant_user",
       "DB_PASSWORD" -> "consultant_pass"
     ),
     libraryDependencies ++= Seq(
@@ -139,20 +139,26 @@ lazy val api = (project in file("api"))
       "io.circe"                    %% "circe-parser"            % circeVersion,
       "ch.qos.logback"               % "logback-classic"         % logbackVersion,
       // Configuration management
-      "is.cir" %% "ciris" % cirisVersion
+      "is.cir" %% "ciris" % cirisVersion,
+      // PostgreSQL driver for Flyway runtime
+      "org.postgresql" % "postgresql" % "42.7.3"
     ),
     // Assembly settings for Docker
     assembly / assemblyJarName := "consultant-api.jar",
     assembly / mainClass       := Some("com.consultant.api.Server"),
     assembly / assemblyMergeStrategy := {
+      // Keep Swagger UI webjars resources - critical for SwaggerUI to work!
+      case PathList("META-INF", "resources", "webjars", _*) => MergeStrategy.first
+      case PathList("META-INF", "resources", _*)            => MergeStrategy.first
+      case PathList("META-INF", "services", _*)             => MergeStrategy.concat // Service loaders (JDBC, etc.)
       case PathList("META-INF", "versions", "9", "module-info.class") => MergeStrategy.discard
-      case PathList("META-INF", "MANIFEST.MF")                        => MergeStrategy.discard  // Recreate manifest
+      case PathList("META-INF", "MANIFEST.MF")                        => MergeStrategy.discard
       case PathList("META-INF", xs @ _*) =>
         xs.map(_.toLowerCase) match {
           case "index.list" :: Nil | "dependencies" :: Nil => MergeStrategy.discard
           // Discard all signature files that conflict when merging signed JARs
           case s if s.endsWith(".sf") || s.endsWith(".rsa") || s.endsWith(".dsa") => MergeStrategy.discard
-          case _                                                                  => MergeStrategy.discard  // Discard other META-INF files by default
+          case _                                                                  => MergeStrategy.discard
         }
       case "module-info.class"       => MergeStrategy.discard
       case "application.conf"        => MergeStrategy.concat
@@ -160,6 +166,6 @@ lazy val api = (project in file("api"))
       case x =>
         val oldStrategy = (assembly / assemblyMergeStrategy).value
         oldStrategy(x)
-    },
+    }
   )
   .dependsOn(core, data, infrastructure)

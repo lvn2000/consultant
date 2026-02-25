@@ -1,0 +1,36 @@
+# Backend target directories
+target/
+out/
+
+# Frontend node_modules and build outputs
+admin-app/node_modules
+admin-app/.nuxt
+admin-app/.output
+client-app/node_modules
+client-app/.nuxt
+client-app/.output
+specialist-app/node_modules
+specialist-app/.nuxt
+specialist-app/.output
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+
+# Docker (avoid recursive copy)
+frontend.Dockerfile
+docker-compose*.yml
+
+# Documentation
+*.md
+!README.md
+DOCKER_DEPLOYMENT.md
