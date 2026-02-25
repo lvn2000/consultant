@@ -147,21 +147,18 @@ lazy val api = (project in file("api"))
     assembly / assemblyJarName := "consultant-api.jar",
     assembly / mainClass       := Some("com.consultant.api.Server"),
     assembly / assemblyMergeStrategy := {
-      // Keep Swagger UI webjars resources - must come first!
-      case PathList("META-INF", "resources", "webjars", _*)           => MergeStrategy.first
-      case PathList("META-INF", "resources", _*)                      => MergeStrategy.first
+      // Keep Swagger UI webjars resources - critical for SwaggerUI to work!
+      case PathList("META-INF", "resources", "webjars", _*) => MergeStrategy.first
+      case PathList("META-INF", "resources", _*)            => MergeStrategy.first
+      case PathList("META-INF", "services", _*)             => MergeStrategy.concat // Service loaders (JDBC, etc.)
       case PathList("META-INF", "versions", "9", "module-info.class") => MergeStrategy.discard
-      case PathList("META-INF", "MANIFEST.MF")                        => MergeStrategy.discard // Recreate manifest
+      case PathList("META-INF", "MANIFEST.MF")                        => MergeStrategy.discard
       case PathList("META-INF", xs @ _*) =>
         xs.map(_.toLowerCase) match {
           case "index.list" :: Nil | "dependencies" :: Nil => MergeStrategy.discard
-          // Keep service loader files (needed for JDBC drivers, etc.)
-          case "services" :: rest => MergeStrategy.concat
           // Discard all signature files that conflict when merging signed JARs
           case s if s.endsWith(".sf") || s.endsWith(".rsa") || s.endsWith(".dsa") => MergeStrategy.discard
-          // Keep Swagger UI resources
-          case "resources" :: rest => MergeStrategy.first
-          case _                   => MergeStrategy.discard // Discard other META-INF files by default
+          case _                                                                  => MergeStrategy.discard
         }
       case "module-info.class"       => MergeStrategy.discard
       case "application.conf"        => MergeStrategy.concat

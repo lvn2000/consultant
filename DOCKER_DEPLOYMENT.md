@@ -62,7 +62,34 @@ docker compose -f docker-compose.app.yml -f docker-compose.dev.yml up
 - Client App: http://localhost:3001
 - Specialist App: http://localhost:3002
 
-> **Note:** SwaggerUI is temporarily disabled in the Docker build due to webjars resource merging issues in sbt-assembly. To re-enable, uncomment the code in `api/src/main/scala/com/consultant/api/Server.scala` and update the merge strategy in `build.sbt`.
+> **Note:** SwaggerUI is disabled in the Docker build due to a known issue with sbt-assembly merging webjars resources. The API endpoints are still fully functional - only the interactive documentation at `/docs` is unavailable.
+>
+> **Workarounds to enable SwaggerUI:**
+>
+> 1. **Run locally with ./run.sh** (recommended for development):
+>    ```bash
+>    cd /home/lvn/prg/scala/Consultant/backend
+>    ./run.sh
+>    ```
+>    This script will:
+>    - Stop any existing backend process
+>    - Start PostgreSQL in Docker (if not running)
+>    - Load environment variables from `.env`
+>    - Start the API server with SwaggerUI enabled
+>    
+>    **Access at:** http://localhost:8090/docs
+>
+> 2. **Run locally with Docker** (SwaggerUI disabled):
+>    ```bash
+>    docker compose -f docker-compose.app.yml -f docker-compose.dev.yml up
+>    ```
+>    Starts all services (PostgreSQL, Backend, Admin, Client, Specialist apps).
+>    All apps work, but `/docs` is unavailable.
+>
+> 3. **Fix the assembly merge strategy** (advanced):
+>    Update `build.sbt` with the correct merge strategy for webjars as described in the [Tapir documentation](https://tapir.softwaremill.com/en/latest/docs/openapi.html#using-swaggerui-with-sbt-assembly).
+>
+> 4. **Use a separate non-fat JAR deployment** for production instead of the assembled JAR.
 
 ### Production (Dokploy)
 

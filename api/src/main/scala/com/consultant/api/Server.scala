@@ -61,14 +61,18 @@ object Server extends IOApp:
           NotificationPreferenceRoutes(notificationPreferenceRepository)
         val healthRoutes = HealthRoutes()
 
-        // Swagger documentation - TEMPORARILY DISABLED FOR DOCKER BUILD
+        // Swagger documentation
+        // Note: SwaggerUI is disabled in Docker build due to sbt-assembly webjars merging issue
+        // To enable locally: sbt "api/run" instead of Docker
+        // For production: Use separate non-fat JAR deployment or fix merge strategy per:
+        // https://tapir.softwaremill.com/en/latest/docs/openapi.html#using-swaggerui-with-sbt-assembly
         // val allEndpoints = authRoutes.endpoints ++ userRoutes.endpoints ++ specialistRoutes.endpoints ++
         //   consultationRoutes.endpoints ++ categoryRoutes.endpoints ++ connectionRoutes.endpoints ++
         //   availabilityRoutes.endpoints ++ notificationPreferenceRoutes.endpoints
         // val docEndpoints = SwaggerInterpreter()
         //   .fromServerEndpoints(allEndpoints, "Consultant API", "1.0.0")
-        // val swaggerRoutes    = Http4sServerInterpreter[IO]().toRoutes(docEndpoints)
-        val swaggerRoutes    = HttpRoutes.empty[IO] // Temporary placeholder
+        // val swaggerRoutes = Http4sServerInterpreter[IO]().toRoutes(docEndpoints)
+        val swaggerRoutes    = HttpRoutes.empty[IO] // SwaggerUI disabled in Docker
         val healthHttpRoutes = Http4sServerInterpreter[IO]().toRoutes(healthRoutes.routes)
 
         val rootRedirect: HttpRoutes[IO] = HttpRoutes.of[IO] {
@@ -178,7 +182,7 @@ object Server extends IOApp:
           .use { _ =>
             // Keep startup logs concise to avoid noisy console output
             IO.println(
-              s"Server up at http://${config.server.host}:${config.server.port} | Swagger: /docs (temporarily disabled)"
+              s"Server up at http://${config.server.host}:${config.server.port}"
             ) >> IO.never
           }
           .as(ExitCode.Success)
