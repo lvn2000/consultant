@@ -27,8 +27,6 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits } from "vue";
-
 interface Slot {
     id: string;
     startTime: string;

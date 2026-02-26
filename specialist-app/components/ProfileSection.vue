@@ -78,7 +78,7 @@
                     variant="danger"
                     @click="showRemoveAccountConfirm = true"
                 >
-                    Remove Account
+                    {{ $t("profile.removeAccount") }}
                 </AppButton>
             </FormActions>
 
@@ -98,13 +98,12 @@
         <!-- Remove Account Confirmation -->
         <Modal
             v-model="showRemoveAccountConfirm"
-            title="Remove Account"
+            :title="$t('profile.removeAccount')"
             size="md"
             :show-close="true"
         >
             <p>
-                Are you sure you want to remove your account? This action cannot
-                be undone.
+                {{ $t("profile.removeAccountConfirm") }}
             </p>
             <template #footer>
                 <AppButton
@@ -113,14 +112,16 @@
                     @click="removeAccount"
                 >
                     {{
-                        accountRemoving ? "Removing..." : "Yes, Remove Account"
+                        accountRemoving
+                            ? $t("common.removing")
+                            : $t("profile.yesRemoveAccount")
                     }}
                 </AppButton>
                 <AppButton
                     variant="secondary"
                     @click="showRemoveAccountConfirm = false"
                 >
-                    Cancel
+                    {{ $t("common.cancel") }}
                 </AppButton>
             </template>
         </Modal>
@@ -251,10 +252,10 @@ const removeAccount = async () => {
         await $fetch(`${config.public.apiBase}/specialists/${userId}`, {
             method: "DELETE",
         });
-        alert("Account removed successfully");
+        alert(t("profile.accountRemoved"));
         logout();
     } catch (error: any) {
-        alert(error.message || "Failed to remove account");
+        alert(error.message || t("profile.failedToRemove"));
     } finally {
         accountRemoving.value = false;
         showRemoveAccountConfirm.value = false;

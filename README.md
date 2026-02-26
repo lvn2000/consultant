@@ -71,6 +71,20 @@ This project uses **Hexagonal Architecture** (Ports & Adapters) to ensure easy m
 - SQS for async messaging
 - Easy toggle between local and AWS implementations
 
+## 📚 Documentation
+
+Comprehensive documentation is available in the [`docs/`](docs/) folder:
+
+| Category | Documents |
+|----------|-----------|
+| **🚀 Quick Starts** | [Database](docs/DATABASE_QUICK_START.md), [HTTPS](docs/HTTPS_QUICKSTART.md), [Security](docs/SECURITY_QUICKSTART.md), [Scaling](docs/SCALING_QUICKSTART.md) |
+| **📐 Architecture** | [Diagrams](docs/ARCHITECTURE_DIAGRAMS.md), [Scaling](docs/SCALING.md), [Security](docs/SECURITY.md) |
+| **🔧 Deployment** | [Docker](docs/DOCKER_DEPLOYMENT.md), [Infisical](docs/INFISICAL_SETUP.md) |
+| **📡 API** | [Quick Reference](docs/QUICK_REFERENCE.md), [Notifications](docs/NOTIFICATIONS_API_REFERENCE.md) |
+| **🎯 Features** | [Availability](docs/AVAILABILITY_FEATURE.md), [Connections](docs/CONNECTIONS_IMPLEMENTATION.md) |
+
+See the complete list in [`docs/README.md`](docs/README.md).
+
 ## Getting Started
 
 ### Prerequisites
@@ -226,6 +240,24 @@ cd specialist-app && npm install && npm run dev
 | **Admin App** | `http://localhost:3001` | admin | admin |
 | **Specialist App** | `http://localhost:3002` | spec | spec |
 
+#### Testing the API
+
+Quick test scripts are available in [`scripts/`](scripts/):
+
+```bash
+# Test admin endpoints
+./scripts/test-admin-count.sh
+
+# Test specialist availability slots
+./scripts/test-slots.sh
+
+# Test specialists search
+./scripts/test-specialists-rates.sh
+./scripts/test-specialists-response.sh
+```
+
+See [`scripts/README.md`](scripts/README.md) for all available scripts.
+
 #### Common Commands
 
 ```bash
@@ -374,7 +406,7 @@ bash scripts/generate-ssl-certificates.sh
 # Select 'p' for production
 ```
 
-See [HTTPS_QUICKSTART.md](HTTPS_QUICKSTART.md) for detailed setup instructions.
+See [docs/HTTPS_QUICKSTART.md](docs/HTTPS_QUICKSTART.md) for detailed setup instructions.
 
 ### Docker Compose Alternative
 
@@ -440,7 +472,7 @@ DELETE FROM credentials WHERE email IN ('user@example.com', 'spec@example.com');
 DELETE FROM users WHERE id IN ('11111111-1111-1111-1111-111111111111'::uuid, '22222222-2222-2222-2222-222222222222'::uuid);
 ```
 
-For more details, see [TEST_CREDENTIALS.md](TEST_CREDENTIALS.md)
+For more details, see [docs/TEST_CREDENTIALS.md](docs/TEST_CREDENTIALS.md)
 
 ## API Endpoints
 

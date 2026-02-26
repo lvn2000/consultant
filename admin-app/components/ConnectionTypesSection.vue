@@ -30,19 +30,20 @@
                 <span>{{ item.name }}</span>
                 <span>{{ item.description || "-" }}</span>
                 <span class="row-actions">
-                    <BaseButton
-                        size="small"
+                    <button
+                        type="button"
+                        class="btn"
                         @click="selectConnectionType(item)"
                     >
                         ✏️ {{ $t("common.select") }}
-                    </BaseButton>
-                    <BaseButton
-                        size="small"
-                        variant="danger"
+                    </button>
+                    <button
+                        type="button"
+                        class="btn danger"
                         @click="handleDelete(item.id)"
                     >
                         🗑️ {{ $t("common.delete") }}
-                    </BaseButton>
+                    </button>
                 </span>
             </template>
         </BaseTable>
@@ -122,6 +123,7 @@
 <script setup lang="ts">
 import { useConnectionTypesStore } from "~/stores/connectionTypes";
 import type { ConnectionType } from "~/types/api";
+import SectionHeader from "~/components/base/SectionHeader.vue";
 
 const props = defineProps<{
     visible: boolean;
@@ -424,5 +426,38 @@ onMounted(() => {
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
+}
+
+/* Button Styles - matching CategoriesSection */
+.btn {
+    padding: 0.45rem 0.9rem;
+    border-radius: 6px;
+    border: 1px solid #cbd5f5;
+    background: #ffffff;
+    color: #1f2937;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.btn:hover:not(:disabled) {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.btn.danger {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-color: #fecaca;
+}
+
+.btn.danger:hover:not(:disabled) {
+    background: #fca5a5;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 </style>
