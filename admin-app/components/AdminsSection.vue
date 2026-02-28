@@ -1,195 +1,201 @@
 <template>
-    <section v-if="visible" class="section">
-        <div class="section-header">
-            <h2>{{ $t("adminAdmins.title") }}</h2>
-            <button type="button" class="btn" @click="loadAdmins">
-                🔄 Refresh
-            </button>
-        </div>
-
-        <div class="search-bar">
-            <input
-                v-model="adminsSearchQuery"
-                type="text"
-                :placeholder="$t('adminAdmins.searchPlaceholder')"
-                class="search-input"
-            />
-            <button
-                type="button"
-                class="btn"
-                @click="clearAdminsSearch"
-                v-if="adminsSearchQuery"
-            >
-                ❌ Clear
-            </button>
-        </div>
-
-        <div class="list-state" v-if="adminsLoading">
-            {{ $t("adminAdmins.loading") }}
-        </div>
-        <div class="list-state error" v-else-if="adminsError">
-            {{ adminsError }}
-        </div>
-
-        <div class="table" v-else>
-            <div class="table-header admins-table">
-                <span>{{ $t("common.name") }}</span>
-                <span>{{ $t("common.email") }}</span>
-                <span>{{ $t("common.login") }}</span>
-                <span>{{ $t("common.actions") }}</span>
+    <section class="section">
+        <div v-if="visible">
+            <div class="section-header">
+                <h2>{{ $t("adminAdmins.title") }}</h2>
+                <button type="button" class="btn" @click="loadAdmins">
+                    🔄 Refresh
+                </button>
             </div>
-            <div
-                v-for="admin in pagedFilteredAdmins"
-                :key="admin.id"
-                class="table-row admins-table"
-            >
-                <span>{{ admin.name }}</span>
-                <span>{{ admin.email }}</span>
-                <span>{{ admin.login }}</span>
-                <span class="row-actions">
-                    <button
-                        type="button"
-                        class="btn"
-                        @click="selectAdmin(admin)"
-                    >
-                        ✏️ {{ $t("common.select") }}
-                    </button>
-                </span>
-            </div>
-        </div>
 
-        <div v-if="!adminsLoading && !adminsError" class="pagination">
-            <div class="pagination-info">Page {{ adminCurrentPage }}</div>
-            <div class="pagination-controls">
+            <div class="search-bar">
+                <input
+                    v-model="adminsSearchQuery"
+                    type="text"
+                    :placeholder="$t('adminAdmins.searchPlaceholder')"
+                    class="search-input"
+                />
                 <button
                     type="button"
                     class="btn"
-                    :disabled="adminCurrentPage === 1"
-                    @click="goToPreviousAdminPage"
+                    @click="clearAdminsSearch"
+                    v-if="adminsSearchQuery"
                 >
-                    ⬅️ Previous
-                </button>
-                <button
-                    type="button"
-                    class="btn"
-                    :disabled="isLastAdminPage"
-                    @click="goToNextAdminPage"
-                >
-                    Next ➡️
-                </button>
-            </div>
-            <div class="pagination-size">
-                <label for="admin-page-size">Page size</label>
-                <select
-                    id="admin-page-size"
-                    v-model.number="adminPageSize"
-                    @change="handleAdminPageSizeChange"
-                >
-                    <option :value="10">10</option>
-                    <option :value="20">20</option>
-                    <option :value="50">50</option>
-                </select>
-            </div>
-        </div>
-
-        <form ref="adminFormRef" class="form" @submit.prevent>
-            <div class="form-header" v-if="selectedAdminId">
-                <h3>{{ $t("adminAdmins.adminDetails") }}</h3>
-                <span class="form-subtitle" v-if="adminForm.name">{{
-                    adminForm.name
-                }}</span>
-            </div>
-
-            <div class="form-grid" v-if="selectedAdminId">
-                <div class="form-field">
-                    <label for="admin-name">{{ $t("common.name") }}</label>
-                    <input
-                        id="admin-name"
-                        v-model="adminForm.name"
-                        type="text"
-                        :placeholder="$t('adminAdmins.namePlaceholder')"
-                        disabled
-                    />
-                </div>
-                <div class="form-field">
-                    <label for="admin-email">{{ $t("common.email") }}</label>
-                    <input
-                        id="admin-email"
-                        v-model="adminForm.email"
-                        type="email"
-                        :placeholder="$t('adminAdmins.emailPlaceholder')"
-                        disabled
-                    />
-                </div>
-                <div class="form-field">
-                    <label for="admin-login">{{ $t("common.login") }}</label>
-                    <input
-                        id="admin-login"
-                        v-model="adminForm.login"
-                        type="text"
-                        disabled
-                    />
-                </div>
-            </div>
-
-            <div class="form-actions">
-                <button
-                    type="button"
-                    class="btn danger"
-                    :disabled="isDeleteDisabled"
-                    @click="deleteSelectedAdmin"
-                    :title="getDeleteButtonTitle()"
-                >
-                    🗑️ {{ $t("adminAdmins.deleteAdmin") }}
-                </button>
-                <button type="button" class="btn" @click="resetAdminForm">
                     ❌ Clear
                 </button>
             </div>
 
-            <p
-                v-if="adminActionMessage"
-                :class="[
-                    'form-message',
-                    adminActionSuccess ? 'success' : 'error',
-                ]"
-            >
-                {{ adminActionMessage }}
-            </p>
-
-            <!-- Attention message for current user -->
-            <div
-                v-if="selectedAdminId === currentUserId"
-                class="attention-message"
-            >
-                ⚠️ {{ $t("adminAdmins.deletingSelfWarning") }}
+            <div class="list-state" v-if="adminsLoading">
+                {{ $t("adminAdmins.loading") }}
             </div>
-        </form>
+            <div class="list-state error" v-else-if="adminsError">
+                {{ adminsError }}
+            </div>
 
-        <!-- Confirmation Dialog -->
-        <div
-            v-if="confirmState.visible"
-            class="modal-overlay"
-            @click.self="confirmResolver?.(false)"
-        >
-            <div class="modal-dialog">
-                <h3>{{ confirmState.title }}</h3>
-                <p>{{ confirmState.message }}</p>
-                <div class="modal-actions">
+            <div class="table" v-else>
+                <div class="table-header admins-table">
+                    <span>{{ $t("common.name") }}</span>
+                    <span>{{ $t("common.email") }}</span>
+                    <span>{{ $t("common.login") }}</span>
+                    <span>{{ $t("common.actions") }}</span>
+                </div>
+                <div
+                    v-for="admin in pagedFilteredAdmins"
+                    :key="admin.id"
+                    class="table-row admins-table"
+                >
+                    <span>{{ admin.name }}</span>
+                    <span>{{ admin.email }}</span>
+                    <span>{{ admin.login }}</span>
+                    <span class="row-actions">
+                        <button
+                            type="button"
+                            class="btn"
+                            @click="selectAdmin(admin)"
+                        >
+                            ✏️ {{ $t("common.select") }}
+                        </button>
+                    </span>
+                </div>
+            </div>
+
+            <div v-if="!adminsLoading && !adminsError" class="pagination">
+                <div class="pagination-info">Page {{ adminCurrentPage }}</div>
+                <div class="pagination-controls">
                     <button
                         type="button"
                         class="btn"
-                        @click="confirmResolver?.(false)"
+                        :disabled="adminCurrentPage === 1"
+                        @click="goToPreviousAdminPage"
                     >
-                        {{ $t("common.cancel") }}
+                        ⬅️ Previous
                     </button>
                     <button
                         type="button"
-                        class="btn danger"
-                        @click="confirmResolver?.(true)"
+                        class="btn"
+                        :disabled="isLastAdminPage"
+                        @click="goToNextAdminPage"
                     >
-                        {{ $t("common.confirm") }}
+                        Next ➡️
                     </button>
+                </div>
+                <div class="pagination-size">
+                    <label for="admin-page-size">Page size</label>
+                    <select
+                        id="admin-page-size"
+                        v-model.number="adminPageSize"
+                        @change="handleAdminPageSizeChange"
+                    >
+                        <option :value="10">10</option>
+                        <option :value="20">20</option>
+                        <option :value="50">50</option>
+                    </select>
+                </div>
+            </div>
+
+            <form ref="adminFormRef" class="form" @submit.prevent>
+                <div class="form-header" v-if="selectedAdminId">
+                    <h3>{{ $t("adminAdmins.adminDetails") }}</h3>
+                    <span class="form-subtitle" v-if="adminForm.name">{{
+                        adminForm.name
+                    }}</span>
+                </div>
+
+                <div class="form-grid" v-if="selectedAdminId">
+                    <div class="form-field">
+                        <label for="admin-name">{{ $t("common.name") }}</label>
+                        <input
+                            id="admin-name"
+                            v-model="adminForm.name"
+                            type="text"
+                            :placeholder="$t('adminAdmins.namePlaceholder')"
+                            disabled
+                        />
+                    </div>
+                    <div class="form-field">
+                        <label for="admin-email">{{
+                            $t("common.email")
+                        }}</label>
+                        <input
+                            id="admin-email"
+                            v-model="adminForm.email"
+                            type="email"
+                            :placeholder="$t('adminAdmins.emailPlaceholder')"
+                            disabled
+                        />
+                    </div>
+                    <div class="form-field">
+                        <label for="admin-login">{{
+                            $t("common.login")
+                        }}</label>
+                        <input
+                            id="admin-login"
+                            v-model="adminForm.login"
+                            type="text"
+                            disabled
+                        />
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button
+                        type="button"
+                        class="btn danger"
+                        :disabled="isDeleteDisabled"
+                        @click="deleteSelectedAdmin"
+                        :title="getDeleteButtonTitle()"
+                    >
+                        🗑️ {{ $t("adminAdmins.deleteAdmin") }}
+                    </button>
+                    <button type="button" class="btn" @click="resetAdminForm">
+                        ❌ Clear
+                    </button>
+                </div>
+
+                <p
+                    v-if="adminActionMessage"
+                    :class="[
+                        'form-message',
+                        adminActionSuccess ? 'success' : 'error',
+                    ]"
+                >
+                    {{ adminActionMessage }}
+                </p>
+
+                <!-- Attention message for current user -->
+                <div
+                    v-if="selectedAdminId === currentUserId"
+                    class="attention-message"
+                >
+                    ⚠️ {{ $t("adminAdmins.deletingSelfWarning") }}
+                </div>
+            </form>
+
+            <!-- Confirmation Dialog -->
+            <div
+                v-if="confirmState.visible"
+                class="modal-overlay"
+                @click.self="confirmResolver?.(false)"
+            >
+                <div class="modal-dialog">
+                    <h3>{{ confirmState.title }}</h3>
+                    <p>{{ confirmState.message }}</p>
+                    <div class="modal-actions">
+                        <button
+                            type="button"
+                            class="btn"
+                            @click="confirmResolver?.(false)"
+                        >
+                            {{ $t("common.cancel") }}
+                        </button>
+                        <button
+                            type="button"
+                            class="btn danger"
+                            @click="confirmResolver?.(true)"
+                        >
+                            {{ $t("common.confirm") }}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -197,7 +203,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, nextTick, watch } from "vue";
+import { computed, onMounted, ref, nextTick, watch, watchEffect } from "vue";
 import { useRuntimeConfig } from "nuxt/app";
 import { useRouter } from "vue-router";
 import { useApi } from "../composables/useApi";
@@ -251,13 +257,6 @@ const isLastAdminPage = computed(
 
 const isDeleteDisabled = computed(() => {
     const disabled = !selectedAdminId.value || adminCount.value <= 1;
-    console.log("[AdminsSection] isDeleteDisabled:", {
-        selectedAdminId: selectedAdminId.value,
-        currentUserId: currentUserId.value,
-        adminCount: adminCount.value,
-        isSelf: selectedAdminId.value === currentUserId.value,
-        disabled,
-    });
     return disabled;
 });
 
@@ -293,17 +292,9 @@ const confirmAction = (title: string, message: string) =>
 const loadAdminCount = async () => {
     try {
         const endpoint = `${config.public.apiBase}/admin-count`;
-        console.log("[AdminsSection] Fetching admin count from:", endpoint);
         const rawData = await $fetch(endpoint, { method: "GET" });
-        console.log("[AdminsSection] Raw response:", rawData);
         const data = rawData as { count: number };
         adminCount.value = data?.count ?? 1;
-        console.log(
-            "[AdminsSection] Admin count loaded:",
-            adminCount.value,
-            "from endpoint:",
-            endpoint,
-        );
     } catch (error) {
         console.error("Failed to load admin count:", error);
         adminCount.value = 1;
@@ -314,7 +305,6 @@ const loadAdmins = async () => {
     adminsLoading.value = true;
     adminsError.value = "";
     currentUserId.value = sessionStorage.getItem("userId");
-    console.log("[AdminsSection] Current user ID:", currentUserId.value);
 
     try {
         const data = await $fetch<Admin[]>(
@@ -322,11 +312,6 @@ const loadAdmins = async () => {
             {
                 method: "GET",
             },
-        );
-        console.log("[AdminsSection] All users from API:", data.length);
-        console.log(
-            "[AdminsSection] User roles:",
-            data.map((u: any) => ({ login: u.login, role: u.role })),
         );
 
         // Filter only admins (case-insensitive)
@@ -338,12 +323,6 @@ const loadAdmins = async () => {
                 email: user.email || "",
                 login: user.login || "",
             }));
-
-        console.log(
-            "[AdminsSection] Filtered admins count:",
-            admins.value.length,
-        );
-        console.log("[AdminsSection] Filtered admins:", admins.value);
 
         await loadAdminCount();
 
@@ -411,13 +390,6 @@ const resetAdminForm = () => {
 };
 
 const getDeleteButtonTitle = () => {
-    console.log("[AdminsSection] getDeleteButtonTitle called:", {
-        adminCount: adminCount.value,
-        selectedAdminId: selectedAdminId.value,
-        currentUserId: currentUserId.value,
-        isSelf: selectedAdminId.value === currentUserId.value,
-        isLastAdmin: adminCount.value <= 1,
-    });
     if (adminCount.value <= 1) {
         return t("adminAdmins.cannotDeleteLast");
     }
@@ -505,20 +477,13 @@ const performLogout = async () => {
 };
 
 // Watch for visibility changes and reload data
-watch(
-    () => props.visible,
-    (newVal) => {
-        if (newVal) {
-            console.log(
-                "[AdminsSection] Component became visible, loading data...",
-            );
-            loadAdmins();
-        }
-    },
-);
+watchEffect(() => {
+    if (props.visible) {
+        loadAdmins();
+    }
+});
 
 onMounted(() => {
-    console.log("[AdminsSection] Component mounted, visible:", props.visible);
     if (props.visible) {
         loadAdmins();
     }

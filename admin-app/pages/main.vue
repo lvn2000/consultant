@@ -8,39 +8,45 @@
             <ul>
                 <li
                     :class="{ active: selectedMenu === 'accounts' }"
-                    @click="selectMenu('accounts')"
+                    @click.prevent="selectMenu('accounts')"
                 >
                     {{ $t("admin.menu.createAccounts") }}
                 </li>
                 <li
                     :class="{ active: selectedMenu === 'admins' }"
-                    @click="selectMenu('admins')"
+                    @click.prevent="selectMenu('admins')"
                 >
                     {{ $t("admin.menu.admins") }}
                 </li>
                 <li
                     :class="{ active: selectedMenu === 'specialists' }"
-                    @click="selectMenu('specialists')"
+                    @click.prevent="selectMenu('specialists')"
                 >
                     {{ $t("admin.menu.specialists") }}
                 </li>
                 <li
                     :class="{ active: selectedMenu === 'clients' }"
-                    @click="selectMenu('clients')"
+                    @click.prevent="selectMenu('clients')"
                 >
                     {{ $t("admin.menu.clients") }}
                 </li>
                 <li
                     :class="{ active: selectedMenu === 'connections' }"
-                    @click="selectMenu('connections')"
+                    @click.prevent="selectMenu('connections')"
                 >
                     {{ $t("admin.menu.connectionTypes") }}
                 </li>
                 <li
                     :class="{ active: selectedMenu === 'categories' }"
-                    @click="selectMenu('categories')"
+                    @click.prevent="selectMenu('categories')"
                 >
                     {{ $t("admin.menu.categories") }}
+                </li>
+                <li
+                    :class="{ active: selectedMenu === 'settings' }"
+                    @click.prevent="selectMenu('settings')"
+                >
+                    ⚙️ {{ $t("admin.menu.settings") }}
                 </li>
             </ul>
             <div class="menu-divider"></div>
@@ -51,10 +57,9 @@
             </ul>
         </nav>
         <div class="content">
-            <h1>{{ $t("admin.welcome.title") }}</h1>
-
-            <!-- Statistics Dashboard -->
-            <div class="stats-grid">
+            <!-- Statistics Dashboard (show on accounts view) -->
+            <div v-if="selectedMenu === 'accounts'" class="stats-grid">
+                <h1>{{ $t("admin.welcome.title") }}</h1>
                 <div class="stat-card">
                     <div class="stat-icon">👥</div>
                     <div class="stat-content">
@@ -166,30 +171,6 @@
                             />
                         </div>
                         <div class="form-field">
-                            <label for="acc-role">{{
-                                $t("admin.createAccount.labels.role")
-                            }}</label>
-                            <select
-                                id="acc-role"
-                                v-model="createForm.role"
-                                required
-                            >
-                                <option value="client">
-                                    {{ $t("admin.createAccount.roles.client") }}
-                                </option>
-                                <option value="specialist">
-                                    {{
-                                        $t(
-                                            "admin.createAccount.roles.specialist",
-                                        )
-                                    }}
-                                </option>
-                                <option value="admin">
-                                    {{ $t("admin.createAccount.roles.admin") }}
-                                </option>
-                            </select>
-                        </div>
-                        <div class="form-field">
                             <label for="acc-password">{{
                                 $t("admin.createAccount.labels.password")
                             }}</label>
@@ -237,7 +218,10 @@
             </section>
 
             <!-- Administrators Section Component -->
-            <AdminsSection :visible="selectedMenu === 'admins'" />
+            <AdminsSection
+                :key="'admins-' + selectedMenu"
+                :visible="selectedMenu === 'admins'"
+            />
 
             <!-- Specialists Section Component -->
             <SpecialistsSection :visible="selectedMenu === 'specialists'" />
@@ -250,6 +234,9 @@
 
             <!-- Categories Section Component -->
             <CategoriesSection :visible="selectedMenu === 'categories'" />
+
+            <!-- Settings Section Component -->
+            <SettingsSection :visible="selectedMenu === 'settings'" />
         </div>
 
         <!-- Confirmation Modal -->
@@ -271,20 +258,53 @@
                 </div>
             </div>
         </div>
+
+        <!-- Idle Timeout Warning Modal -->
+        <IdleTimeoutModal
+            :visible="isWarningVisible"
+            :format-remaining-time="formatRemainingTime"
+            @stay="hideWarning"
+            @logout="performLogout"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useRuntimeConfig } from "nuxt/app";
+import { useState } from "nuxt/app";
 import { useApi } from "../composables/useApi";
 import { adminRegisterRequest } from "../composables/useRegister";
+import { useIdleTimeout } from "~/composables/useIdleTimeout";
+import IdleTimeoutModal from "~/components/IdleTimeoutModal.vue";
+import AdminsSection from "~/components/AdminsSection.vue";
+import SpecialistsSection from "~/components/SpecialistsSection.vue";
+import ClientsSection from "~/components/ClientsSection.vue";
+import ConnectionTypesSection from "~/components/ConnectionTypesSection.vue";
+import CategoriesSection from "~/components/CategoriesSection.vue";
+import SettingsSection from "~/components/SettingsSection.vue";
 
 const { t } = useI18n();
 const router = useRouter();
 const config = useRuntimeConfig();
 const { $fetch } = useApi();
+
+// Idle timeout
+const {
+    isWarningVisible,
+    formatRemainingTime,
+    hideWarning,
+    performLogout,
+    start,
+    idleTimeoutMinutes,
+    idleWarningMinutes,
+} = useIdleTimeout();
+
+// Start idle timeout tracking explicitly
+onMounted(async () => {
+    await start();
+});
 
 type MenuKey =
     | "accounts"
@@ -292,9 +312,10 @@ type MenuKey =
     | "specialists"
     | "clients"
     | "connections"
-    | "categories";
+    | "categories"
+    | "settings";
 
-const selectedMenu = ref<MenuKey>("accounts");
+const selectedMenu = useState<MenuKey>("selectedMenu", () => "accounts");
 const specialistsCount = ref(0);
 const categoriesCount = ref(0);
 const connectionTypesCount = ref(0);
@@ -324,6 +345,11 @@ const selectMenu = (menu: MenuKey) => {
     selectedMenu.value = menu;
 };
 
+// Debug watcher - only run on client
+onMounted(() => {
+    watch(selectedMenu, (newVal, oldVal) => {});
+});
+
 const loadStats = async () => {
     try {
         // Load specialists
@@ -347,7 +373,7 @@ const loadStats = async () => {
         );
         connectionTypesCount.value = connectionTypes.length;
     } catch (error) {
-        console.error("Failed to load statistics:", error);
+        // Error handling can be added here if needed
     }
 };
 
@@ -416,6 +442,9 @@ const logout = async () => {
         if (sessionId) {
             await $fetch(`${config.public.apiBase}/users/logout`, {
                 method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
                 body: { sessionId },
             });
         }
@@ -725,5 +754,15 @@ onMounted(() => {
 .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.debug-box {
+    border: 3px solid red;
+    padding: 20px;
+    background: yellow;
+    font-weight: bold;
+    font-size: 20px;
+    margin: 20px 0;
+    text-align: center;
 }
 </style>

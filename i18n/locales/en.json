@@ -139,7 +139,8 @@
       "admins": "Administrators",
       "connectionTypes": "Type Connections",
       "categories": "Categories",
-      "createAccounts": "Create Accounts"
+      "createAccounts": "Create Accounts",
+      "settings": "Settings"
     },
     "welcome": {
       "title": "Welcome to Admin Panel",
@@ -557,6 +558,34 @@
     "selectToUpdatePreferences": "Select a specialist to update preferences.",
     "notificationUpdated": "Notification preference updated successfully.",
     "failedToUpdateNotification": "Failed to update notification preference."
+  },
+  "idle": {
+    "timeoutTitle": "Session Timeout Warning",
+    "timeoutMessage": "Your session will expire due to inactivity. Would you like to stay logged in?",
+    "timeRemaining": "Time Remaining",
+    "stayLoggedIn": "Stay Logged In",
+    "logoutNow": "Logout Now",
+    "sessionExpired": "Your session has expired. Please log in again."
+  },
+  "adminSettings": {
+    "title": "Settings",
+    "subtitle": "Manage administrator settings and preferences.",
+    "loading": "Loading settings...",
+    "failedToLoad": "Failed to load settings.",
+    "failedToSave": "Failed to save settings.",
+    "saved": "Settings saved successfully.",
+    "saveButton": "Save Settings",
+    "idleTimeout": {
+      "title": "Idle Timeout",
+      "description": "Configure how long an admin session remains active before automatic logout.",
+      "timeoutLabel": "Idle timeout (minutes)",
+      "timeoutPlaceholder": "Enter timeout in minutes",
+      "timeoutHint": "Session will automatically log out after this period of inactivity.",
+      "warningLabel": "Warning before logout (minutes)",
+      "warningPlaceholder": "Enter warning time in minutes",
+      "warningHint": "A warning will be shown this many minutes before automatic logout.",
+      "warningError": "Warning time must be less than idle timeout."
+    }
   },
   "errors": {
     "NOT_FOUND": "Resource not found",

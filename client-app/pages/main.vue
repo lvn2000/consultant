@@ -134,6 +134,14 @@
             @close="showRemoveAccountConfirm = false"
             @removed="handleAccountRemoved"
         />
+
+        <!-- Idle Timeout Warning Modal -->
+        <IdleTimeoutModal
+            :visible="isWarningVisible"
+            :format-remaining-time="formatRemainingTime"
+            @stay="hideWarning"
+            @logout="performLogout"
+        />
     </div>
 </template>
 
@@ -150,9 +158,23 @@ import ConnectionsSection from "~/components/ConnectionsSection.vue";
 import ConsultationsViewTab from "~/components/ConsultationsViewTab.vue";
 import ConsultationsBookTab from "~/components/ConsultationsBookTab.vue";
 import RemoveAccountModal from "~/components/RemoveAccountModal.vue";
+import IdleTimeoutModal from "~/components/IdleTimeoutModal.vue";
+import { useIdleTimeout } from "~/composables/useIdleTimeout";
 
 const router = useRouter();
 const config = useRuntimeConfig();
+
+// Idle timeout
+const {
+    isWarningVisible,
+    formatRemainingTime,
+    hideWarning,
+    performLogout,
+    start,
+} = useIdleTimeout();
+
+// Start idle timeout tracking
+start();
 
 // Menu state
 const selectedMenu = ref("profile");

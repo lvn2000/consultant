@@ -1,14 +1,14 @@
-import { defineStore } from 'pinia'
-import type { ConnectionType } from '~/types/api'
+import { defineStore } from "pinia";
+import type { ConnectionType } from "~/types/api";
 
 interface ConnectionTypesState {
-  items: ConnectionType[]
-  loading: boolean
-  error: string | null
-  selectedId: string | null
+  items: ConnectionType[];
+  loading: boolean;
+  error: string | null;
+  selectedId: string | null;
 }
 
-export const useConnectionTypesStore = defineStore('connectionTypes', {
+export const useConnectionTypesStore = defineStore("connectionTypes", {
   state: (): ConnectionTypesState => ({
     items: [],
     loading: false,
@@ -18,111 +18,115 @@ export const useConnectionTypesStore = defineStore('connectionTypes', {
 
   getters: {
     connectionTypeById: (state) => {
-      return (id: string) => state.items.find((t) => t.id === id) || null
+      return (id: string) => state.items.find((t) => t.id === id) || null;
     },
 
     connectionTypeName: (state) => {
-      return (id: string) => state.items.find((t) => t.id === id)?.name ?? id
+      return (id: string) => state.items.find((t) => t.id === id)?.name ?? id;
     },
 
     selectedConnectionType: (state) => {
-      return state.items.find((t) => t.id === state.selectedId) || null
+      return state.items.find((t) => t.id === state.selectedId) || null;
     },
   },
 
   actions: {
     async fetchConnectionTypes() {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
-        const config = useRuntimeConfig()
-        const { $fetch } = useApi()
+        const config = useRuntimeConfig();
+        const { $fetch } = useApi();
 
-        const data = await $fetch<ConnectionType[]>(`${config.public.apiBase}/connection-types`)
+        const data = await $fetch<ConnectionType[]>(
+          `${config.public.apiBase}/connection-types`,
+        );
 
-        this.items = data
+        this.items = data;
       } catch (e: any) {
-        this.error = e.data?.message || 'Failed to load connection types'
-        console.error('[ConnectionTypesStore] Fetch error:', e)
+        this.error = e.data?.message || "Failed to load connection types";
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
-    async createConnectionType(data: Omit<ConnectionType, 'id'>) {
-      const config = useRuntimeConfig()
-      const { $fetch } = useApi()
+    async createConnectionType(data: Omit<ConnectionType, "id">) {
+      const config = useRuntimeConfig();
+      const { $fetch } = useApi();
 
       try {
-        await $fetch<ConnectionType>(`${config.public.apiBase}/connection-types`, {
-          method: 'POST',
-          body: data,
-        })
+        await $fetch<ConnectionType>(
+          `${config.public.apiBase}/connection-types`,
+          {
+            method: "POST",
+            body: data,
+          },
+        );
 
-        await this.fetchConnectionTypes()
-        return { success: true }
+        await this.fetchConnectionTypes();
+        return { success: true };
       } catch (e: any) {
-        console.error('[ConnectionTypesStore] Create error:', e)
         return {
           success: false,
-          error: e.data?.message || 'Failed to create connection type',
-        }
+          error: e.data?.message || "Failed to create connection type",
+        };
       }
     },
 
     async updateConnectionType(id: string, data: Partial<ConnectionType>) {
-      const config = useRuntimeConfig()
-      const { $fetch } = useApi()
+      const config = useRuntimeConfig();
+      const { $fetch } = useApi();
 
       try {
-        await $fetch<ConnectionType>(`${config.public.apiBase}/connection-types/${id}`, {
-          method: 'PUT',
-          body: data,
-        })
+        await $fetch<ConnectionType>(
+          `${config.public.apiBase}/connection-types/${id}`,
+          {
+            method: "PUT",
+            body: data,
+          },
+        );
 
-        const index = this.items.findIndex((t) => t.id === id)
+        const index = this.items.findIndex((t) => t.id === id);
         if (index !== -1) {
-          this.items[index] = { ...this.items[index], ...data }
+          this.items[index] = { ...this.items[index], ...data };
         }
 
-        return { success: true }
+        return { success: true };
       } catch (e: any) {
-        console.error('[ConnectionTypesStore] Update error:', e)
         return {
           success: false,
-          error: e.data?.message || 'Failed to update connection type',
-        }
+          error: e.data?.message || "Failed to update connection type",
+        };
       }
     },
 
     async deleteConnectionType(id: string) {
-      const config = useRuntimeConfig()
-      const { $fetch } = useApi()
+      const config = useRuntimeConfig();
+      const { $fetch } = useApi();
 
       try {
         await $fetch(`${config.public.apiBase}/connection-types/${id}`, {
-          method: 'DELETE',
-        })
+          method: "DELETE",
+        });
 
-        this.items = this.items.filter((t) => t.id !== id)
+        this.items = this.items.filter((t) => t.id !== id);
 
         if (this.selectedId === id) {
-          this.selectedId = null
+          this.selectedId = null;
         }
 
-        return { success: true }
+        return { success: true };
       } catch (e: any) {
-        console.error('[ConnectionTypesStore] Delete error:', e)
         return {
           success: false,
-          error: e.data?.message || 'Failed to delete connection type',
-        }
+          error: e.data?.message || "Failed to delete connection type",
+        };
       }
     },
 
     setSelectedConnectionType(id: string | null) {
-      this.selectedId = id
+      this.selectedId = id;
     },
 
     $reset() {
@@ -131,7 +135,7 @@ export const useConnectionTypesStore = defineStore('connectionTypes', {
         loading: false,
         error: null,
         selectedId: null,
-      })
+      });
     },
   },
-})
+});

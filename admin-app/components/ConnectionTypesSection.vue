@@ -129,7 +129,6 @@ const props = defineProps<{
     visible: boolean;
 }>();
 
-const store = useConnectionTypesStore();
 const { t } = useI18n();
 const { confirmAction } = useCrud({
     fetchUrl: "",
@@ -137,10 +136,19 @@ const { confirmAction } = useCrud({
     deleteUrl: () => "",
 });
 
-// Use store state
-const items = computed(() => store.items);
-const loading = computed(() => store.loading);
-const error = computed(() => store.error);
+// Lazy store access - only initialize when component is visible
+let _store: ReturnType<typeof useConnectionTypesStore> | null = null;
+const getStore = () => {
+    if (!_store) {
+        _store = useConnectionTypesStore();
+    }
+    return _store;
+};
+
+// Use store state (lazy)
+const items = computed(() => getStore().items);
+const loading = computed(() => getStore().loading);
+const error = computed(() => getStore().error);
 const selectedId = ref<string | null>(null);
 const message = ref("");
 const messageType = ref<"success" | "error">("success");
@@ -156,7 +164,7 @@ const confirmState = ref({ visible: false, title: "", message: "" });
 const confirmResolver = ref<((value: boolean) => void) | null>(null);
 
 const fetchConnectionTypes = async () => {
-    await store.fetchConnectionTypes();
+    await getStore().fetchConnectionTypes();
 };
 
 const selectConnectionType = (type: ConnectionType) => {
@@ -233,7 +241,7 @@ const handleCreate = async () => {
 
     if (!confirmed) return;
 
-    const result = await store.createConnectionType({
+    const result = await getStore().createConnectionType({
         name: form.value.name,
         description: form.value.description || null,
     });
@@ -259,7 +267,7 @@ const handleUpdate = async () => {
 
     if (!confirmed) return;
 
-    const result = await store.updateConnectionType(selectedId.value, {
+    const result = await getStore().updateConnectionType(selectedId.value, {
         name: form.value.name,
         description: form.value.description,
     });
@@ -288,7 +296,7 @@ const handleDelete = async (id: string) => {
 
     if (!confirmed) return;
 
-    const result = await store.deleteConnectionType(id);
+    const result = await getStore().deleteConnectionType(id);
 
     if (result.success) {
         showMessage(t("adminConnectionTypes.deleted"));
