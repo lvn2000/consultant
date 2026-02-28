@@ -853,7 +853,6 @@ const loadSpecialistNotifications = async () => {
         // Extract preferences array from response object
         specialistNotifications.value = data.preferences || [];
     } catch (error: any) {
-        console.error("Error loading notifications:", error);
         specialistNotifications.value = [];
         notificationsError.value =
             error?.message || t("notifications.failedToLoad");

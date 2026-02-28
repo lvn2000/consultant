@@ -48,7 +48,8 @@ object Server extends IOApp:
             connectionService,
             availabilityRepository,
             notificationPreferenceRepository,
-            sessionRepository
+            sessionRepository,
+            systemSettingService
           ) =>
         val authRoutes         = AuthRoutes(authenticationService, config.legacyAuthEnabled)
         val userRoutes         = UserRoutes(userService, Some(jwtService))
@@ -59,7 +60,8 @@ object Server extends IOApp:
         val availabilityRoutes = AvailabilitySlotRoutes(consultationService, availabilityRepository)
         val notificationPreferenceRoutes =
           NotificationPreferenceRoutes(notificationPreferenceRepository)
-        val healthRoutes = HealthRoutes()
+        val systemSettingRoutes = SystemSettingRoutes(systemSettingService)
+        val healthRoutes        = HealthRoutes()
 
         // Swagger documentation
         // Note: SwaggerUI is disabled in Docker build due to sbt-assembly webjars merging issue
@@ -88,7 +90,8 @@ object Server extends IOApp:
           "/api/consultations"            -> consultationRoutes.routes,
           "/api/categories"               -> categoryRoutes.routes,
           "/api/connection-types"         -> connectionRoutes.connectionTypeRoutes,
-          "/api/notification-preferences" -> notificationPreferenceRoutes.routes
+          "/api/notification-preferences" -> notificationPreferenceRoutes.routes,
+          "/api/settings"                 -> systemSettingRoutes.routes
         )
 
         // Separate admin-count endpoint to avoid path conflicts with UUID paths
@@ -101,7 +104,7 @@ object Server extends IOApp:
         val isPublic: Request[IO] => Boolean = { req =>
           val path   = req.uri.path.renderString
           val method = req.method
-
+          path == "/api/settings/idle-timeout" ||
           // Allow OPTIONS preflight for COR requests on all API endpoints
           (method == Method.OPTIONS && path.startsWith("/api")) ||
           method == Method.OPTIONS ||
@@ -138,6 +141,12 @@ object Server extends IOApp:
             )
         }
 
+        // New route handler for GET /api
+        val apiRootRoute = org.http4s.HttpRoutes.of[IO] {
+          case req if req.method == Method.GET && req.pathInfo == org.http4s.dsl.io.Root / "api" =>
+            org.http4s.dsl.io.Ok("API is running. Date: February 28, 2026.")
+        }
+
         // Mount all routes at root level
         // - preflightHandler: handles OPTIONS preflight requests for CORS
         // - rootRedirect: handles "/" -> "/docs"
@@ -145,8 +154,9 @@ object Server extends IOApp:
         // - swaggerRoutes: serves /docs/* (public Swagger UI)
         // - protectedApiRoutes: serves /api/* endpoints (auth required, with public exceptions)
         // - adminCountRoutes: serves /api/admin-count (auth required)
+        // - apiRootRoute: serves /api (simple health/info message)
         val routes = Router(
-          "/" -> (preflightHandler <+> rootRedirect <+> healthHttpRoutes <+> swaggerRoutes <+> protectedApiRoutes <+> adminCountRoutes)
+          "/" -> (preflightHandler <+> rootRedirect <+> healthHttpRoutes <+> swaggerRoutes <+> protectedApiRoutes <+> adminCountRoutes <+> apiRootRoute)
         ).orNotFound
 
         val corsRoutes = CORS.policy.withAllowOriginAll
@@ -202,7 +212,8 @@ object Server extends IOApp:
       ConnectionService,
       AvailabilityRepository,
       NotificationPreferenceRepository,
-      SessionRepository
+      SessionRepository,
+      SystemSettingService
     )
   ] =
     for
@@ -246,6 +257,7 @@ object Server extends IOApp:
       consultationRepo           = PostgresConsultationRepository(xa)
       availabilityRepo           = PostgresAvailabilityRepository(xa)
       notificationPreferenceRepo = PostgresNotificationPreferenceRepository(xa)
+      systemSettingRepo          = PostgresSystemSettingRepository(xa)
 
       // Infrastructure services
       passwordService     = PasswordHashingService()
@@ -271,8 +283,9 @@ object Server extends IOApp:
         notificationService,
         notificationPreferenceRepo
       )
-      categoryService   = CategoryService(categoryRepo)
-      connectionService = ConnectionService(connectionRepo, connectionTypeRepo, specialistRepo)
+      categoryService      = CategoryService(categoryRepo)
+      connectionService    = ConnectionService(connectionRepo, connectionTypeRepo, specialistRepo)
+      systemSettingService = new SystemSettingService(systemSettingRepo)
     yield (
       config,
       tokenVerifier,
@@ -285,7 +298,8 @@ object Server extends IOApp:
       connectionService,
       availabilityRepo,
       notificationPreferenceRepo,
-      sessionRepo
+      sessionRepo,
+      systemSettingService
     )
 
   private def buildTokenVerifier(config: AppConfig, jwtService: JwtTokenService): IO[TokenVerifier] =

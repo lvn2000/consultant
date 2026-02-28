@@ -136,9 +136,11 @@
       "title": "Menu administrateur",
       "specialists": "Spécialistes",
       "clients": "Clients",
+      "admins": "Administrateurs",
       "connectionTypes": "Types de connexion",
       "categories": "Catégories",
-      "createAccounts": "Créer des comptes"
+      "createAccounts": "Créer des comptes",
+      "settings": "Paramètres"
     },
     "welcome": {
       "title": "Bienvenue dans le panneau d'administration",
@@ -532,6 +534,34 @@
     "selectToUpdatePreferences": "Sélectionnez un spécialiste pour mettre à jour les préférences.",
     "notificationUpdated": "Préférence de notification mise à jour avec succès.",
     "failedToUpdateNotification": "Échec de la mise à jour de la préférence de notification."
+  },
+  "idle": {
+    "timeoutTitle": "Avertissement d'expiration de session",
+    "timeoutMessage": "Votre session va expirer en raison d'inactivité. Voulez-vous rester connecté ?",
+    "timeRemaining": "Temps restant",
+    "stayLoggedIn": "Rester connecté",
+    "logoutNow": "Se déconnecter maintenant",
+    "sessionExpired": "Votre session a expiré. Veuillez vous reconnecter."
+  },
+  "adminSettings": {
+    "title": "Paramètres",
+    "subtitle": "Gérer les paramètres et préférences administrateur.",
+    "loading": "Chargement des paramètres...",
+    "failedToLoad": "Échec du chargement des paramètres.",
+    "failedToSave": "Échec de l'enregistrement des paramètres.",
+    "saved": "Paramètres enregistrés avec succès.",
+    "saveButton": "Enregistrer les paramètres",
+    "idleTimeout": {
+      "title": "Délai d'inactivité",
+      "description": "Configurez la durée pendant laquelle une session administrateur reste active avant la déconnexion automatique.",
+      "timeoutLabel": "Délai d'inactivité (minutes)",
+      "timeoutPlaceholder": "Entrez le délai en minutes",
+      "timeoutHint": "La session sera automatiquement déconnectée après cette période d'inactivité.",
+      "warningLabel": "Avertissement avant déconnexion (minutes)",
+      "warningPlaceholder": "Entrez le temps d'avertissement en minutes",
+      "warningHint": "Un avertissement sera affiché ce nombre de minutes avant la déconnexion automatique.",
+      "warningError": "Le temps d'avertissement doit être inférieur au délai d'inactivité."
+    }
   },
   "errors": {
     "NOT_FOUND": "Ressource introuvable",

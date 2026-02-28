@@ -416,7 +416,6 @@ const addCategory = async () => {
         resetCategoryForm();
         await loadCategories();
     } catch (error: any) {
-        console.error("Add category error:", error);
         if (error.data?.message) {
             categoryActionMessage.value = `${t("adminCategories.failedToCreate")}: ${error.data.message}`;
         } else if (error.message) {
@@ -456,7 +455,6 @@ const updateCategory = async () => {
         categoryActionMessage.value = t("adminCategories.updated");
         await loadCategories();
     } catch (error: any) {
-        console.error("Update category error:", error);
         if (error.data?.message) {
             categoryActionMessage.value = `${t("adminCategories.failedToUpdate")}: ${error.data.message}`;
         } else if (error.message) {
@@ -490,7 +488,6 @@ const deleteSelectedCategory = async () => {
         resetCategoryForm();
         await loadCategories();
     } catch (error: any) {
-        console.error("Delete category error:", error);
         if (error.data?.message) {
             categoryActionMessage.value = `${t("adminCategories.failedToDelete")}: ${error.data.message}`;
         } else if (error.message) {
@@ -514,7 +511,6 @@ const removeCategory = async (id: string) => {
         });
         await loadCategories();
     } catch (error: any) {
-        console.error("Remove category error:", error);
         if (error.data?.message) {
             categoryActionMessage.value = `${t("adminCategories.failedToDelete")}: ${error.data.message}`;
         } else if (error.message) {

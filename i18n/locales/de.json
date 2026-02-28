@@ -136,9 +136,11 @@
       "title": "Administratormenü",
       "specialists": "Spezialisten",
       "clients": "Kunden",
+      "admins": "Administratoren",
       "connectionTypes": "Verbindungstypen",
       "categories": "Kategorien",
-      "createAccounts": "Konto erstellen"
+      "createAccounts": "Konto erstellen",
+      "settings": "Einstellungen"
     },
     "welcome": {
       "title": "Willkommen im Administrationspanel",
@@ -551,5 +553,33 @@
     "SLOT_NOT_AVAILABLE": "Dieses Zeitfenster ist nicht verfügbar",
     "MISSING_AUTH": "Authentifizierungs-Header fehlen",
     "PERMISSION_DENIED": "Sie haben keine Berechtigung, diese Aktion auszuführen"
+  },
+  "adminSettings": {
+    "title": "Einstellungen",
+    "subtitle": "Administrator-Einstellungen und Präferenzen verwalten.",
+    "loading": "Einstellungen werden geladen...",
+    "failedToLoad": "Einstellungen konnten nicht geladen werden.",
+    "failedToSave": "Einstellungen konnten nicht gespeichert werden.",
+    "saved": "Einstellungen erfolgreich gespeichert.",
+    "saveButton": "Einstellungen speichern",
+    "idleTimeout": {
+      "title": "Inaktivitäts-Timeout",
+      "description": "Konfigurieren Sie, wie lange eine Admin-Sitzung aktiv bleibt, bevor sie automatisch abgemeldet wird.",
+      "timeoutLabel": "Inaktivitäts-Timeout (Minuten)",
+      "timeoutPlaceholder": "Timeout in Minuten eingeben",
+      "timeoutHint": "Die Sitzung wird nach dieser Zeit der Inaktivität automatisch abgemeldet.",
+      "warningLabel": "Warnung vor Abmeldung (Minuten)",
+      "warningPlaceholder": "Warnzeit in Minuten eingeben",
+      "warningHint": "Eine Warnung wird so viele Minuten vor der automatischen Abmeldung angezeigt.",
+      "warningError": "Die Warnzeit muss kleiner als das Timeout sein."
+    }
+  },
+  "idle": {
+    "timeoutTitle": "Sitzungs-Timeout-Warnung",
+    "timeoutMessage": "Ihre Sitzung läuft aufgrund von Inaktivität ab. Möchten Sie angemeldet bleiben?",
+    "timeRemaining": "Verbleibende Zeit",
+    "stayLoggedIn": "Angemeldet bleiben",
+    "logoutNow": "Jetzt abmelden",
+    "sessionExpired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an."
   }
 }
