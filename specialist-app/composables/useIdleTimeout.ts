@@ -7,7 +7,6 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 export const useIdleTimeout = () => {
   const config = useRuntimeConfig();
   const { $fetch } = useApi();
-  const { t } = useI18n();
   const router = useRouter();
 
   const idleTimeoutMinutes = ref<number>(30);
@@ -36,12 +35,13 @@ export const useIdleTimeout = () => {
    */
   const loadConfig = async () => {
     try {
-      const response = await $fetch<any>(
-        `${config.public.apiBase}/settings/idle-timeout`,
-      );
+      const response = await $fetch<{
+        idleTimeoutMinutes: number;
+        idleWarningMinutes: number;
+      }>(`${config.public.apiBase}/settings/idle-timeout`);
       idleTimeoutMinutes.value = response.idleTimeoutMinutes;
       idleWarningMinutes.value = response.idleWarningMinutes;
-    } catch (error) {
+    } catch {
       idleTimeoutMinutes.value = 30;
       idleWarningMinutes.value = 5;
     }
