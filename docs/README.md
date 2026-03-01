@@ -35,7 +35,8 @@ This folder contains all documentation for the Consultant Backend system.
 |----------|-------------|
 | [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md) | Docker deployment guide |
 | [INFISICAL_SETUP.md](INFISICAL_SETUP.md) | Infisical setup guide |
-| [HTTPS_QUICKSTART.md](HTTPS_QUICKSTART.md) | HTTPS configuration |
+| [HTTPS_QUICKSTART.md](HTTPS_QUICKSTART.md) | HTTPS configuration (development) |
+| [PRODUCTION_HTTPS_DEPLOYMENT.md](PRODUCTION_HTTPS_DEPLOYMENT.md) | **Production HTTPS with trusted SSL certificates** |
 
 ### 🔐 Security
 
