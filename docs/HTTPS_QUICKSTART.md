@@ -25,50 +25,77 @@ Your system has been updated to support HTTPS with the following enhancements:
 
 ## 🚀 Quick Start (Development)
 
-### Step 1: Generate Self-Signed Certificate
+### Option 1: Using start-https.sh (Recommended)
+
+The easiest way to start the HTTPS stack:
 
 ```bash
 # Navigate to project directory
 cd /home/lvn/prg/scala/Consultant/backend
 
-# Run certificate generation script
-./scripts/generate-ssl-certificates.sh
-
-# Choose 'd' for development (self-signed)
-# Choose 'p' for production (Let's Encrypt instructions)
+# Start the entire HTTPS stack (auto-generates certificates if needed)
+./start-https.sh
 ```
+
+**What it does:**
+- ✅ Creates Docker network
+- ✅ Builds API image
+- ✅ Starts PostgreSQL
+- ✅ Starts 3 API instances (ports 8081, 8082, 8083)
+- ✅ Auto-generates self-signed SSL certificates if missing
+- ✅ Starts Nginx with HTTPS
 
 **Expected output:**
 ```
-✓ Created certs directory
-✓ Self-signed certificate generated successfully
-✓ Permissions set correctly
-✓ SSL/TLS certificates are ready!
+📦 Creating Docker network...
+🔨 Building API image (JDK 21)...
+📊 Starting PostgreSQL...
+⏳ Waiting for database to be ready (15s)...
+🚀 Starting API instances...
+⏳ Waiting for API instances to be ready (15s)...
+🔒 Starting Nginx with HTTPS...
+⚠️  SSL certificates not found! Creating self-signed certificates...
+✅ Certificates created.
+
+✅ HTTPS Stack Started Successfully!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Access Points:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 HTTP (auto-redirects to HTTPS)
+   URL: http://localhost:9080
+
+🔒 HTTPS (Secure)
+   URL: https://localhost:9443
+   Note: Use -k flag with curl for self-signed cert
 ```
 
-### Step 2: Build and Start Services
+### Option 2: Manual Steps
 
 ```bash
-# Build Docker images
-docker-compose build
+# Step 1: Generate self-signed certificate
+./scripts/generate-ssl-certificates.sh
+# Choose 'd' for development (self-signed)
 
-# Start all services (with HTTPS enabled)
+# Step 2: Build and start services
+docker-compose build
 docker-compose up -d
 ```
 
-### Step 3: Test HTTPS Access
+### Test HTTPS Access
 
 ```bash
 # Test with self-signed certificate (ignore warnings)
-curl -k https://localhost/health
+curl -k https://localhost:9443/health
 
 # Response:
 # {"status":"UP"}
 
 # Test HTTP redirect
-curl -i http://localhost
+curl -i http://localhost:9080
 # Returns: HTTP/1.1 301 Moved Permanently
-# Location: https://localhost/...
+# Location: https://localhost:9443/...
 ```
 
 ---
@@ -79,7 +106,7 @@ After starting services, verify:
 
 ```bash
 # ✓ Check Nginx is running
-docker ps | grep nginx
+docker ps | grep consultant-nginx
 
 # ✓ Check certificate files exist
 ls -la certs/
@@ -88,13 +115,18 @@ ls -la certs/
 openssl x509 -in certs/certificate.crt -text -noout
 
 # ✓ Test HTTPS endpoint
-curl -k https://localhost/api/health -v
+curl -k https://localhost:9443/api/health -v
 
 # ✓ Test HTTP redirect
-curl -I http://localhost
+curl -I http://localhost:9080
 
 # ✓ Check security headers
-curl -k https://localhost -I | grep -i "Strict-Transport-Security"
+curl -k https://localhost:9443 -I | grep -i "Strict-Transport-Security"
+
+# ✓ Check API instances health
+curl http://localhost:8081/health
+curl http://localhost:8082/health
+curl http://localhost:8083/health
 ```
 
 ---
@@ -196,17 +228,17 @@ HIGH:!aNULL:!MD5
 **Solution (Development only):**
 ```bash
 # Use the -k flag to skip certificate verification
-curl -k https://localhost/health
+curl -k https://localhost:9443/health
 ```
 
-### Issue: "Connection refused on port 443"
+### Issue: "Connection refused on port 9443"
 **Solution:**
 ```bash
 # Check if Nginx is running
-docker-compose ps
+docker ps | grep consultant-nginx
 
 # Check Nginx logs
-docker-compose logs nginx
+docker logs consultant-nginx
 
 # Verify certificates exist
 ls -la certs/
@@ -223,6 +255,14 @@ ls -la certs/
 - In Firefox: Click "Advanced" then "Accept the Risk and Continue"
 - For production: Use Let's Encrypt (above)
 
+### Issue: "SSL certificates not found"
+**Solution:**
+The `start-https.sh` script now auto-generates certificates. If you need to generate them manually:
+```bash
+./scripts/generate-ssl-certificates.sh
+# Choose 'd' for development
+```
+
 ---
 
 ## 📝 Configuration Files Modified
@@ -230,7 +270,9 @@ ls -la certs/
 ### Updated Files:
 1. **nginx.conf** - Added HTTPS block and HTTP redirect
 2. **docker-compose.yml** - Added HTTPS port and certificate volume
-3. **scripts/generate-ssl-certificates.sh** - New certificate generation script
+3. **start-https.sh** - Full stack startup with auto certificate generation
+4. **stop-https.sh** - Clean shutdown script
+5. **scripts/generate-ssl-certificates.sh** - Manual certificate generation
 
 ### Environment Variables:
 ```yaml
@@ -243,11 +285,12 @@ SESSION_SECURE: "true"        # Secure session flag
 
 ## 📚 Next Steps
 
-1. ✅ **Generate certificates** → Run `./scripts/generate-ssl-certificates.sh`
-2. ✅ **Start services** → `docker-compose up -d`
-3. ✅ **Test access** → `curl -k https://localhost/health`
-4. ✅ **Update frontend** → Set API base to `https://localhost` in Nuxt configs
-5. ✅ **For production** → Follow Let's Encrypt setup above
+1. ✅ **Start the stack** → Run `./start-https.sh` (auto-generates certificates)
+   - Or manually: `./scripts/generate-ssl-certificates.sh` then `docker-compose up -d`
+2. ✅ **Test access** → `curl -k https://localhost:9443/health`
+3. ✅ **Update frontend** → Set API base to `https://localhost:9443` in Nuxt configs
+4. ✅ **For production** → Follow Let's Encrypt setup above
+5. ✅ **Stop the stack** → Run `./stop-https.sh`
 
 ---
 

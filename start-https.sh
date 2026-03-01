@@ -37,9 +37,7 @@ for i in 1 2 3; do
   docker run -d \
     --name consultant-app-$i \
     --network consultant-net \
-    -e DB_HOST=consultant-db \
-    -e DB_PORT=5432 \
-    -e DB_NAME=consultant \
+    -e DB_URL="jdbc:postgresql://consultant-db:5432/consultant" \
     -e DB_USER=consultant_user \
     -e DB_PASSWORD=consultant_pass \
     -e DB_ENCRYPTION_KEY="dev-encryption-key-change-in-prod" \
@@ -63,6 +61,19 @@ echo "⏳ Waiting for API instances to be ready (15s)..."
 sleep 15
 
 echo "🔒 Starting Nginx with HTTPS..."
+
+# Check if SSL certificates exist
+if [ ! -f "$(pwd)/certs/certificate.crt" ] || [ ! -f "$(pwd)/certs/private.key" ]; then
+  echo "⚠️  SSL certificates not found! Creating self-signed certificates..."
+  mkdir -p "$(pwd)/certs"
+  openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout "$(pwd)/certs/private.key" \
+    -out "$(pwd)/certs/certificate.crt" \
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost" \
+    -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+  echo "✅ Certificates created."
+fi
+
 docker rm -f consultant-nginx 2>/dev/null || true
 docker run -d \
   --name consultant-nginx \
@@ -114,7 +125,7 @@ echo "   docker logs consultant-nginx"
 echo "   docker logs consultant-app-1"
 echo ""
 echo "Stop All Services:"
-echo "   docker-compose down  # or manually stop containers"
+echo "   ./stop-https.sh"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""

@@ -70,11 +70,17 @@ sbt test            # Test
 
 ### Run
 ```bash
+# Option 1: Full HTTPS stack (recommended for production-like testing)
 bash start-https.sh
+# Backend: http://localhost:8081, 8082, 8083 (3 instances)
+# HTTPS via nginx: http://localhost:9080 → https://localhost:9443
+
+# Option 2: Development mode (direct access)
+docker compose -f docker-compose.app.yml -f docker-compose.dev.yml up
 # Backend: http://localhost:8090
-# Client: http://localhost:3000
-# Admin: http://localhost:3001
-# Specialist: http://localhost:3002
+# Client: http://localhost:3001
+# Admin: http://localhost:3000
+# Specialist: http://localhost:3002 (or 3003 with npm run dev)
 ```
 
 ### Test API

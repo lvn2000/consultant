@@ -75,8 +75,10 @@ backend/
 ├── scripts/                   # 🛠️ Development & test scripts
 │   ├── README.md             # Scripts documentation
 │   ├── test-*.sh             # API test scripts
-│   ├── generate-ssl-certificates.sh
+│   ├── generate-ssl-certificates.sh  # SSL certificate generation
 │   └── setup-infisical-*.sh
+├── start-https.sh             # 🚀 Full HTTPS stack startup (auto-generates certs)
+├── stop-https.sh              # 🛑 HTTPS stack shutdown
 ├── api/                       # HTTP API layer (Tapir, Http4s)
 ├── core/                      # Domain models & business logic
 ├── data/                      # PostgreSQL repositories (Doobie)

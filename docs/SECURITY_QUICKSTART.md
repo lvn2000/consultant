@@ -42,8 +42,21 @@ GET  /api/users      # With Bearer token
 
 ### 1. Registration
 
+**Development (without HTTPS):**
 ```bash
-curl -X POST http://localhost/api/auth/register \
+curl -X POST http://localhost:8090/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "SecurePass123!",
+    "name": "John Doe",
+    "role": "client"
+  }'
+```
+
+**With HTTPS (start-https.sh):**
+```bash
+curl -k -X POST https://localhost:9443/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -68,8 +81,19 @@ curl -X POST http://localhost/api/auth/register \
 
 ### 2. Login
 
+**Development:**
 ```bash
-curl -X POST http://localhost/api/auth/login \
+curl -X POST http://localhost:8090/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "SecurePass123!"
+  }'
+```
+
+**With HTTPS:**
+```bash
+curl -k -X POST https://localhost:9443/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -79,15 +103,32 @@ curl -X POST http://localhost/api/auth/login \
 
 ### 3. Protected Request
 
+**Development:**
 ```bash
-curl -X GET http://localhost/api/users \
+curl -X GET http://localhost:8090/api/users \
+  -H "Authorization: Bearer eyJhbGc..."
+```
+
+**With HTTPS:**
+```bash
+curl -k -X GET https://localhost:9443/api/users \
   -H "Authorization: Bearer eyJhbGc..."
 ```
 
 ### 4. Token Refresh (every 15 minutes)
 
+**Development:**
 ```bash
-curl -X POST http://localhost/api/auth/refresh \
+curl -X POST http://localhost:8090/api/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "uuid-from-login"
+  }'
+```
+
+**With HTTPS:**
+```bash
+curl -k -X POST https://localhost:9443/api/auth/refresh \
   -H "Content-Type: application/json" \
   -d '{
     "refreshToken": "uuid-from-login"
@@ -140,11 +181,24 @@ docker-compose exec postgres-master psql -U consultant_user -d consultant -f /do
 
 ### 5. HTTPS in Production
 
+**For local development with HTTPS:**
+
+```bash
+# Start the full HTTPS stack (auto-generates self-signed certificates)
+./start-https.sh
+
+# Access via:
+# - HTTP: http://localhost:9080 (redirects to HTTPS)
+# - HTTPS: https://localhost:9443
+```
+
+**Production nginx configuration:**
+
 ```nginx
 server {
     listen 443 ssl http2;
     server_name yourdomain.com;
-    
+
     ssl_certificate /path/to/cert.pem;
     ssl_certificate_key /path/to/key.pem;
     ssl_protocols TLSv1.3 TLSv1.2;

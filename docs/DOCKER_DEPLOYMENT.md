@@ -62,6 +62,113 @@ docker compose -f docker-compose.app.yml -f docker-compose.dev.yml up
 - Client App: http://localhost:3001
 - Specialist App: http://localhost:3002
 
+> **Note:** When running `npm run dev` directly in specialist-app directory, it runs on port **3003** (see `specialist-app/package.json`). In Docker dev mode, it's exposed as `3002:3003`.
+
+**Option 3: Full HTTPS Stack (Production-like)**
+
+For testing with HTTPS and load balancing:
+
+```bash
+./start-https.sh
+```
+
+**Access URLs:**
+- HTTP: http://localhost:9080 (redirects to HTTPS)
+- HTTPS: https://localhost:9443
+- API Instances:
+  - App-1: http://localhost:8081/health
+  - App-2: http://localhost:8082/health
+  - App-3: http://localhost:8083/health
+
+**⚠️ Important for Frontend Development:** When using `start-https.sh`, the backend runs on ports 8081/8082/8083, NOT 8090. The frontend apps default to `http://localhost:8090/api`. To run frontend apps with this setup:
+
+```bash
+# Option A: Set environment variable (one-time)
+cd specialist-app
+NUXT_PUBLIC_API_BASE=http://localhost:8081/api npm run dev
+
+# Option B: Create .env.local file (persists across sessions)
+# Create .env.local in each app directory:
+echo "NUXT_PUBLIC_API_BASE=http://localhost:8081/api" > admin-app/.env.local
+echo "NUXT_PUBLIC_API_BASE=http://localhost:8081/api" > client-app/.env.local
+echo "NUXT_PUBLIC_API_BASE=http://localhost:8081/api" > specialist-app/.env.local
+```
+
+Then restart each app (clear cache if needed):
+```bash
+cd admin-app && rm -rf .nuxt .output && npm run dev    # http://localhost:3000
+cd client-app && rm -rf .nuxt .output && npm run dev   # http://localhost:3001
+cd specialist-app && rm -rf .nuxt .output && npm run dev # http://localhost:3003
+```
+
+**Recommended:** For frontend development, use `./run.sh` instead (backend runs on port 8090 which matches frontend defaults).
+
+To stop: `./stop-https.sh`
+
+---
+
+## 📝 Running Frontend Apps with HTTPS
+
+### Using the Helper Script (Recommended)
+
+This runs frontend apps on HTTP and uses nginx as an HTTPS reverse proxy.
+
+```bash
+# Start backend HTTPS stack first
+./start-https.sh
+
+# In separate terminals, run frontend apps with HTTPS:
+
+# Specialist app on HTTPS
+./run-frontend-https.sh specialist
+# Access: https://localhost:3445
+
+# Admin app on HTTPS
+./run-frontend-https.sh admin
+# Access: https://localhost:3443
+
+# Client app on HTTPS
+./run-frontend-https.sh client
+# Access: https://localhost:3444
+
+# All apps on HTTPS
+./run-frontend-https.sh all
+
+# Stop all apps
+./run-frontend-https.sh stop
+```
+
+### How It Works
+
+1. Frontend apps run on HTTP (ports 3000, 3001, 3003)
+2. Nginx provides HTTPS layer on ports 3443, 3444, 3445
+3. Browser connects via HTTPS to nginx
+4. Nginx proxies requests to frontend apps via HTTP
+5. Frontend apps connect to HTTPS backend (https://localhost:9443)
+
+### Manual HTTPS Setup (Without Helper Script)
+
+```bash
+# Terminal 1: Start backend
+./start-https.sh
+
+# Terminal 2: Start admin app
+cd admin-app
+NUXT_PUBLIC_API_BASE=https://localhost:9443/api npm run dev
+
+# Terminal 3: Start nginx for HTTPS proxy
+docker run -d \
+  --name consultant-frontend-nginx \
+  --network host \
+  -v $(pwd)/nginx-frontend-https.conf:/etc/nginx/nginx.conf:ro \
+  -v $(pwd)/certs:/etc/nginx/certs:ro \
+  nginx:alpine
+
+# Access admin app via HTTPS: https://localhost:3443
+```
+
+⚠️ **Note:** Browser will show warnings for self-signed certificates. Click "Advanced" → "Proceed" to continue.
+
 > **Note:** SwaggerUI is disabled in the Docker build due to a known issue with sbt-assembly merging webjars resources. The API endpoints are still fully functional - only the interactive documentation at `/docs` is unavailable.
 >
 > **Workarounds to enable SwaggerUI:**
@@ -162,8 +269,13 @@ Each application runs in a separate container:
 | `backend-backend` | Backend API (Scala/Http4s) | 8090 | `.` |
 | `backend-admin-app` | Admin Panel (Nuxt.js) | 3000 | `.` (with APP_DIR=admin-app) |
 | `backend-client-app` | Client App (Nuxt.js) | 3001 | `.` (with APP_DIR=client-app) |
-| `backend-specialist-app` | Specialist App (Nuxt.js) | 3002 | `.` (with APP_DIR=specialist-app) |
+| `backend-specialist-app` | Specialist App (Nuxt.js) | 3002 (dev: 3003) | `.` (with APP_DIR=specialist-app) |
 | `postgres:16-alpine` | PostgreSQL Database | 5432 | External |
+
+**Note:** Specialist app ports:
+- **Development (Docker):** Internal 3003, exposed as 3002 (`3002:3003`)
+- **Development (direct `npm run dev`):** Port 3003
+- **Production:** Port 3000 (behind nginx)
 
 ## 🔧 Docker Commands
 
