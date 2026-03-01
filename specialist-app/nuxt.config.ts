@@ -71,7 +71,8 @@ export default defineNuxtConfig({
 
   css: ["~/assets/css/main.css"],
 
-  // @ts-expect-error - PrimeVue module configuration
+  // PrimeVue configuration
+  // @ts-expect-error - PrimeVue Nuxt module types may not be fully typed
   primevue: {
     options: {
       ripple: true,
