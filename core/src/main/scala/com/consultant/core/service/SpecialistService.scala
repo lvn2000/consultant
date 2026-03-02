@@ -4,6 +4,8 @@ import cats.effect.IO
 import cats.syntax.all.*
 import com.consultant.core.domain.*
 import com.consultant.core.ports.*
+import com.consultant.core.validation.SpecialistValidator
+import com.consultant.core.validation.ValidationResult.*
 
 class SpecialistService(
   specialistRepo: SpecialistRepository,
@@ -36,20 +38,7 @@ class SpecialistService(
     specialistRepo
       .update(specialist)
       .map(Right(_))
-      .handleError { error =>
-        val errorMsg = error.getMessage
-        if errorMsg != null && errorMsg.contains("duplicate key value violates unique constraint") && errorMsg.contains(
-            "specialist_category_rates_pkey"
-          )
-        then Left(DomainError.DuplicateCategoryRate("unknown"))
-        else if errorMsg != null && errorMsg.contains("duplicate key value violates unique constraint") then
-          Left(
-            DomainError.DatabaseError(
-              s"A duplicate entry already exists. Please check that you haven't added this category before."
-            )
-          )
-        else Left(DomainError.DatabaseError(s"Database error: ${error.getMessage}"))
-      }
+      .handleError(parseError)
 
   def deleteSpecialist(id: SpecialistId): IO[Either[DomainError, Unit]] =
     specialistRepo.findById(id).flatMap {
@@ -58,21 +47,58 @@ class SpecialistService(
     }
 
   private def validateAndCreate(request: CreateSpecialistRequest): IO[Either[DomainError, Specialist]] =
-    if request.categoryRates.exists(_.hourlyRate <= 0) then
-      val invalidRate = request.categoryRates.find(_.hourlyRate <= 0).map(_.hourlyRate).getOrElse(BigDecimal(0))
-      IO.pure(Left(DomainError.InvalidPrice(invalidRate)))
-    else if request.categoryRates.exists(_.experienceYears < 0) then
-      IO.pure(Left(DomainError.ValidationError("Experience years must be non-negative")))
-    else
-      specialistRepo
-        .create(request)
-        .map(Right(_))
-        .handleError { error =>
-          val errorMsg = error.getMessage
-          if errorMsg != null && errorMsg.contains("duplicate key value violates unique constraint") && errorMsg
-              .contains("specialist_category_rates_pkey")
-          then Left(DomainError.DuplicateCategoryRate("unknown"))
-          else if errorMsg != null && errorMsg.contains("duplicate key value violates unique constraint") then
-            Left(DomainError.DatabaseError(s"A duplicate entry already exists. Please check your input."))
-          else Left(DomainError.DatabaseError(s"Database error: ${error.getMessage}"))
-        }
+    SpecialistValidator.validateCreate(request).toEither match
+      case Left(error) => IO.pure(Left(error))
+      case Right(_) =>
+        specialistRepo
+          .create(request)
+          .map(Right(_))
+          .handleError(parseError)
+
+  /**
+   * Parses database errors into structured domain errors. This uses SQLState codes instead of string parsing for
+   * reliability. Uses reflection to avoid direct PostgreSQL dependency in core module.
+   */
+  private def parseError(error: Throwable): Either[DomainError, Specialist] =
+    error match
+      case ex if isPostgresException(ex) =>
+        val sqlState   = getSqlState(ex)
+        val message    = ex.getMessage
+        val constraint = parseConstraintName(message)
+
+        sqlState match
+          case Some("23505") => // unique_violation
+            constraint match
+              case Some("specialist_category_rates_pkey") =>
+                Left(DomainError.DuplicateCategoryRate("unknown"))
+              case Some(name) =>
+                Left(DomainError.ConstraintViolation(name, s"Unique constraint violation: $message"))
+              case None =>
+                Left(DomainError.DuplicateEntry("Duplicate entry"))
+
+          case Some("23503") => // foreign_key_violation
+            Left(DomainError.ReferencedRecordNotFound(message))
+
+          case Some(code) =>
+            Left(DomainError.DatabaseError(s"Database error [$code]: $message"))
+
+          case None =>
+            Left(DomainError.DatabaseError(s"Database error: $message"))
+
+      case ex =>
+        Left(DomainError.UnexpectedError(ex.getMessage))
+
+  /** Checks if exception is a PostgreSQL PSQLException using reflection */
+  private def isPostgresException(ex: Throwable): Boolean =
+    ex.getClass.getName == "org.postgresql.util.PSQLException"
+
+  /** Gets SQLState from PostgreSQL exception using reflection */
+  private def getSqlState(ex: Throwable): Option[String] =
+    try
+      val method = ex.getClass.getMethod("getSQLState")
+      Option(method.invoke(ex).asInstanceOf[String])
+    catch case _: Exception => None
+
+  private def parseConstraintName(message: String): Option[String] =
+    val pattern = """violates unique constraint "([^"]+)"""".r
+    pattern.findFirstMatchIn(message).map(_.group(1))

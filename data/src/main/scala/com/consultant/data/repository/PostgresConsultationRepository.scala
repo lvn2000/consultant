@@ -14,9 +14,14 @@ import java.time.Instant
 given Meta[ConsultationStatus] =
   Meta[String].timap(s => ConsultationStatus.valueOf(s))(_.toString)
 
-class PostgresConsultationRepository(xa: Transactor[IO]) extends ConsultationRepository:
+class PostgresConsultationRepository(xa: Transactor[IO])
+    extends ConsultationRepository
+    with TransactionalConsultationRepository:
 
   override def create(request: CreateConsultationRequest, price: BigDecimal): IO[Consultation] =
+    createTransactional(request, price).transact(xa)
+
+  override def createTransactional(request: CreateConsultationRequest, price: BigDecimal): ConnectionIO[Consultation] =
     val id  = UUID.randomUUID()
     val now = Instant.now()
     val consultation = Consultation(
@@ -46,17 +51,18 @@ class PostgresConsultationRepository(xa: Transactor[IO]) extends ConsultationRep
         ${consultation.scheduledAt}, ${consultation.duration}, ${consultation.price},
         ${consultation.createdAt}, ${consultation.updatedAt}
       )
-    """.update.run
-      .transact(xa)
-      .map(_ => consultation)
+    """.update.run.map(_ => consultation)
 
   override def findById(id: ConsultationId): IO[Option[Consultation]] =
+    findByIdTransactional(id).transact(xa)
+
+  override def findByIdTransactional(id: ConsultationId): ConnectionIO[Option[Consultation]] =
     sql"""
       SELECT id, user_id, specialist_id, category_id, description, status,
              scheduled_at, duration, price, rating, review, created_at, updated_at
       FROM consultations
       WHERE id = $id
-    """.query[Consultation].option.transact(xa)
+    """.query[Consultation].option
 
   override def findByUser(userId: UserId, offset: Int, limit: Int): IO[List[Consultation]] =
     sql"""
@@ -83,6 +89,9 @@ class PostgresConsultationRepository(xa: Transactor[IO]) extends ConsultationRep
     """.query[Consultation].to[List].transact(xa)
 
   override def update(consultation: Consultation): IO[Consultation] =
+    updateTransactional(consultation).transact(xa)
+
+  override def updateTransactional(consultation: Consultation): ConnectionIO[Consultation] =
     val updated = consultation.copy(updatedAt = Instant.now())
     sql"""
       UPDATE consultations
@@ -94,20 +103,24 @@ class PostgresConsultationRepository(xa: Transactor[IO]) extends ConsultationRep
           review = ${updated.review},
           updated_at = ${updated.updatedAt}
       WHERE id = ${updated.id}
-    """.update.run
-      .transact(xa)
-      .map(_ => updated)
+    """.update.run.map(_ => updated)
 
   override def updateStatus(id: ConsultationId, status: ConsultationStatus): IO[Unit] =
+    updateStatusTransactional(id, status.toString).transact(xa).void
+
+  override def updateStatusTransactional(id: ConsultationId, status: String): ConnectionIO[Int] =
     sql"""
       UPDATE consultations
       SET status = $status, updated_at = ${Instant.now()}
       WHERE id = $id
-    """.update.run.transact(xa).void
+    """.update.run
 
   override def addReview(id: ConsultationId, rating: Int, review: String): IO[Unit] =
+    addReviewTransactional(id, rating, review).transact(xa).void
+
+  override def addReviewTransactional(id: ConsultationId, rating: Int, review: String): ConnectionIO[Int] =
     sql"""
       UPDATE consultations
       SET rating = $rating, review = $review, updated_at = ${Instant.now()}
       WHERE id = $id
-    """.update.run.transact(xa).void
+    """.update.run

@@ -74,14 +74,7 @@
                 <BaseButton :disabled="!selectedId" @click="handleUpdate">
                     ✏️ {{ $t("adminConnectionTypes.updateType") }}
                 </BaseButton>
-                <BaseButton
-                    :disabled="!selectedId"
-                    variant="danger"
-                    @click="handleDeleteSelected"
-                >
-                    🗑️ {{ $t("adminConnectionTypes.deleteType") }}
-                </BaseButton>
-                <BaseButton variant="default" @click="resetForm">
+                <BaseButton variant="default" @click="onClearClick">
                     ❌ {{ $t("common.clear") }}
                 </BaseButton>
             </div>
@@ -130,25 +123,14 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
-const { confirmAction } = useCrud({
-    fetchUrl: "",
-    updateUrl: () => "",
-    deleteUrl: () => "",
-});
 
-// Lazy store access - only initialize when component is visible
-let _store: ReturnType<typeof useConnectionTypesStore> | null = null;
-const getStore = () => {
-    if (!_store) {
-        _store = useConnectionTypesStore();
-    }
-    return _store;
-};
+// Initialize store immediately (not lazily) to avoid composition API issues
+const store = useConnectionTypesStore();
 
-// Use store state (lazy)
-const items = computed(() => getStore().items);
-const loading = computed(() => getStore().loading);
-const error = computed(() => getStore().error);
+// Use store state
+const items = computed(() => store.items);
+const loading = computed(() => store.loading);
+const error = computed(() => store.error);
 const selectedId = ref<string | null>(null);
 const message = ref("");
 const messageType = ref<"success" | "error">("success");
@@ -164,7 +146,7 @@ const confirmState = ref({ visible: false, title: "", message: "" });
 const confirmResolver = ref<((value: boolean) => void) | null>(null);
 
 const fetchConnectionTypes = async () => {
-    await getStore().fetchConnectionTypes();
+    await store.fetchConnectionTypes();
 };
 
 const selectConnectionType = (type: ConnectionType) => {
@@ -177,10 +159,16 @@ const selectConnectionType = (type: ConnectionType) => {
     scrollToForm();
 };
 
-const resetForm = () => {
+const resetForm = (clearMessage: boolean = true) => {
     selectedId.value = null;
     form.value = { name: "", description: "" };
-    message.value = "";
+    if (clearMessage) {
+        message.value = "";
+    }
+};
+
+const onClearClick = () => {
+    resetForm();
 };
 
 const scrollToForm = () => {
@@ -241,7 +229,7 @@ const handleCreate = async () => {
 
     if (!confirmed) return;
 
-    const result = await getStore().createConnectionType({
+    const result = await store.createConnectionType({
         name: form.value.name,
         description: form.value.description || null,
     });
@@ -267,14 +255,14 @@ const handleUpdate = async () => {
 
     if (!confirmed) return;
 
-    const result = await getStore().updateConnectionType(selectedId.value, {
+    const result = await store.updateConnectionType(selectedId.value, {
         name: form.value.name,
         description: form.value.description,
     });
 
     if (result.success) {
         showMessage(t("adminConnectionTypes.updated"));
-        resetForm();
+        resetForm(false); // Don't clear the message so user can see it
     } else {
         showMessage(
             result.error || t("adminConnectionTypes.failedToUpdate"),
@@ -296,7 +284,7 @@ const handleDelete = async (id: string) => {
 
     if (!confirmed) return;
 
-    const result = await getStore().deleteConnectionType(id);
+    const result = await store.deleteConnectionType(id);
 
     if (result.success) {
         showMessage(t("adminConnectionTypes.deleted"));
@@ -452,6 +440,16 @@ onMounted(() => {
 .btn:hover:not(:disabled) {
     background: #f3f4f6;
     border-color: #9ca3af;
+}
+
+.btn--primary {
+    background: #4f46e5;
+    color: #ffffff;
+    border-color: #4f46e5;
+}
+
+.btn--primary:hover:not(:disabled) {
+    background: #4338ca;
 }
 
 .btn.danger {

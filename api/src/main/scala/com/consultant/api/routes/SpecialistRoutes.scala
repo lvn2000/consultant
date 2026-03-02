@@ -6,7 +6,8 @@ import sttp.tapir.json.circe.*
 import sttp.tapir.generic.auto.*
 import com.consultant.api.dto.*
 import com.consultant.core.service.SpecialistService
-import com.consultant.api.DtoMappers.*
+import com.consultant.api.mappers.SpecialistMappers.*
+import com.consultant.api.mappers.ErrorMappers.*
 import java.util.UUID
 import java.time.Instant
 import sttp.tapir.server.http4s.Http4sServerInterpreter
@@ -14,13 +15,12 @@ import org.http4s.HttpRoutes
 
 class SpecialistRoutes(specialistService: SpecialistService):
 
-  private val baseEndpoint = endpoint
-
   // Create specialist
-  val createSpecialistEndpoint = baseEndpoint.post
+  val createSpecialistEndpoint = ApiEndpoints
+    .publicEndpoint("createSpecialist", "Create a new specialist")
+    .post
     .in(jsonBody[CreateSpecialistDto])
     .out(jsonBody[SpecialistDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val createSpecialist = createSpecialistEndpoint.serverLogic { dto =>
     specialistService.createSpecialist(toCreateSpecialistRequest(dto)).map {
@@ -30,10 +30,11 @@ class SpecialistRoutes(specialistService: SpecialistService):
   }
 
   // Get specialist by ID
-  val getSpecialistEndpoint = baseEndpoint.get
+  val getSpecialistEndpoint = ApiEndpoints
+    .publicEndpoint("getSpecialist", "Get specialist by ID")
+    .get
     .in(path[UUID]("specialistId"))
     .out(jsonBody[SpecialistDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val getSpecialist = getSpecialistEndpoint.serverLogic { id =>
     specialistService.getSpecialist(id).map {
@@ -43,7 +44,9 @@ class SpecialistRoutes(specialistService: SpecialistService):
   }
 
   // Search specialists
-  val searchSpecialistsEndpoint = baseEndpoint.get
+  val searchSpecialistsEndpoint = ApiEndpoints
+    .publicEndpoint("searchSpecialists", "Search specialists")
+    .get
     .in("search")
     .in(query[Option[UUID]]("categoryId"))
     .in(query[Option[BigDecimal]]("minRating"))
@@ -67,11 +70,12 @@ class SpecialistRoutes(specialistService: SpecialistService):
   }
 
   // Update specialist
-  val updateSpecialistEndpoint = baseEndpoint.put
+  val updateSpecialistEndpoint = ApiEndpoints
+    .securedEndpoint("updateSpecialist", "Update specialist")
+    .put
     .in(path[UUID]("specialistId"))
     .in(jsonBody[UpdateSpecialistDto])
     .out(jsonBody[SpecialistDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val updateSpecialist = updateSpecialistEndpoint.serverLogic { case (id, dto) =>
     specialistService.getSpecialist(id).flatMap {
@@ -95,10 +99,11 @@ class SpecialistRoutes(specialistService: SpecialistService):
   }
 
   // Delete specialist
-  val deleteSpecialistEndpoint = baseEndpoint.delete
+  val deleteSpecialistEndpoint = ApiEndpoints
+    .adminEndpoint("deleteSpecialist", "Delete specialist")
+    .delete
     .in(path[UUID]("specialistId"))
     .out(stringBody)
-    .errorOut(jsonBody[ErrorResponse])
 
   val deleteSpecialist = deleteSpecialistEndpoint.serverLogic { id =>
     specialistService.deleteSpecialist(id).map {

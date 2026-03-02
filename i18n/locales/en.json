@@ -477,6 +477,7 @@
   "adminConnectionTypes": {
     "title": "Type Connections",
     "loading": "Loading connection types...",
+    "noTypes": "No connection types found.",
     "namePlaceholder": "WhatsApp",
     "descriptionPlaceholder": "Messaging app",
     "addType": "Add Type",

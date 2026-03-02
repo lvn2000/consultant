@@ -1,18 +1,24 @@
 package com.consultant.core.service
 
 import cats.effect.IO
+import cats.syntax.all.*
 import com.consultant.core.domain.*
 import com.consultant.core.ports.*
+import com.consultant.core.validation.CategoryValidator
+import com.consultant.core.validation.ValidationResult.*
 
 class CategoryService(categoryRepo: CategoryRepository):
 
   def createCategory(request: CreateCategoryRequest): IO[Either[DomainError, Category]] =
-    for
-      existing <- categoryRepo.findByName(request.name)
-      result <- existing match
-        case Some(_) => IO.pure(Left(DomainError.ValidationError(s"Category '${request.name}' already exists")))
-        case None    => categoryRepo.create(request).map(Right(_))
-    yield result
+    CategoryValidator.validateCreate(request).toEither match
+      case Left(error) => IO.pure(Left(error))
+      case Right(_) =>
+        for
+          existing <- categoryRepo.findByName(request.name)
+          result <- existing match
+            case Some(_) => IO.pure(Left(DomainError.ValidationError(s"Category '${request.name}' already exists")))
+            case None    => categoryRepo.create(request).map(Right(_)).handleError(parseError)
+        yield result
 
   def getCategory(id: CategoryId): IO[Either[DomainError, Category]] =
     categoryRepo.findById(id).map {
@@ -24,10 +30,43 @@ class CategoryService(categoryRepo: CategoryRepository):
     categoryRepo.listAll()
 
   def updateCategory(category: Category): IO[Either[DomainError, Category]] =
-    categoryRepo.update(category).map(Right(_))
+    CategoryValidator.validateUpdate(category).toEither match
+      case Left(error) => IO.pure(Left(error))
+      case Right(_)    => categoryRepo.update(category).map(Right(_)).handleError(parseError)
 
   def deleteCategory(id: CategoryId): IO[Either[DomainError, Unit]] =
     categoryRepo.findById(id).flatMap {
-      case Some(_) => categoryRepo.delete(id).as(Right(()))
+      case Some(_) => categoryRepo.delete(id).map(Right(_)).handleError(parseError)
       case None    => IO.pure(Left(DomainError.CategoryNotFound(id)))
     }
+
+  /** Parses database errors into structured domain errors */
+  private def parseError(error: Throwable): Either[DomainError, Nothing] =
+    error match
+      case ex if isPostgresException(ex) =>
+        val sqlState = getSqlState(ex)
+        val message  = ex.getMessage
+
+        sqlState match
+          case Some("23505") => // unique_violation
+            Left(DomainError.DuplicateEntry(s"Category already exists: $message"))
+          case Some("23503") => // foreign_key_violation
+            Left(DomainError.ReferencedRecordNotFound("Cannot delete category: it is referenced by other records"))
+          case Some(code) =>
+            Left(DomainError.DatabaseError(s"Database error [$code]: $message"))
+          case None =>
+            Left(DomainError.DatabaseError(s"Database error: $message"))
+
+      case ex =>
+        Left(DomainError.UnexpectedError(ex.getMessage))
+
+  /** Checks if exception is a PostgreSQL PSQLException using reflection */
+  private def isPostgresException(ex: Throwable): Boolean =
+    ex.getClass.getName == "org.postgresql.util.PSQLException"
+
+  /** Gets SQLState from PostgreSQL exception using reflection */
+  private def getSqlState(ex: Throwable): Option[String] =
+    try
+      val method = ex.getClass.getMethod("getSQLState")
+      Option(method.invoke(ex).asInstanceOf[String])
+    catch case _: Exception => None

@@ -54,7 +54,6 @@ class SystemSettingRoutes(settingService: SystemSettingService):
     .description("Get idle timeout configuration")
 
   def getIdleTimeoutRoute = getIdleTimeoutEndpoint.serverLogic { _ =>
-    println("[DEBUG] getIdleTimeoutRoute called")
     for
       timeout <- settingService.getIdleTimeoutMinutes
       warning <- settingService.getIdleWarningMinutes
@@ -69,12 +68,16 @@ class SystemSettingRoutes(settingService: SystemSettingService):
     .description("Update idle timeout configuration (admin only)")
 
   def updateIdleTimeoutRoute = updateIdleTimeoutEndpoint.serverLogic { dto =>
+    import com.consultant.api.mappers.ErrorMappers.toErrorResponse
     for
-      _       <- dto.idleTimeoutMinutes.traverse(mins => settingService.setIdleTimeout(mins))
-      _       <- dto.idleWarningMinutes.traverse(mins => settingService.setIdleWarning(mins))
-      timeout <- settingService.getIdleTimeoutMinutes
-      warning <- settingService.getIdleWarningMinutes
-    yield Right(IdleTimeoutConfigDto(timeout, warning))
+      timeoutResult <- dto.idleTimeoutMinutes.traverse(mins => settingService.setIdleTimeout(mins))
+      warningResult <- dto.idleWarningMinutes.traverse(mins => settingService.setIdleWarning(mins))
+      timeout       <- settingService.getIdleTimeoutMinutes
+      warning       <- settingService.getIdleWarningMinutes
+    yield (timeoutResult, warningResult) match
+      case (Some(Left(error)), _) => Left(toErrorResponse(error))
+      case (_, Some(Left(error))) => Left(toErrorResponse(error))
+      case _                      => Right(IdleTimeoutConfigDto(timeout, warning))
   }
 
   // GET /api/settings/admin - Get all settings (admin only)
@@ -108,8 +111,9 @@ class SystemSettingRoutes(settingService: SystemSettingService):
     .description("Update a specific system setting (admin only)")
 
   def updateSettingRoute = updateSettingEndpoint.serverLogic { case (key, dto) =>
+    import com.consultant.api.mappers.ErrorMappers.toErrorResponse
     settingService.updateSetting(key, dto.value).map {
-      case Some(setting) =>
+      case Right(Some(setting)) =>
         Right(
           SystemSettingDto(
             id = setting.id,
@@ -120,8 +124,10 @@ class SystemSettingRoutes(settingService: SystemSettingService):
             isPublic = setting.isPublic
           )
         )
-      case None =>
+      case Right(None) =>
         Left(ErrorResponse("SETTING_NOT_FOUND", s"Setting with key '$key' not found"))
+      case Left(error) =>
+        Left(toErrorResponse(error))
     }
   }
 

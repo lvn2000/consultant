@@ -159,14 +159,6 @@
                 >
                     ✏️ {{ $t("adminCategories.updateCategory") }}
                 </button>
-                <button
-                    type="button"
-                    class="btn danger"
-                    :disabled="!selectedCategoryId"
-                    @click="deleteSelectedCategory"
-                >
-                    🗑️ {{ $t("adminCategories.deleteCategory") }}
-                </button>
                 <button type="button" class="btn" @click="resetCategoryForm">
                     ❌ Clear
                 </button>

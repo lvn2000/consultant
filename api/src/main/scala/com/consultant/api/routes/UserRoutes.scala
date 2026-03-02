@@ -7,7 +7,8 @@ import sttp.tapir.generic.auto.*
 import com.consultant.api.dto.*
 import com.consultant.core.service.UserService
 import com.consultant.infrastructure.security.JwtTokenService
-import com.consultant.api.DtoMappers.*
+import com.consultant.api.mappers.UserMappers.*
+import com.consultant.api.mappers.ErrorMappers.*
 import java.util.UUID
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 import org.http4s.HttpRoutes
@@ -15,14 +16,13 @@ import com.consultant.api.codec.SecurityCodecs.given
 
 class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] = None):
 
-  private val baseEndpoint = endpoint
-
   // Create user
-  val createUserEndpoint = baseEndpoint.post
+  val createUserEndpoint = ApiEndpoints
+    .publicEndpoint("createUser", "Register a new user")
+    .post
     .in("register")
     .in(jsonBody[CreateUserDto])
     .out(jsonBody[UserDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val createUser = createUserEndpoint.serverLogic { dto =>
     userService.createUser(toCreateUserRequest(dto)).map {
@@ -32,10 +32,11 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
   }
 
   // Get user by ID
-  val getUserEndpoint = baseEndpoint.get
+  val getUserEndpoint = ApiEndpoints
+    .securedEndpoint("getUser", "Get user by ID")
+    .get
     .in(path[UUID]("userId"))
     .out(jsonBody[UserDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val getUser = getUserEndpoint.serverLogic { id =>
     userService.getUser(id).map {
@@ -45,11 +46,12 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
   }
 
   // Update user
-  val updateUserEndpoint = baseEndpoint.put
+  val updateUserEndpoint = ApiEndpoints
+    .securedEndpoint("updateUser", "Update user")
+    .put
     .in(path[UUID]("userId"))
     .in(jsonBody[UpdateUserDto])
     .out(jsonBody[UserDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val updateUser = updateUserEndpoint.serverLogic { case (id, dto) =>
     userService.getUser(id).flatMap {
@@ -68,17 +70,20 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
   }
 
   // List users
-  val listUsersEndpoint = baseEndpoint.get
+  val listUsersEndpoint = ApiEndpoints
+    .securedEndpoint("listUsers", "List users")
+    .get
     .in(query[Option[Int]]("offset").default(Some(0)))
     .in(query[Option[Int]]("limit").default(Some(20)))
     .out(jsonBody[List[UserDto]])
 
   // Login user
-  val loginEndpoint = baseEndpoint.post
+  val loginEndpoint = ApiEndpoints
+    .publicEndpoint("login", "Login with credentials")
+    .post
     .in("login")
     .in(jsonBody[LoginDto])
     .out(jsonBody[LoginResponseDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val login = loginEndpoint.serverLogic { dto =>
     userService.login(dto.login, dto.password, "0.0.0.0", "unknown").flatMap {
@@ -117,11 +122,12 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
   }
 
   // Logout user session
-  val logoutEndpoint = baseEndpoint.post
+  val logoutEndpoint = ApiEndpoints
+    .securedEndpoint("logout", "Logout user")
+    .post
     .in("logout")
     .in(jsonBody[LogoutDto])
     .out(stringBody)
-    .errorOut(jsonBody[ErrorResponse])
 
   val logout = logoutEndpoint.serverLogic { dto =>
     userService.logout(dto.sessionId).map { success =>
@@ -137,7 +143,9 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
   }
 
   // Test endpoint to verify API is working
-  val testEndpoint = baseEndpoint.get
+  val testEndpoint = ApiEndpoints
+    .publicEndpoint("testApi", "Test API endpoint")
+    .get
     .in("test-api")
     .out(stringBody)
 
@@ -146,23 +154,24 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
   }
 
   // Get admin count (separate path to avoid conflicts)
-  // Using empty string for path since Router provides the full path
-  val getAdminCountEndpoint = endpoint.get
+  val getAdminCountEndpoint = ApiEndpoints
+    .adminEndpoint("getAdminCount", "Get admin user count")
+    .get
     .in("")
     .out(jsonBody[AdminCountDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val getAdminCount = getAdminCountEndpoint.serverLogic { _ =>
-    userService.getAdminCount().flatMap { count =>
-      IO.println(s"[ADMIN-COUNT] Count from DB: $count").as(Right(AdminCountDto(count)))
+    userService.getAdminCount().map { count =>
+      Right(AdminCountDto(count))
     }
   }
 
   // Delete user
-  val deleteUserEndpoint = baseEndpoint.delete
+  val deleteUserEndpoint = ApiEndpoints
+    .adminEndpoint("deleteUser", "Delete user")
+    .delete
     .in(path[UUID]("userId"))
     .out(stringBody)
-    .errorOut(jsonBody[ErrorResponse])
 
   val deleteUser = deleteUserEndpoint.serverLogic { userId =>
     userService.deleteUser(userId, None, None).map {

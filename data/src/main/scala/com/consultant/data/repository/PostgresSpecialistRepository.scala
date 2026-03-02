@@ -15,10 +15,15 @@ import com.consultant.core.ports.ConnectionRepository
 import java.util.UUID
 import java.time.Instant
 
+/** PostgreSQL implementation of SpecialistRepository with transactional support. */
 class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: ConnectionRepository)
-    extends SpecialistRepository:
+    extends SpecialistRepository
+    with TransactionalSpecialistRepository:
 
-  override def create(request: CreateSpecialistRequest): IO[Specialist] = {
+  override def create(request: CreateSpecialistRequest): IO[Specialist] =
+    createTransactional(request).transact(xa)
+
+  override def createTransactional(request: CreateSpecialistRequest): ConnectionIO[Specialist] = {
     val id  = request.id.getOrElse(UUID.randomUUID())
     val now = Instant.now()
     val (hourlyRate, experienceYears) =
@@ -40,7 +45,7 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
       now,
       now
     )
-    val action: ConnectionIO[Unit] = for {
+    for {
       _ <- sql"""
         INSERT INTO specialists (
           id, email, name, phone, bio, hourly_rate, experience_years, is_available, country_id, created_at, updated_at
@@ -51,26 +56,49 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
       """.update.run
       _ <- insertSpecialistCategoryRates(id, request.categoryRates)
       _ <- insertSpecialistLanguages(id, request.languages)
-    } yield ()
-    action.transact(xa).as(specialist)
+    } yield specialist
   }
 
-  override def findById(id: SpecialistId): IO[Option[Specialist]] = {
-    val action: ConnectionIO[Option[
-      (
-        UUID,
-        String,
-        String,
-        String,
-        String,
-        Boolean,
-        Option[UUID],
-        Instant,
-        Instant,
-        Set[UUID],
-        List[SpecialistCategoryRate]
-      )
-    ]] = for {
+  override def findById(id: SpecialistId): IO[Option[Specialist]] =
+    findByIdTransactional(id).transact(xa).flatMap {
+      case None => IO.pure(None)
+      case Some((id, email, name, phone, bio, available, countryId, created, updated, langs, categoryRates)) =>
+        connectionRepo.findBySpecialist(id).map { connections =>
+          Some(
+            Specialist(
+              id,
+              email,
+              name,
+              phone,
+              bio,
+              categoryRates,
+              available,
+              connections,
+              countryId,
+              langs,
+              created,
+              updated
+            )
+          )
+        }
+    }
+
+  override def findByIdTransactional(id: SpecialistId): ConnectionIO[Option[
+    (
+      UUID,
+      String,
+      String,
+      String,
+      String,
+      Boolean,
+      Option[UUID],
+      Instant,
+      Instant,
+      Set[UUID],
+      List[SpecialistCategoryRate]
+    )
+  ]] =
+    for {
       specialistOpt <- sql"""
         SELECT id, email, name, phone, bio, is_available, country_id, created_at, updated_at
         FROM specialists
@@ -97,29 +125,6 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
       langs.toSet,
       categoryRates
     )
-    action.transact(xa).flatMap {
-      case Some((id, email, name, phone, bio, available, countryId, created, updated, langs, categoryRates)) =>
-        connectionRepo.findBySpecialist(id).map { connections =>
-          Some(
-            Specialist(
-              id,
-              email,
-              name,
-              phone,
-              bio,
-              categoryRates,
-              available,
-              connections,
-              countryId,
-              langs,
-              created,
-              updated
-            )
-          )
-        }
-      case None => IO.pure(None)
-    }
-  }
 
   override def findByEmail(email: String): IO[Option[Specialist]] =
     sql"SELECT id FROM specialists WHERE email = $email"
@@ -217,9 +222,12 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
     }
   }
 
-  override def update(specialist: Specialist): IO[Specialist] = {
+  override def update(specialist: Specialist): IO[Specialist] =
+    updateTransactional(specialist).transact(xa)
+
+  override def updateTransactional(specialist: Specialist): ConnectionIO[Specialist] = {
     val updated = specialist.copy(updatedAt = Instant.now())
-    val action: ConnectionIO[Unit] = for {
+    for {
       _ <- sql"""
         UPDATE specialists
         SET email = ${updated.email},
@@ -235,8 +243,7 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
       _ <- insertSpecialistCategoryRates(updated.id, updated.categoryRates)
       _ <- deleteSpecialistLanguages(updated.id)
       _ <- insertSpecialistLanguages(updated.id, updated.languages)
-    } yield ()
-    action.transact(xa).as(updated)
+    } yield updated
   }
   // --- Specialist Languages helpers ---
   private def insertSpecialistLanguages(specialistId: UUID, languages: Set[UUID]): ConnectionIO[Unit] =
@@ -251,15 +258,18 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
     sql"DELETE FROM specialist_languages WHERE specialist_id = $specialistId".update.run.void
 
   override def delete(id: SpecialistId): IO[Unit] =
-    val dbAction: ConnectionIO[Unit] = for {
-      _ <- deleteSpecialistCategoryRates(id)
-      _ <- deleteSpecialistLanguages(id)
-      _ <- sql"DELETE FROM specialists WHERE id = $id".update.run.void
-    } yield ()
+    // Note: connectionRepo operations cannot be in the same transaction as they use a different transactor
     for {
-      _ <- dbAction.transact(xa)
+      _ <- deleteTransactional(id).transact(xa)
       _ <- connectionRepo.deleteBySpecialist(id)
     } yield ()
+
+  override def deleteTransactional(id: SpecialistId): ConnectionIO[Int] =
+    for {
+      _    <- deleteSpecialistCategoryRates(id)
+      _    <- deleteSpecialistLanguages(id)
+      rows <- sql"DELETE FROM specialists WHERE id = $id".update.run
+    } yield rows
 
   override def updateCategoryRating(
     specialistId: SpecialistId,
@@ -267,11 +277,19 @@ class PostgresSpecialistRepository(xa: Transactor[IO], connectionRepo: Connectio
     rating: BigDecimal,
     consultationCount: Int
   ): IO[Unit] =
+    updateCategoryRatingTransactional(specialistId, categoryId, rating, consultationCount).transact(xa).void
+
+  override def updateCategoryRatingTransactional(
+    specialistId: SpecialistId,
+    categoryId: CategoryId,
+    rating: BigDecimal,
+    consultationCount: Int
+  ): ConnectionIO[Int] =
     sql"""
       UPDATE specialist_category_rates
       SET rating = $rating, total_consultations = $consultationCount
       WHERE specialist_id = $specialistId AND category_id = $categoryId
-    """.update.run.transact(xa).void
+    """.update.run
 
   private def insertSpecialistCategoryRates(
     specialistId: UUID,

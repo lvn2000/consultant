@@ -55,7 +55,19 @@ export class ApiError extends Error {
 }
 
 export function useApiError() {
-  const { t, te } = useI18n();
+  // Note: useI18n() can only be called in Vue component setup context
+  // We make it optional to allow this composable to work from Pinia stores
+  let t: ((key: string) => string) | undefined;
+  let te: ((key: string) => boolean) | undefined;
+  try {
+    const i18n = useI18n();
+    t = i18n.t;
+    te = i18n.te;
+  } catch (e) {
+    // i18n not available (e.g., called from Pinia store)
+    t = undefined;
+    te = undefined;
+  }
 
   /**
    * Translate an error code to a localized message
@@ -69,18 +81,19 @@ export function useApiError() {
 
     if (error instanceof ApiError) {
       const key = `errors.${error.code}`;
-      return te(key) ? t(key) : error.message;
+      return (te?.(key) && t?.(key)) ? t(key) : error.message;
     }
 
     const code = error.error;
     if (code) {
       const key = `errors.${code}`;
-      if (te(key)) {
-        return t(key);
+      if (te?.(key)) {
+        const translated = t?.(key);
+        if (translated) return translated;
       }
     }
 
-    return error.message || t("errors.ERROR");
+    return error.message || t?.("errors.ERROR") || "An error occurred";
   };
 
   /**
@@ -131,7 +144,7 @@ export function useApiError() {
       return translateError({ error: data.error, message: data.message });
     }
 
-    return e?.message || t("errors.ERROR");
+    return e?.message || t?.("errors.ERROR") || "An error occurred";
   };
 
   return {

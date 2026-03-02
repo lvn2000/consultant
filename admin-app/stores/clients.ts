@@ -109,7 +109,7 @@ export const useClientsStore = defineStore("clients", {
       const { $fetch } = useApi();
 
       try {
-        await $fetch<Client>(`${config.public.apiBase}/register`, {
+        await $fetch<Client>(`${config.public.apiBase}/auth/register`, {
           method: "POST",
           body: {
             ...data,
@@ -188,12 +188,7 @@ export const useClientsStore = defineStore("clients", {
         const { $fetch } = useApi();
 
         const data = await $fetch<{ preferences: NotificationPreference[] }>(
-          `${config.public.apiBase}/notification-preferences`,
-          {
-            headers: {
-              "X-User-Id": clientId,
-            },
-          },
+          `${config.public.apiBase}/notification-preferences/${clientId}`,
         );
 
         this.notifications = data.preferences || [];
@@ -216,15 +211,12 @@ export const useClientsStore = defineStore("clients", {
 
       try {
         await $fetch(
-          `${config.public.apiBase}/notification-preferences/${notificationType}`,
+          `${config.public.apiBase}/notification-preferences/${clientId}/${notificationType}`,
           {
             method: "PUT",
             body: {
               emailEnabled,
               smsEnabled: false,
-            },
-            headers: {
-              "X-User-Id": clientId,
             },
           },
         );

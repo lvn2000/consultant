@@ -4,6 +4,8 @@ import cats.effect.IO
 import cats.syntax.all.*
 import com.consultant.core.domain.*
 import com.consultant.core.ports.*
+import com.consultant.core.validation.UserValidator
+import com.consultant.core.validation.ValidationResult.*
 import java.util.UUID
 import java.time.Instant
 import org.mindrot.jbcrypt.BCrypt
@@ -74,9 +76,40 @@ class UserService(
       _ <- userRepo.delete(userId)
     } yield ()).attempt.map {
       case Right(_) => Right(())
-      case Left(e)  => Left(DomainError.DatabaseError(e.getMessage))
+      case Left(e)  => Left(parseError(e))
     }
   }
+
+  /** Parses database errors into structured domain errors */
+  private def parseError(error: Throwable): DomainError =
+    error match
+      case ex if isPostgresException(ex) =>
+        val sqlState = getSqlState(ex)
+        val message  = ex.getMessage
+
+        sqlState match
+          case Some("23505") => // unique_violation
+            DomainError.DuplicateEntry(s"Duplicate entry: $message")
+          case Some("23503") => // foreign_key_violation
+            DomainError.ReferencedRecordNotFound(message)
+          case Some(code) =>
+            DomainError.DatabaseError(s"Database error [$code]: $message")
+          case None =>
+            DomainError.DatabaseError(s"Database error: $message")
+
+      case ex =>
+        DomainError.UnexpectedError(ex.getMessage)
+
+  /** Checks if exception is a PostgreSQL PSQLException using reflection */
+  private def isPostgresException(ex: Throwable): Boolean =
+    ex.getClass.getName == "org.postgresql.util.PSQLException"
+
+  /** Gets SQLState from PostgreSQL exception using reflection */
+  private def getSqlState(ex: Throwable): Option[String] =
+    try
+      val method = ex.getClass.getMethod("getSQLState")
+      Option(method.invoke(ex).asInstanceOf[String])
+    catch case _: Exception => None
 
   /** Get the count of admin users in the system */
   def getAdminCount(): IO[Int] = userRepo.countAdmins()
@@ -86,21 +119,22 @@ class UserService(
   private val sessionTtl = 24.hours
 
   def createUser(request: CreateUserRequest): IO[Either[DomainError, User]] =
-    for
-      existing <- userRepo.findByEmail(request.email)
-      result <- existing match
-        case Some(_) => IO.pure(Left(DomainError.EmailAlreadyExists(request.email)))
-        case None =>
-          if !isValidEmail(request.email) then IO.pure(Left(DomainError.InvalidEmail(request.email)))
-          else
-            for
-              user <- userRepo.create(request)
-              // Create default notification preferences if repo is available
-              _ <- notificationPreferenceRepo match
-                case Some(repo) => repo.createDefaults(user.id)
-                case None       => IO.unit
-            yield Right(user)
-    yield result
+    UserValidator.validateCreate(request).toEither match
+      case Left(error) => IO.pure(Left(error))
+      case Right(_) =>
+        for
+          existing <- userRepo.findByEmail(request.email)
+          result <- existing match
+            case Some(_) => IO.pure(Left(DomainError.EmailAlreadyExists(request.email)))
+            case None =>
+              for
+                user <- userRepo.create(request)
+                // Create default notification preferences if repo is available
+                _ <- notificationPreferenceRepo match
+                  case Some(repo) => repo.createDefaults(user.id)
+                  case None       => IO.unit
+              yield Right(user)
+        yield result
 
   def getUser(id: UserId): IO[Either[DomainError, User]] =
     userRepo.findById(id).map {
@@ -109,7 +143,9 @@ class UserService(
     }
 
   def updateUser(user: User): IO[Either[DomainError, User]] =
-    userRepo.update(user).map(Right(_))
+    UserValidator.validateUpdate(user).toEither match
+      case Left(error) => IO.pure(Left(error))
+      case Right(_)    => userRepo.update(user).map(Right(_))
 
   def listUsers(offset: Int, limit: Int): IO[List[User]] =
     userRepo.list(offset, limit)
@@ -143,6 +179,5 @@ class UserService(
   def logout(sessionId: String): IO[Boolean] =
     sessionRepo.delete(sessionId)
 
-  private def isValidEmail(email: String): Boolean =
-    email.matches("""^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$""")
+  // Email validation is now handled by UserValidator
 }

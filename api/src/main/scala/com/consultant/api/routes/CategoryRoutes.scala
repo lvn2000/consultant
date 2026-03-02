@@ -7,20 +7,20 @@ import sttp.tapir.generic.auto.*
 import com.consultant.api.dto.*
 import com.consultant.core.service.CategoryService
 import com.consultant.core.domain.Category
-import com.consultant.api.DtoMappers.*
+import com.consultant.api.mappers.CategoryMappers.*
+import com.consultant.api.mappers.ErrorMappers.*
 import java.util.UUID
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 import org.http4s.HttpRoutes
 
 class CategoryRoutes(categoryService: CategoryService):
 
-  private val baseEndpoint = endpoint
-
   // Create category
-  val createCategoryEndpoint = baseEndpoint.post
+  val createCategoryEndpoint = ApiEndpoints
+    .adminEndpoint("createCategory", "Create a new category")
+    .post
     .in(jsonBody[CreateCategoryDto])
     .out(jsonBody[CategoryDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val createCategory = createCategoryEndpoint.serverLogic { dto =>
     categoryService.createCategory(toCreateCategoryRequest(dto)).map {
@@ -30,10 +30,11 @@ class CategoryRoutes(categoryService: CategoryService):
   }
 
   // Get category by ID
-  val getCategoryEndpoint = baseEndpoint.get
+  val getCategoryEndpoint = ApiEndpoints
+    .publicEndpoint("getCategory", "Get category by ID")
+    .get
     .in(path[UUID]("categoryId"))
     .out(jsonBody[CategoryDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val getCategory = getCategoryEndpoint.serverLogic { id =>
     categoryService.getCategory(id).map {
@@ -43,8 +44,9 @@ class CategoryRoutes(categoryService: CategoryService):
   }
 
   // List all categories
-  // List categories
-  val listCategoriesEndpoint = baseEndpoint.get
+  val listCategoriesEndpoint = ApiEndpoints
+    .publicEndpoint("listCategories", "List all categories")
+    .get
     .out(jsonBody[List[CategoryDto]])
 
   val listCategories = listCategoriesEndpoint.serverLogic { _ =>
@@ -54,11 +56,12 @@ class CategoryRoutes(categoryService: CategoryService):
   }
 
   // Update category
-  val updateCategoryEndpoint = baseEndpoint.put
+  val updateCategoryEndpoint = ApiEndpoints
+    .adminEndpoint("updateCategory", "Update a category")
+    .put
     .in(path[UUID]("categoryId"))
     .in(jsonBody[UpdateCategoryDto])
     .out(jsonBody[CategoryDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val updateCategory = updateCategoryEndpoint.serverLogic { case (id, dto) =>
     categoryService.updateCategory(Category(id, dto.name, dto.description, dto.parentId)).map {
@@ -68,10 +71,11 @@ class CategoryRoutes(categoryService: CategoryService):
   }
 
   // Delete category
-  val deleteCategoryEndpoint = baseEndpoint.delete
+  val deleteCategoryEndpoint = ApiEndpoints
+    .adminEndpoint("deleteCategory", "Delete a category")
+    .delete
     .in(path[UUID]("categoryId"))
     .out(stringBody)
-    .errorOut(jsonBody[ErrorResponse])
 
   val deleteCategory = deleteCategoryEndpoint.serverLogic { id =>
     categoryService.deleteCategory(id).map {

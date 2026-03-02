@@ -7,20 +7,20 @@ import sttp.tapir.generic.auto.*
 import com.consultant.api.dto.*
 import com.consultant.core.service.ConsultationService
 import com.consultant.core.domain.ConsultationStatus
-import com.consultant.api.DtoMappers.*
+import com.consultant.api.mappers.ConsultationMappers.*
+import com.consultant.api.mappers.ErrorMappers.*
 import java.util.UUID
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 import org.http4s.HttpRoutes
 
 class ConsultationRoutes(consultationService: ConsultationService):
 
-  private val baseEndpoint = endpoint
-
   // Create consultation
-  val createConsultationEndpoint = baseEndpoint.post
+  val createConsultationEndpoint = ApiEndpoints
+    .securedEndpoint("createConsultation", "Create a new consultation")
+    .post
     .in(jsonBody[CreateConsultationDto])
     .out(jsonBody[ConsultationDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val createConsultation = createConsultationEndpoint.serverLogic { dto =>
     consultationService.createConsultation(toCreateConsultationRequest(dto)).map {
@@ -30,10 +30,11 @@ class ConsultationRoutes(consultationService: ConsultationService):
   }
 
   // Get consultation by ID
-  val getConsultationEndpoint = baseEndpoint.get
+  val getConsultationEndpoint = ApiEndpoints
+    .securedEndpoint("getConsultation", "Get consultation by ID")
+    .get
     .in(path[UUID]("consultationId"))
     .out(jsonBody[ConsultationDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val getConsultation = getConsultationEndpoint.serverLogic { id =>
     consultationService.getConsultation(id).map {
@@ -43,7 +44,9 @@ class ConsultationRoutes(consultationService: ConsultationService):
   }
 
   // Get user consultations
-  val getUserConsultationsEndpoint = baseEndpoint.get
+  val getUserConsultationsEndpoint = ApiEndpoints
+    .securedEndpoint("getUserConsultations", "Get consultations for a user")
+    .get
     .in("user" / path[UUID]("userId"))
     .in(query[Option[Int]]("offset").default(Some(0)))
     .in(query[Option[Int]]("limit").default(Some(20)))
@@ -56,7 +59,9 @@ class ConsultationRoutes(consultationService: ConsultationService):
   }
 
   // Get specialist consultations
-  val getSpecialistConsultationsEndpoint = baseEndpoint.get
+  val getSpecialistConsultationsEndpoint = ApiEndpoints
+    .securedEndpoint("getSpecialistConsultations", "Get consultations for a specialist")
+    .get
     .in("specialist" / path[UUID]("specialistId"))
     .in(query[Option[Int]]("offset").default(Some(0)))
     .in(query[Option[Int]]("limit").default(Some(20)))
@@ -74,13 +79,14 @@ class ConsultationRoutes(consultationService: ConsultationService):
   }
 
   // Update consultation status
-  val updateConsultationStatusEndpoint = baseEndpoint.put
+  val updateConsultationStatusEndpoint = ApiEndpoints
+    .securedEndpoint("updateConsultationStatus", "Update consultation status")
+    .put
     .in(path[UUID]("consultationId") / "status")
     .in(header[Option[String]]("X-Auth-User-Id"))
     .in(header[Option[String]]("X-User-Role"))
     .in(jsonBody[UpdateConsultationStatusDto])
     .out(jsonBody[ConsultationDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val updateConsultationStatus = updateConsultationStatusEndpoint.serverLogic { (id, authUserIdOpt, userRoleOpt, dto) =>
     (authUserIdOpt, userRoleOpt) match
@@ -111,13 +117,14 @@ class ConsultationRoutes(consultationService: ConsultationService):
   }
 
   // Approve consultation with duration
-  val approveConsultationEndpoint = baseEndpoint.put
+  val approveConsultationEndpoint = ApiEndpoints
+    .securedEndpoint("approveConsultation", "Approve consultation")
+    .put
     .in(path[UUID]("consultationId") / "approve")
     .in(header[Option[String]]("X-Auth-User-Id"))
     .in(header[Option[String]]("X-User-Role"))
     .in(jsonBody[ApproveConsultationDto])
     .out(jsonBody[ConsultationDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val approveConsultation = approveConsultationEndpoint.serverLogic { (id, authUserIdOpt, userRoleOpt, dto) =>
     (authUserIdOpt, userRoleOpt) match
@@ -152,11 +159,12 @@ class ConsultationRoutes(consultationService: ConsultationService):
   }
 
   // Add review
-  val addReviewEndpoint = baseEndpoint.post
+  val addReviewEndpoint = ApiEndpoints
+    .securedEndpoint("addReview", "Add review to consultation")
+    .post
     .in(path[UUID]("consultationId") / "review")
     .in(jsonBody[AddReviewDto])
     .out(jsonBody[String])
-    .errorOut(jsonBody[ErrorResponse])
 
   val addReview = addReviewEndpoint.serverLogic { case (id, dto) =>
     consultationService.addReview(id, dto.rating, dto.review).map {

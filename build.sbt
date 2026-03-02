@@ -22,6 +22,8 @@ lazy val jwtVersion        = "10.0.0"
 lazy val bcryptVersion     = "1.78.1"
 lazy val jbcryptVersion    = "0.4"
 
+lazy val log4catsVersion = "2.6.0"
+
 lazy val commonSettings = Seq(
   scalacOptions ++= Seq(
     "-deprecation",
@@ -35,6 +37,8 @@ lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "org.typelevel" %% "cats-core"   % catsVersion,
     "org.typelevel" %% "cats-effect" % catsEffectVersion,
+    "org.typelevel" %% "log4cats-core"    % log4catsVersion,
+    "org.typelevel" %% "log4cats-slf4j"   % log4catsVersion,
     "org.scalatest" %% "scalatest"   % "3.2.17" % Test,
     "org.scalamock" %% "scalamock"   % "7.5.4"  % Test
   )

@@ -72,7 +72,31 @@ object AppConfig:
     storage: StorageConfig
   )
 
-  def load: IO[AppConfig] =
+  /**
+   * Loads configuration based on the current environment.
+   *
+   * Uses APP_ENV environment variable to determine which configuration to load:
+   *   - production: Strict validation, no unsafe defaults
+   *   - staging: Production-like settings with relaxed constraints
+   *   - development (default): Permissive defaults for local development
+   */
+  def load: IO[AppConfig] = Configs.loadForEnvironment()
+
+  /**
+   * Loads configuration for a specific environment.
+   *
+   * @param env
+   *   The environment to load configuration for
+   */
+  def loadFor(env: Environment): IO[AppConfig] = Configs.loadForEnvironment(env)
+
+  /**
+   * Legacy load method for backward compatibility.
+   * @deprecated
+   *   Use loadFor(environment) instead
+   */
+  @deprecated("Use loadFor(environment) for environment-specific configuration", "2.0")
+  def loadLegacy: IO[AppConfig] =
     val baseConfig = (
       env("SERVER_HOST").as[String].default("0.0.0.0"),
       env("SERVER_PORT").as[Int].default(8090),
