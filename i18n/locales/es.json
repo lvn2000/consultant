@@ -271,6 +271,11 @@
     "durationMin": "{n} min",
     "priceLabel": "Precio: ",
     "failedToLoad": "Error al cargar las consultas",
+        "cancel": "Cancelar Consulta",
+        "cancelling": "Cancelando...",
+        "confirmCancel": "¿Está seguro de que desea cancelar esta consulta?",
+        "cancelSuccess": "Consulta cancelada con éxito.",
+        "cancelFailed": "Error al cancelar la consulta.",
     "book": {
       "title": "Reservar nueva consulta",
       "specialistLabel": "Especialista",

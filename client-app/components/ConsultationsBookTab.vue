@@ -81,7 +81,7 @@ const {
 } = useSlots();
 const {
     bookingLoading: creating,
-    bookingError: message,
+    bookingMessage: message,
     bookingSuccess: success,
     createBooking,
 } = useBooking();

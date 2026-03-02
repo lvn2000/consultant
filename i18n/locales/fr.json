@@ -271,6 +271,11 @@
     "durationMin": "{n} min",
     "priceLabel": "Prix : ",
     "failedToLoad": "Échec du chargement des consultations",
+        "cancel": "Annuler la consultation",
+        "cancelling": "Annulation...",
+        "confirmCancel": "Voulez-vous vraiment annuler cette consultation ?",
+        "cancelSuccess": "Consultation annulée avec succès.",
+        "cancelFailed": "Échec de l'annulation de la consultation.",
     "book": {
       "title": "Réserver une nouvelle consultation",
       "specialistLabel": "Spécialiste",

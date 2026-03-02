@@ -74,6 +74,13 @@ class PostgresConsultationRepository(xa: Transactor[IO])
       LIMIT $limit OFFSET $offset
     """.query[Consultation].to[List].transact(xa)
 
+  override def findByUserCount(userId: UserId): IO[Long] =
+    sql"""
+      SELECT COUNT(*)::BIGINT
+      FROM consultations
+      WHERE user_id = $userId
+    """.query[Long].unique.transact(xa)
+
   override def findBySpecialist(
     specialistId: SpecialistId,
     offset: Int,
@@ -87,6 +94,13 @@ class PostgresConsultationRepository(xa: Transactor[IO])
       ORDER BY created_at DESC
       LIMIT $limit OFFSET $offset
     """.query[Consultation].to[List].transact(xa)
+
+  override def findBySpecialistCount(specialistId: SpecialistId): IO[Long] =
+    sql"""
+      SELECT COUNT(*)::BIGINT
+      FROM consultations
+      WHERE specialist_id = $specialistId
+    """.query[Long].unique.transact(xa)
 
   override def update(consultation: Consultation): IO[Consultation] =
     updateTransactional(consultation).transact(xa)

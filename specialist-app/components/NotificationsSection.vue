@@ -106,17 +106,11 @@ const loadNotificationPreferences = async () => {
         }
 
         const response = await $fetch<NotificationPreferencesResponse>(
-            `${config.public.apiBase}/notification-preferences`,
-            {
-                headers: {
-                    "X-User-Id": userId,
-                },
-            },
+            `${config.public.apiBase}/notification-preferences/${userId}`,
         );
 
         notificationPreferences.value = response.preferences || [];
     } catch (error: any) {
-        console.error("Notification preferences load error:", error);
         notificationsError.value =
             error.data?.message ||
             error.message ||
@@ -133,13 +127,6 @@ const updateNotificationPreference = async (
     updatingNotificationId.value = preference.id;
     notificationUpdateMessage.value = "";
     notificationUpdateSuccess.value = false;
-
-    console.log(
-        "Updating preference:",
-        preference.notificationType,
-        "to:",
-        newValue,
-    );
 
     try {
         const userId = sessionStorage.getItem("userId");
@@ -162,9 +149,6 @@ const updateNotificationPreference = async (
             `${config.public.apiBase}/notification-preferences/${userId}/${preference.notificationType}`,
             {
                 method: "PUT",
-                headers: {
-                    "X-User-Id": userId,
-                },
                 body: {
                     emailEnabled: newValue,
                     smsEnabled: preference.smsEnabled,

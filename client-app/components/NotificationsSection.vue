@@ -95,12 +95,7 @@ const loadNotificationPreferences = async () => {
         }
 
         const response = (await $fetch(
-            `${config.public.apiBase}/notification-preferences`,
-            {
-                headers: {
-                    "X-User-Id": userId,
-                },
-            },
+            `${config.public.apiBase}/notification-preferences/${userId}`,
         )) as any;
 
         notificationPreferences.value = response.preferences || [];

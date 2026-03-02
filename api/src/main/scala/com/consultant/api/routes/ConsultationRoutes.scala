@@ -50,12 +50,21 @@ class ConsultationRoutes(consultationService: ConsultationService):
     .in("user" / path[UUID]("userId"))
     .in(query[Option[Int]]("offset").default(Some(0)))
     .in(query[Option[Int]]("limit").default(Some(20)))
-    .out(jsonBody[List[ConsultationDto]])
+    .out(jsonBody[PaginatedConsultationsDto])
 
   val getUserConsultations = getUserConsultationsEndpoint.serverLogic { case (userId, offset, limit) =>
     consultationService
-      .getUserConsultations(userId, offset.getOrElse(0), limit.getOrElse(20))
-      .map(consultations => Right(consultations.map(toConsultationDto)))
+      .getUserConsultationsWithCount(userId, offset.getOrElse(0), limit.getOrElse(20))
+      .map { case (consultations, count) =>
+        Right(
+          PaginatedConsultationsDto(
+            consultations = consultations.map(toConsultationDto),
+            totalCount = count,
+            offset = offset.getOrElse(0),
+            limit = limit.getOrElse(20)
+          )
+        )
+      }
   }
 
   // Get specialist consultations
@@ -65,17 +74,26 @@ class ConsultationRoutes(consultationService: ConsultationService):
     .in("specialist" / path[UUID]("specialistId"))
     .in(query[Option[Int]]("offset").default(Some(0)))
     .in(query[Option[Int]]("limit").default(Some(20)))
-    .out(jsonBody[List[ConsultationDto]])
+    .out(jsonBody[PaginatedConsultationsDto])
 
   val getSpecialistConsultations = getSpecialistConsultationsEndpoint.serverLogic {
     case (specialistId, offset, limit) =>
       consultationService
-        .getSpecialistConsultations(
+        .getSpecialistConsultationsWithCount(
           specialistId,
           offset.getOrElse(0),
           limit.getOrElse(20)
         )
-        .map(consultations => Right(consultations.map(toConsultationDto)))
+        .map { case (consultations, count) =>
+          Right(
+            PaginatedConsultationsDto(
+              consultations = consultations.map(toConsultationDto),
+              totalCount = count,
+              offset = offset.getOrElse(0),
+              limit = limit.getOrElse(20)
+            )
+          )
+        }
   }
 
   // Update consultation status

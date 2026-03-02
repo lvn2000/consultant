@@ -24,6 +24,7 @@ export function useBooking() {
   const bookingLoading = ref(false);
   const bookingError = ref<string | null>(null);
   const bookingSuccess = ref(false);
+  const bookingMessage = ref<string>("");
   const { $fetch } = useApi();
   const config = useRuntimeConfig();
 
@@ -34,11 +35,13 @@ export function useBooking() {
     bookingLoading.value = true;
     bookingError.value = null;
     bookingSuccess.value = false;
+    bookingMessage.value = "";
 
     try {
       const userId = sessionStorage.getItem("userId");
       if (!userId) {
         bookingError.value = "User ID not found";
+        bookingMessage.value = bookingError.value;
         return { success: false, error: bookingError.value };
       }
 
@@ -62,11 +65,13 @@ export function useBooking() {
       });
 
       bookingSuccess.value = true;
+      bookingMessage.value = "Consultation booked successfully!";
       return { success: true };
     } catch (error: any) {
-      bookingError.value =
-        error.data?.message || error.message || "Booking failed";
-      return { success: false, error: bookingError.value };
+      const errorMsg = error.data?.message || error.message || "Booking failed";
+      bookingError.value = errorMsg;
+      bookingMessage.value = errorMsg;
+      return { success: false, error: errorMsg };
     } finally {
       bookingLoading.value = false;
     }
@@ -76,6 +81,7 @@ export function useBooking() {
     bookingLoading,
     bookingError,
     bookingSuccess,
+    bookingMessage,
     createBooking,
   };
 }

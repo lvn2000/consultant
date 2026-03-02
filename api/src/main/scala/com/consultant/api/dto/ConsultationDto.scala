@@ -44,3 +44,11 @@ case class ApproveConsultationDto(
   status: String,
   duration: Int
 ) derives Codec.AsObject
+
+// DTO for paginated consultation results
+case class PaginatedConsultationsDto(
+  consultations: List[ConsultationDto],
+  totalCount: Long,
+  offset: Int,
+  limit: Int
+) derives Codec.AsObject

@@ -153,12 +153,28 @@ class ConsultationService(
   def getUserConsultations(userId: UserId, offset: Int, limit: Int): IO[List[Consultation]] =
     consultationRepo.findByUser(userId, offset, limit)
 
+  def getUserConsultationsWithCount(userId: UserId, offset: Int, limit: Int): IO[(List[Consultation], Long)] =
+    for {
+      consultations <- consultationRepo.findByUser(userId, offset, limit)
+      count         <- consultationRepo.findByUserCount(userId)
+    } yield (consultations, count)
+
   def getSpecialistConsultations(
     specialistId: SpecialistId,
     offset: Int,
     limit: Int
   ): IO[List[Consultation]] =
     consultationRepo.findBySpecialist(specialistId, offset, limit)
+
+  def getSpecialistConsultationsWithCount(
+    specialistId: SpecialistId,
+    offset: Int,
+    limit: Int
+  ): IO[(List[Consultation], Long)] =
+    for {
+      consultations <- consultationRepo.findBySpecialist(specialistId, offset, limit)
+      count         <- consultationRepo.findBySpecialistCount(specialistId)
+    } yield (consultations, count)
 
   private def calculatePrice(hourlyRate: BigDecimal, duration: Option[Int]): BigDecimal =
     duration match

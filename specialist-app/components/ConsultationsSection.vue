@@ -294,6 +294,7 @@ const consultationsError = ref("");
 const consultations = ref<EnrichedConsultation[]>([]);
 const currentConsultationPage = ref(1);
 const itemsPerPage = 10;
+const totalConsultationCount = ref(0);
 const updatingConsultationId = ref<string | null>(null);
 
 // Approval dialog state
@@ -315,12 +316,11 @@ const tableColumns = [
 const columnWidths = ["1.5fr", "1.5fr", "2fr", "1fr", "1fr", "1fr", "1.5fr"];
 
 const consultationPagination = computed(() => {
-    const total = consultations.value.length;
-    const totalPages = Math.ceil(total / itemsPerPage);
+    const totalPages = Math.ceil(totalConsultationCount.value / itemsPerPage);
     return {
         currentPage: currentConsultationPage.value,
         totalPages: totalPages || 1,
-        totalCount: total,
+        totalCount: totalConsultationCount.value,
     };
 });
 
@@ -340,10 +340,18 @@ const loadConsultations = async () => {
             consultationsError.value = t("auth.userIdNotFound");
             return;
         }
-        const data = await $fetch<Consultation[]>(
-            `${config.public.apiBase}/consultations/specialist/${userId}`,
+                
+        // Calculate offset based on current page and page size
+        const offset = (currentConsultationPage.value - 1) * itemsPerPage;
+        const limit = itemsPerPage;
+                
+        const response = await $fetch<{ consultations: any[], totalCount: number, offset: number, limit: number }>
+            (`${config.public.apiBase}/consultations/specialist/${userId}?offset=${offset}&limit=${limit}`,
         );
-        const consultationsData = data || [];
+        const consultationsData = response.consultations || [];
+        
+        // Update the total count from server response
+        totalConsultationCount.value = response.totalCount || 0;
 
         // Enrich consultations with client names and category names
         const enrichedConsultations = await Promise.all(

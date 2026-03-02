@@ -271,6 +271,11 @@
     "durationMin": "{n} Min",
     "priceLabel": "Preis: ",
     "failedToLoad": "Beratungen konnten nicht geladen werden",
+        "cancel": "Beratung stornieren",
+        "cancelling": "Wird storniert...",
+        "confirmCancel": "Möchten Sie diese Beratung wirklich stornieren?",
+        "cancelSuccess": "Beratung erfolgreich storniert.",
+        "cancelFailed": "Beratung konnte nicht storniert werden.",
     "book": {
       "title": "Neue Beratung buchen",
       "specialistLabel": "Spezialist",
