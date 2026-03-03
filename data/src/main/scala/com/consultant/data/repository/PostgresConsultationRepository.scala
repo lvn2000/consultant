@@ -10,9 +10,67 @@ import com.consultant.core.ports.ConsultationRepository
 import java.util.UUID
 import java.time.Instant
 
+// Case class to hold consultation data along with total count from window function
+case class ConsultationWithCount(consultation: Consultation, count: Long)
+
 // Doobie Meta instances for custom types
 given Meta[ConsultationStatus] =
   Meta[String].timap(s => ConsultationStatus.valueOf(s))(_.toString)
+
+// Custom Read instance for ConsultationWithCount
+given Read[ConsultationWithCount] =
+  // Define a Read for the full row that includes all Consultation fields plus the count
+  Read[
+    (
+      ConsultationId,
+      UserId,
+      SpecialistId,
+      CategoryId,
+      String,
+      ConsultationStatus,
+      Instant,
+      Option[Int],
+      BigDecimal,
+      Option[Int],
+      Option[String],
+      Instant,
+      Instant,
+      Long // This is our count from COUNT(*) OVER()
+    )
+  ].map {
+    case (
+          id,
+          userId,
+          specialistId,
+          categoryId,
+          description,
+          status,
+          scheduledAt,
+          duration,
+          price,
+          rating,
+          review,
+          createdAt,
+          updatedAt,
+          count
+        ) =>
+      val consultation = Consultation(
+        id = id,
+        userId = userId,
+        specialistId = specialistId,
+        categoryId = categoryId,
+        description = description,
+        status = status,
+        scheduledAt = scheduledAt,
+        duration = duration,
+        price = price,
+        rating = rating,
+        review = review,
+        createdAt = createdAt,
+        updatedAt = updatedAt
+      )
+      ConsultationWithCount(consultation, count)
+  }
 
 class PostgresConsultationRepository(xa: Transactor[IO])
     extends ConsultationRepository
@@ -81,6 +139,26 @@ class PostgresConsultationRepository(xa: Transactor[IO])
       WHERE user_id = $userId
     """.query[Long].unique.transact(xa)
 
+  override def findByUserWithCount(userId: UserId, offset: Int, limit: Int): IO[(List[Consultation], Long)] =
+    sql"""
+      SELECT id, user_id, specialist_id, category_id, description, status,
+             scheduled_at, duration, price, rating, review, created_at, updated_at,
+             COUNT(*) OVER() AS total_count
+      FROM consultations
+      WHERE user_id = $userId
+      ORDER BY created_at DESC
+      LIMIT $limit OFFSET $offset
+    """.query[ConsultationWithCount].to[List].transact(xa).map { results =>
+      if (results.nonEmpty) {
+        // All entries will have the same count value due to the window function
+        (results.map(_.consultation), results.head.count)
+      } else {
+        // When no results, we still need to return a count, so we make a separate query for count
+        // Or we could return (Nil, 0) if there are no results
+        (Nil, 0L)
+      }
+    }
+
   override def findBySpecialist(
     specialistId: SpecialistId,
     offset: Int,
@@ -101,6 +179,27 @@ class PostgresConsultationRepository(xa: Transactor[IO])
       FROM consultations
       WHERE specialist_id = $specialistId
     """.query[Long].unique.transact(xa)
+
+  override def findBySpecialistWithCount(
+    specialistId: SpecialistId,
+    offset: Int,
+    limit: Int
+  ): IO[(List[Consultation], Long)] =
+    sql"""
+      SELECT id, user_id, specialist_id, category_id, description, status,
+             scheduled_at, duration, price, rating, review, created_at, updated_at,
+             COUNT(*) OVER() AS total_count
+      FROM consultations
+      WHERE specialist_id = $specialistId
+      ORDER BY created_at DESC
+      LIMIT $limit OFFSET $offset
+    """.query[ConsultationWithCount].to[List].transact(xa).map { results =>
+      if (results.nonEmpty) {
+        (results.map(_.consultation), results.head.count)
+      } else {
+        (Nil, 0L)
+      }
+    }
 
   override def update(consultation: Consultation): IO[Consultation] =
     updateTransactional(consultation).transact(xa)

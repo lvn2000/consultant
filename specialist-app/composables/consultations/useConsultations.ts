@@ -33,7 +33,7 @@ export function useConsultations() {
 
   const consultations = ref<Consultation[]>([]);
   const loading = ref(false);
-  const error = ref<string | null>(null);
+  const errorMessage = ref<string | null>(null);
   const currentPage = ref(1);
   const itemsPerPage = ref(10);
 
@@ -42,11 +42,11 @@ export function useConsultations() {
    */
   async function loadConsultations() {
     loading.value = true;
-    error.value = null;
+    errorMessage.value = null;
     try {
       const specialistId = sessionStorage.getItem("userId");
       if (!specialistId) {
-        error.value = "Specialist ID not found";
+        errorMessage.value = "Specialist ID not found";
         consultations.value = [];
         return;
       }
@@ -61,10 +61,10 @@ export function useConsultations() {
       
       // Handle the paginated response
       consultations.value = Array.isArray(response.consultations) ? response.consultations : [];
-    } catch (err: unknown) {
+    } catch (error: unknown) {
       const message =
-        err instanceof Error ? err.message : "Failed to load consultations";
-      error.value = message;
+        error instanceof Error ? error.message : "Failed to load consultations";
+      errorMessage.value = message;
       consultations.value = [];
     } finally {
       loading.value = false;
@@ -88,9 +88,9 @@ export function useConsultations() {
       );
       await loadConsultations();
       return true;
-    } catch (err: unknown) {
-      error.value =
-        err instanceof Error ? err.message : "Failed to approve consultation";
+    } catch (error: unknown) {
+      errorMessage.value =
+        error instanceof Error ? error.message : "Failed to approve consultation";
       return false;
     }
   }
@@ -109,9 +109,9 @@ export function useConsultations() {
       );
       await loadConsultations();
       return true;
-    } catch (err: unknown) {
-      error.value =
-        err instanceof Error ? err.message : "Failed to decline consultation";
+    } catch (error: unknown) {
+      errorMessage.value =
+        error instanceof Error ? error.message : "Failed to decline consultation";
       return false;
     }
   }
@@ -130,9 +130,9 @@ export function useConsultations() {
       );
       await loadConsultations();
       return true;
-    } catch (err: unknown) {
-      error.value =
-        err instanceof Error ? err.message : "Failed to mark consultation as missed";
+    } catch (error: unknown) {
+      errorMessage.value =
+        error instanceof Error ? error.message : "Failed to mark consultation as missed";
       return false;
     }
   }
@@ -171,7 +171,7 @@ export function useConsultations() {
   return {
     consultations,
     loading,
-    error,
+    errorMessage,
     paginatedConsultations,
     pagination,
     loadConsultations,

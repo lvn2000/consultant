@@ -117,10 +117,6 @@ object ConfigValidator:
     (awsConfig, storage.useAws) match
       case (None, true) =>
         Invalid(ConfigError.DependencyError("STORAGE_USE_AWS", "AWS configuration must be provided when USE_AWS=true"))
-      case (Some(_), false) =>
-        Invalid(
-          ConfigError.DependencyError("AWS configuration", "STORAGE_USE_AWS should be true if AWS config is provided")
-        )
       case _ =>
         Valid(())
 

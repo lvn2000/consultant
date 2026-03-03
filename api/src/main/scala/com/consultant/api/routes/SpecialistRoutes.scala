@@ -73,28 +73,38 @@ class SpecialistRoutes(specialistService: SpecialistService):
   val updateSpecialistEndpoint = ApiEndpoints
     .securedEndpoint("updateSpecialist", "Update specialist")
     .put
+    .in(header[Option[String]]("X-Auth-User-Id"))
     .in(path[UUID]("specialistId"))
     .in(jsonBody[UpdateSpecialistDto])
     .out(jsonBody[SpecialistDto])
 
-  val updateSpecialist = updateSpecialistEndpoint.serverLogic { case (id, dto) =>
-    specialistService.getSpecialist(id).flatMap {
-      case Right(existing) =>
-        val updated = existing.copy(
-          email = dto.email,
-          name = dto.name,
-          phone = dto.phone,
-          bio = dto.bio,
-          categoryRates = dto.categoryRates.map(toSpecialistCategoryRate),
-          isAvailable = dto.isAvailable,
-          updatedAt = Instant.now()
-        )
+  val updateSpecialist = updateSpecialistEndpoint.serverLogic { case (authUserIdOpt, id, dto) =>
+    (for
+      authUserId <- IO.fromOption(authUserIdOpt)(new RuntimeException("Missing authentication header"))
+      _ <-
+        if authUserId != id.toString then
+          IO.raiseError(new RuntimeException("Unauthorized: Cannot update another specialist's profile"))
+        else IO.unit
+      existingOpt <- specialistService.getSpecialist(id)
+      result <- existingOpt match
+        case Right(existing) =>
+          val updated = existing.copy(
+            email = dto.email,
+            name = dto.name,
+            phone = dto.phone,
+            bio = dto.bio,
+            categoryRates = dto.categoryRates.map(toSpecialistCategoryRate),
+            isAvailable = dto.isAvailable,
+            updatedAt = Instant.now()
+          )
 
-        specialistService.updateSpecialist(updated).map {
-          case Right(saved) => Right(toSpecialistDto(saved))
-          case Left(error)  => Left(toErrorResponse(error))
-        }
-      case Left(error) => IO.pure(Left(toErrorResponse(error)))
+          specialistService.updateSpecialist(updated).map {
+            case Right(saved) => Right(toSpecialistDto(saved))
+            case Left(error)  => Left(toErrorResponse(error))
+          }
+        case Left(error) => IO.pure(Left(toErrorResponse(error)))
+    yield result).handleErrorWith { error =>
+      IO.pure(Left(ErrorResponse("UNAUTHORIZED", error.getMessage)))
     }
   }
 
@@ -103,13 +113,18 @@ class SpecialistRoutes(specialistService: SpecialistService):
     .adminEndpoint("deleteSpecialist", "Delete specialist")
     .delete
     .in(path[UUID]("specialistId"))
+    .in(header[Option[String]]("X-User-Role"))
     .out(stringBody)
 
-  val deleteSpecialist = deleteSpecialistEndpoint.serverLogic { id =>
-    specialistService.deleteSpecialist(id).map {
-      case Right(_)    => Right("Specialist deleted")
-      case Left(error) => Left(toErrorResponse(error))
-    }
+  val deleteSpecialist = deleteSpecialistEndpoint.serverLogic { case (id, userRoleOpt) =>
+    userRoleOpt match
+      case Some(role) if role.equalsIgnoreCase("Admin") =>
+        specialistService.deleteSpecialist(id).map {
+          case Right(_)    => Right("Specialist deleted")
+          case Left(error) => Left(toErrorResponse(error))
+        }
+      case _ =>
+        IO.pure(Left(ErrorResponse("FORBIDDEN", "Admin role required")))
   }
 
   val endpoints = List(createSpecialist, searchSpecialists, getSpecialist, updateSpecialist, deleteSpecialist)

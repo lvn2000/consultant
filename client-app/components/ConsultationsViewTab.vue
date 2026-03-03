@@ -65,7 +65,7 @@
             {{ $t("consultations.loading") }}
         </div>
         <div v-if="actionMessage" class="action-message" :class="{ success: actionSuccess, error: !actionSuccess }">{{ actionMessage }}</div>
-        <div v-else-if="error" class="list-state error">{{ error }}</div>
+        <div v-if="error && !actionMessage" class="list-state error">{{ error }}</div>
         <div v-else-if="consultations.length === 0" class="empty-state">
             <div class="empty-icon">📋</div>
             <h3>{{ $t("consultations.noConsultations") }}</h3>

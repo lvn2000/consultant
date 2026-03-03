@@ -19,14 +19,19 @@ class CategoryRoutes(categoryService: CategoryService):
   val createCategoryEndpoint = ApiEndpoints
     .adminEndpoint("createCategory", "Create a new category")
     .post
+    .in(header[Option[String]]("X-User-Role"))
     .in(jsonBody[CreateCategoryDto])
     .out(jsonBody[CategoryDto])
 
-  val createCategory = createCategoryEndpoint.serverLogic { dto =>
-    categoryService.createCategory(toCreateCategoryRequest(dto)).map {
-      case Right(category) => Right(toCategoryDto(category))
-      case Left(error)     => Left(toErrorResponse(error))
-    }
+  val createCategory = createCategoryEndpoint.serverLogic { (userRoleOpt, dto) =>
+    userRoleOpt match
+      case Some(role) if role.equalsIgnoreCase("Admin") =>
+        categoryService.createCategory(toCreateCategoryRequest(dto)).map {
+          case Right(category) => Right(toCategoryDto(category))
+          case Left(error)     => Left(toErrorResponse(error))
+        }
+      case _ =>
+        IO.pure(Left(ErrorResponse("FORBIDDEN", "Admin role required")))
   }
 
   // Get category by ID
@@ -60,14 +65,19 @@ class CategoryRoutes(categoryService: CategoryService):
     .adminEndpoint("updateCategory", "Update a category")
     .put
     .in(path[UUID]("categoryId"))
+    .in(header[Option[String]]("X-User-Role"))
     .in(jsonBody[UpdateCategoryDto])
     .out(jsonBody[CategoryDto])
 
-  val updateCategory = updateCategoryEndpoint.serverLogic { case (id, dto) =>
-    categoryService.updateCategory(Category(id, dto.name, dto.description, dto.parentId)).map {
-      case Right(category) => Right(toCategoryDto(category))
-      case Left(error)     => Left(toErrorResponse(error))
-    }
+  val updateCategory = updateCategoryEndpoint.serverLogic { case (id, userRoleOpt, dto) =>
+    userRoleOpt match
+      case Some(role) if role.equalsIgnoreCase("Admin") =>
+        categoryService.updateCategory(Category(id, dto.name, dto.description, dto.parentId)).map {
+          case Right(category) => Right(toCategoryDto(category))
+          case Left(error)     => Left(toErrorResponse(error))
+        }
+      case _ =>
+        IO.pure(Left(ErrorResponse("FORBIDDEN", "Admin role required")))
   }
 
   // Delete category
@@ -75,13 +85,18 @@ class CategoryRoutes(categoryService: CategoryService):
     .adminEndpoint("deleteCategory", "Delete a category")
     .delete
     .in(path[UUID]("categoryId"))
+    .in(header[Option[String]]("X-User-Role"))
     .out(stringBody)
 
-  val deleteCategory = deleteCategoryEndpoint.serverLogic { id =>
-    categoryService.deleteCategory(id).map {
-      case Right(_)    => Right("Category deleted")
-      case Left(error) => Left(toErrorResponse(error))
-    }
+  val deleteCategory = deleteCategoryEndpoint.serverLogic { case (id, userRoleOpt) =>
+    userRoleOpt match
+      case Some(role) if role.equalsIgnoreCase("Admin") =>
+        categoryService.deleteCategory(id).map {
+          case Right(_)    => Right("Category deleted")
+          case Left(error) => Left(toErrorResponse(error))
+        }
+      case _ =>
+        IO.pure(Left(ErrorResponse("FORBIDDEN", "Admin role required")))
   }
 
   val endpoints = List(createCategory, getCategory, listCategories, updateCategory, deleteCategory)

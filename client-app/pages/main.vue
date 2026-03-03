@@ -264,8 +264,6 @@ const loadConsultations = async () => {
         consultationPagination.value.totalPages = Math.ceil(
             response.totalCount / consultationPagination.value.pageSize,
         );
-        // Update current page based on what was requested
-        consultationPagination.value.currentPage = consultationPagination.value.currentPage;
     } catch (error: any) {
         console.error("Consultations load error:", error);
         consultationsError.value =

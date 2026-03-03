@@ -42,23 +42,8 @@ class CategoryService(categoryRepo: CategoryRepository):
 
   /** Parses database errors into structured domain errors */
   private def parseError(error: Throwable): Either[DomainError, Nothing] =
-    error match
-      case ex if isPostgresException(ex) =>
-        val sqlState = getSqlState(ex)
-        val message  = ex.getMessage
-
-        sqlState match
-          case Some("23505") => // unique_violation
-            Left(DomainError.DuplicateEntry(s"Category already exists: $message"))
-          case Some("23503") => // foreign_key_violation
-            Left(DomainError.ReferencedRecordNotFound("Cannot delete category: it is referenced by other records"))
-          case Some(code) =>
-            Left(DomainError.DatabaseError(s"Database error [$code]: $message"))
-          case None =>
-            Left(DomainError.DatabaseError(s"Database error: $message"))
-
-      case ex =>
-        Left(DomainError.UnexpectedError(ex.getMessage))
+    import com.consultant.core.error.PostgresErrorParser
+    Left(PostgresErrorParser.parseError(error))
 
   /** Checks if exception is a PostgreSQL PSQLException using reflection */
   private def isPostgresException(ex: Throwable): Boolean =

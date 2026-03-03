@@ -35,13 +35,23 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
   val getUserEndpoint = ApiEndpoints
     .securedEndpoint("getUser", "Get user by ID")
     .get
+    .in(header[Option[String]]("X-Auth-User-Id"))
     .in(path[UUID]("userId"))
     .out(jsonBody[UserDto])
 
-  val getUser = getUserEndpoint.serverLogic { id =>
-    userService.getUser(id).map {
-      case Right(user) => Right(toUserDto(user))
-      case Left(error) => Left(toErrorResponse(error))
+  val getUser = getUserEndpoint.serverLogic { case (authUserIdOpt, id) =>
+    (for
+      authUserId <- IO.fromOption(authUserIdOpt)(new RuntimeException("Missing authentication header"))
+      _ <-
+        if authUserId != id.toString then
+          IO.raiseError(new RuntimeException("Unauthorized: Cannot access another user's data"))
+        else IO.unit
+      result <- userService.getUser(id).map {
+        case Right(user) => Right(toUserDto(user))
+        case Left(error) => Left(toErrorResponse(error))
+      }
+    yield result).handleErrorWith { error =>
+      IO.pure(Left(ErrorResponse("UNAUTHORIZED", error.getMessage)))
     }
   }
 
@@ -49,23 +59,33 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
   val updateUserEndpoint = ApiEndpoints
     .securedEndpoint("updateUser", "Update user")
     .put
+    .in(header[Option[String]]("X-Auth-User-Id"))
     .in(path[UUID]("userId"))
     .in(jsonBody[UpdateUserDto])
     .out(jsonBody[UserDto])
 
-  val updateUser = updateUserEndpoint.serverLogic { case (id, dto) =>
-    userService.getUser(id).flatMap {
-      case Left(error) => IO.pure(Left(toErrorResponse(error)))
-      case Right(user) =>
-        val updated = user.copy(
-          name = dto.name,
-          email = dto.email,
-          phone = dto.phone
-        )
-        userService.updateUser(updated).map {
-          case Right(updatedUser) => Right(toUserDto(updatedUser))
-          case Left(error)        => Left(toErrorResponse(error))
-        }
+  val updateUser = updateUserEndpoint.serverLogic { case (authUserIdOpt, id, dto) =>
+    (for
+      authUserId <- IO.fromOption(authUserIdOpt)(new RuntimeException("Missing authentication header"))
+      _ <-
+        if authUserId != id.toString then
+          IO.raiseError(new RuntimeException("Unauthorized: Cannot update another user's data"))
+        else IO.unit
+      userOpt <- userService.getUser(id)
+      result <- userOpt match
+        case Right(user) =>
+          val updated = user.copy(
+            name = dto.name,
+            email = dto.email,
+            phone = dto.phone
+          )
+          userService.updateUser(updated).map {
+            case Right(updatedUser) => Right(toUserDto(updatedUser))
+            case Left(error)        => Left(toErrorResponse(error))
+          }
+        case Left(error) => IO.pure(Left(toErrorResponse(error)))
+    yield result).handleErrorWith { error =>
+      IO.pure(Left(ErrorResponse("UNAUTHORIZED", error.getMessage)))
     }
   }
 
@@ -77,48 +97,10 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
     .in(query[Option[Int]]("limit").default(Some(20)))
     .out(jsonBody[List[UserDto]])
 
-  // Login user
-  val loginEndpoint = ApiEndpoints
-    .publicEndpoint("login", "Login with credentials")
-    .post
-    .in("login")
-    .in(jsonBody[LoginDto])
-    .out(jsonBody[LoginResponseDto])
-
-  val login = loginEndpoint.serverLogic { dto =>
-    userService.login(dto.login, dto.password, "0.0.0.0", "unknown").flatMap {
-      case Right(result) =>
-        // Generate JWT access token if jwtService is available
-        jwtService match
-          case Some(service) =>
-            service.generateAccessToken(result.user.id, result.user.role, result.user.email).map { authToken =>
-              Right(
-                LoginResponseDto(
-                  result.user.id.toString,
-                  result.user.login,
-                  result.user.email,
-                  result.user.role.toString,
-                  result.session.sessionId,
-                  Some(authToken.token)
-                )
-              )
-            }
-          case None =>
-            IO.pure(
-              Right(
-                LoginResponseDto(
-                  result.user.id.toString,
-                  result.user.login,
-                  result.user.email,
-                  result.user.role.toString,
-                  result.session.sessionId,
-                  None
-                )
-              )
-            )
-
-      case Left(error) => IO.pure(Left(toErrorResponse(error)))
-    }
+  val listUsers = listUsersEndpoint.serverLogic { case (offset, limit) =>
+    userService
+      .listUsers(offset.getOrElse(0), limit.getOrElse(20))
+      .map(users => Right(users.map(toUserDto)))
   }
 
   // Logout user session
@@ -136,12 +118,6 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
     }
   }
 
-  val listUsers = listUsersEndpoint.serverLogic { case (offset, limit) =>
-    userService
-      .listUsers(offset.getOrElse(0), limit.getOrElse(20))
-      .map(users => Right(users.map(toUserDto)))
-  }
-
   // Test endpoint to verify API is working
   val testEndpoint = ApiEndpoints
     .publicEndpoint("testApi", "Test API endpoint")
@@ -157,13 +133,17 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
   val getAdminCountEndpoint = ApiEndpoints
     .adminEndpoint("getAdminCount", "Get admin user count")
     .get
-    .in("")
+    .in(header[Option[String]]("X-User-Role"))
     .out(jsonBody[AdminCountDto])
 
-  val getAdminCount = getAdminCountEndpoint.serverLogic { _ =>
-    userService.getAdminCount().map { count =>
-      Right(AdminCountDto(count))
-    }
+  val getAdminCount = getAdminCountEndpoint.serverLogic { userRoleOpt =>
+    userRoleOpt match
+      case Some(role) if role.equalsIgnoreCase("Admin") =>
+        userService.getAdminCount().map { count =>
+          Right(AdminCountDto(count))
+        }
+      case _ =>
+        IO.pure(Left(ErrorResponse("FORBIDDEN", "Admin role required")))
   }
 
   // Delete user
@@ -171,13 +151,18 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
     .adminEndpoint("deleteUser", "Delete user")
     .delete
     .in(path[UUID]("userId"))
+    .in(header[Option[String]]("X-User-Role"))
     .out(stringBody)
 
-  val deleteUser = deleteUserEndpoint.serverLogic { userId =>
-    userService.deleteUser(userId, None, None).map {
-      case Right(_)    => Right("User deleted successfully")
-      case Left(error) => Left(toErrorResponse(error))
-    }
+  val deleteUser = deleteUserEndpoint.serverLogic { case (userId, userRoleOpt) =>
+    userRoleOpt match
+      case Some(role) if role.equalsIgnoreCase("Admin") =>
+        userService.deleteUser(userId, None, None).map {
+          case Right(_)    => Right("User deleted successfully")
+          case Left(error) => Left(toErrorResponse(error))
+        }
+      case _ =>
+        IO.pure(Left(ErrorResponse("FORBIDDEN", "Admin role required")))
   }
 
   val endpoints = List(
@@ -186,7 +171,6 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
     getUser,
     updateUser,
     listUsers,
-    login,
     logout,
     getAdminCount,
     deleteUser

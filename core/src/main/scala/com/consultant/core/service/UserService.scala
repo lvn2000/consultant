@@ -82,34 +82,8 @@ class UserService(
 
   /** Parses database errors into structured domain errors */
   private def parseError(error: Throwable): DomainError =
-    error match
-      case ex if isPostgresException(ex) =>
-        val sqlState = getSqlState(ex)
-        val message  = ex.getMessage
-
-        sqlState match
-          case Some("23505") => // unique_violation
-            DomainError.DuplicateEntry(s"Duplicate entry: $message")
-          case Some("23503") => // foreign_key_violation
-            DomainError.ReferencedRecordNotFound(message)
-          case Some(code) =>
-            DomainError.DatabaseError(s"Database error [$code]: $message")
-          case None =>
-            DomainError.DatabaseError(s"Database error: $message")
-
-      case ex =>
-        DomainError.UnexpectedError(ex.getMessage)
-
-  /** Checks if exception is a PostgreSQL PSQLException using reflection */
-  private def isPostgresException(ex: Throwable): Boolean =
-    ex.getClass.getName == "org.postgresql.util.PSQLException"
-
-  /** Gets SQLState from PostgreSQL exception using reflection */
-  private def getSqlState(ex: Throwable): Option[String] =
-    try
-      val method = ex.getClass.getMethod("getSQLState")
-      Option(method.invoke(ex).asInstanceOf[String])
-    catch case _: Exception => None
+    import com.consultant.core.error.PostgresErrorParser
+    PostgresErrorParser.parseError(error)
 
   /** Get the count of admin users in the system */
   def getAdminCount(): IO[Int] = userRepo.countAdmins()

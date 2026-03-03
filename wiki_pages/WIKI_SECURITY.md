@@ -12,7 +12,7 @@ The Consultant Backend implements comprehensive security measures to protect use
 
 The system uses JWT (JSON Web Tokens) for authentication:
 
-````
+```
 - Access tokens: 15-minute validity
 - Refresh tokens: 7-day validity
 - Secure signing with configurable secrets

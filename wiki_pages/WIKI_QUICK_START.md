@@ -120,14 +120,14 @@ curl -X POST http://localhost:8090/api/users/login \
 
 In **separate terminals**:
 
-```bash
+```
 # Terminal A: Client App
 cd client-app && npm install && npm run dev
 # Open http://localhost:3000
 
 # Terminal B: Admin App
 cd admin-app && npm install && npm run dev
-# Open http://localhost:8001
+# Open http://localhost:3001
 
 # Terminal C: Specialist App
 cd specialist-app && npm install && npm run dev
