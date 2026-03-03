@@ -73,17 +73,17 @@ This project uses **Hexagonal Architecture** (Ports & Adapters) to ensure easy m
 
 ## 📚 Documentation
 
-Comprehensive documentation is available in the [`docs/`](docs/) folder:
+Comprehensive documentation has been moved to a separate **[Consultant Wiki](https://github.com/lvn2000/consultant-wiki)** project, including:
 
-| Category | Documents |
-|----------|-----------|
-| **🚀 Quick Starts** | [Database](docs/DATABASE_QUICK_START.md), [HTTPS](docs/HTTPS_QUICKSTART.md), [Security](docs/SECURITY_QUICKSTART.md), [Scaling](docs/SCALING_QUICKSTART.md) |
-| **📐 Architecture** | [Diagrams](docs/ARCHITECTURE_DIAGRAMS.md), [Scaling](docs/SCALING.md), [Security](docs/SECURITY.md) |
-| **🔧 Deployment** | [Docker](docs/DOCKER_DEPLOYMENT.md), [Infisical](docs/INFISICAL_SETUP.md) |
-| **📡 API** | [Quick Reference](docs/QUICK_REFERENCE.md), [Notifications](docs/NOTIFICATIONS_API_REFERENCE.md) |
-| **🎯 Features** | [Availability](docs/AVAILABILITY_FEATURE.md), [Connections](docs/CONNECTIONS_IMPLEMENTATION.md) |
+| Category | Topics |
+|----------|--------|
+| **🚀 Quick Starts** | Database setup, HTTPS configuration, Security hardening, Scaling guide |
+| **📐 Architecture** | System diagrams, Scaling strategies, Security architecture |
+| **🔧 Deployment** | Docker deployment, Infisical secrets management |
+| **📡 API** | API reference, Notifications API, Webhooks |
+| **🎯 Features** | Availability scheduling, Connections, Consultations |
 
-See the complete list in [`docs/README.md`](docs/README.md).
+Visit the wiki for complete documentation.
 
 ## Getting Started
 

@@ -31,7 +31,7 @@ chmod +x scripts/test-*.sh
 **Requirements:**
 - API server running (`./run.sh`)
 - `jq` installed for JSON parsing
-- Test credentials in database (see [docs/TEST_CREDENTIALS.md](../docs/TEST_CREDENTIALS.md))
+- Test credentials in database (see Consultant Wiki)
 
 ## 🔧 Setup & Configuration Scripts
 
@@ -51,7 +51,7 @@ chmod +x scripts/test-*.sh
 ./scripts/generate-ssl-certificates.sh -p
 ```
 
-See [docs/HTTPS_QUICKSTART.md](../docs/HTTPS_QUICKSTART.md) for details.
+See Consultant Wiki for HTTPS configuration details.
 
 ### Infisical Setup
 
@@ -63,7 +63,7 @@ See [docs/HTTPS_QUICKSTART.md](../docs/HTTPS_QUICKSTART.md) for details.
 ./scripts/migrate-to-infisical.sh
 ```
 
-See [docs/INFISICAL_SETUP.md](../docs/INFISICAL_SETUP.md) for details.
+See Consultant Wiki for Infisical configuration details.
 
 ## 🚀 Main Startup Scripts (Root Folder)
 
