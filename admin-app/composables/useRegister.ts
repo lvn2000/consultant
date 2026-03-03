@@ -80,7 +80,6 @@ export async function adminRegisterRequest(
   const config = useRuntimeConfig();
   try {
     const accessToken = sessionStorage.getItem("accessToken");
-    const callerRole = sessionStorage.getItem("role") || "";
 
     const data = await $fetch<AdminRegisterResponse>(
       `${config.public.apiBase}/auth/register-by-admin`,
@@ -89,7 +88,6 @@ export async function adminRegisterRequest(
         headers: {
           "Content-Type": "application/json",
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-          "X-User-Role": callerRole,
         },
         body: {
           login: params.login,

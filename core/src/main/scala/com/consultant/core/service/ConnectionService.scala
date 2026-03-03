@@ -21,14 +21,14 @@ class ConnectionService(
       // Verify connection type exists
       connTypeOpt <- connectionTypeRepo.findById(request.connectionTypeId)
       result <- connTypeOpt match
-        case None    => IO.pure(Left(DomainError.ValidationError("Connection type not found")))
+        case None    => IO.pure(Left(DomainError.ConnectionTypeNotFound(request.connectionTypeId)))
         case Some(_) =>
           // Check if specialist already has this connection type
           for
             existingOpt <- connectionRepo.findBySpecialistAndType(specialistId, request.connectionTypeId)
             result <- existingOpt match
-              case Some(_) => IO.pure(Left(DomainError.ValidationError("Specialist already has this connection type")))
-              case None    => connectionRepo.create(specialistId, request).map(Right(_))
+              case Some(_) => IO.pure(Left(DomainError.DuplicateEntry("Specialist already has this connection type")))
+              case None    => connectionRepo.create(specialistId, request).map(Right(_)).handleError(parseError)
           yield result
     yield result
 
@@ -40,7 +40,7 @@ class ConnectionService(
   def getConnection(id: UUID): IO[Either[DomainError, SpecialistConnection]] =
     connectionRepo.findById(id).map {
       case Some(connection) => Right(connection)
-      case None             => Left(DomainError.ValidationError(s"Connection not found: $id"))
+      case None             => Left(DomainError.ConnectionNotFound(id.toString))
     }
 
   // Update a connection
@@ -51,17 +51,17 @@ class ConnectionService(
     for
       connectionOpt <- connectionRepo.findById(id)
       result <- connectionOpt match
-        case None => IO.pure(Left(DomainError.ValidationError(s"Connection not found: $id")))
+        case None => IO.pure(Left(DomainError.ConnectionNotFound(id.toString)))
         case Some(connection) =>
           val updated = connection.copy(connectionValue = newValue)
-          connectionRepo.update(updated).map(Right(_))
+          connectionRepo.update(updated).map(Right(_)).handleError(parseError)
     yield result
 
   // Remove a connection
   def removeConnection(id: UUID): IO[Either[DomainError, Unit]] =
     connectionRepo.findById(id).flatMap {
-      case None    => IO.pure(Left(DomainError.ValidationError(s"Connection not found: $id")))
-      case Some(_) => connectionRepo.delete(id).map(Right(_))
+      case None    => IO.pure(Left(DomainError.ConnectionNotFound(id.toString)))
+      case Some(_) => connectionRepo.delete(id).map(Right(_)).handleError(parseError)
     }
 
   // Get all connection types
@@ -72,7 +72,7 @@ class ConnectionService(
   def getConnectionType(id: ConnectionTypeId): IO[Either[DomainError, ConnectionType]] =
     connectionTypeRepo.findById(id).map {
       case Some(connType) => Right(connType)
-      case None           => Left(DomainError.ValidationError(s"Connection type not found: $id"))
+      case None           => Left(DomainError.ConnectionTypeNotFound(id))
     }
 
   // Create a connection type
@@ -81,9 +81,9 @@ class ConnectionService(
   ): IO[Either[DomainError, ConnectionType]] =
     connectionTypeRepo.findByName(request.name).flatMap {
       case Some(_) =>
-        IO.pure(Left(DomainError.ValidationError("Connection type already exists")))
+        IO.pure(Left(DomainError.DuplicateEntry("Connection type already exists")))
       case None =>
-        connectionTypeRepo.create(request).map(Right(_))
+        connectionTypeRepo.create(request).map(Right(_)).handleError(parseError)
     }
 
   // Update a connection type
@@ -92,22 +92,22 @@ class ConnectionService(
     request: UpdateConnectionTypeRequest
   ): IO[Either[DomainError, ConnectionType]] =
     connectionTypeRepo.findById(id).flatMap {
-      case None => IO.pure(Left(DomainError.ValidationError(s"Connection type not found: $id")))
+      case None => IO.pure(Left(DomainError.ConnectionTypeNotFound(id)))
       case Some(existing) =>
         connectionTypeRepo.findByName(request.name).flatMap {
           case Some(duplicate) if duplicate.id != id =>
-            IO.pure(Left(DomainError.ValidationError("Connection type name already exists")))
+            IO.pure(Left(DomainError.DuplicateEntry("Connection type name already exists")))
           case _ =>
             val updated = existing.copy(name = request.name, description = request.description)
-            connectionTypeRepo.update(updated).map(Right(_))
+            connectionTypeRepo.update(updated).map(Right(_)).handleError(parseError)
         }
     }
 
   // Delete a connection type
   def deleteConnectionType(id: ConnectionTypeId): IO[Either[DomainError, Unit]] =
     connectionTypeRepo.findById(id).flatMap {
-      case None    => IO.pure(Left(DomainError.ValidationError(s"Connection type not found: $id")))
-      case Some(_) => connectionTypeRepo.delete(id).map(Right(_))
+      case None    => IO.pure(Left(DomainError.ConnectionTypeNotFound(id)))
+      case Some(_) => connectionTypeRepo.delete(id).map(Right(_)).handleError(parseError)
     }
 
   // Client connections methods
@@ -136,7 +136,7 @@ class ConnectionService(
   def getClientConnection(id: UUID): IO[Either[DomainError, ClientConnection]] =
     connectionRepo.findClientConnectionById(id).map {
       case Some(connection) => Right(connection)
-      case None             => Left(DomainError.ValidationError(s"Connection not found: $id"))
+      case None             => Left(DomainError.ConnectionNotFound(id.toString))
     }
 
   def updateClientConnection(
@@ -146,14 +146,21 @@ class ConnectionService(
     for
       connectionOpt <- connectionRepo.findClientConnectionById(id)
       result <- connectionOpt match
-        case None => IO.pure(Left(DomainError.ValidationError(s"Connection not found: $id")))
+        case None => IO.pure(Left(DomainError.ConnectionNotFound(id.toString)))
         case Some(connection) =>
           val updated = connection.copy(connectionValue = newValue)
-          connectionRepo.updateClientConnection(updated).map(Right(_))
+          connectionRepo.updateClientConnection(updated).map(Right(_)).handleError(parseError)
     yield result
 
   def removeClientConnection(id: UUID): IO[Either[DomainError, Unit]] =
     connectionRepo.findClientConnectionById(id).flatMap {
-      case None    => IO.pure(Left(DomainError.ValidationError(s"Connection not found: $id")))
-      case Some(_) => connectionRepo.deleteClientConnection(id).map(Right(_))
+      case None    => IO.pure(Left(DomainError.ConnectionNotFound(id.toString)))
+      case Some(_) => connectionRepo.deleteClientConnection(id).map(Right(_)).handleError(parseError)
     }
+
+  /** Parses database errors into structured domain errors */
+  private def parseError(error: Throwable): Either[DomainError, Nothing] =
+    import com.consultant.core.error.PostgresErrorParser
+    Left(PostgresErrorParser.parseError(error))
+
+end ConnectionService

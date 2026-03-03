@@ -276,6 +276,11 @@
     "durationMin": "{n} min",
     "priceLabel": "Price: ",
     "failedToLoad": "Failed to load consultations",
+    "cancel": "Cancel Consultation",
+    "cancelling": "Cancelling...",
+    "confirmCancel": "Are you sure you want to cancel this consultation?",
+    "cancelSuccess": "Consultation cancelled successfully.",
+    "cancelFailed": "Failed to cancel the consultation.",
     "book": {
       "title": "Book New Consultation",
       "specialistLabel": "Specialist",
@@ -477,6 +482,7 @@
   "adminConnectionTypes": {
     "title": "Type Connections",
     "loading": "Loading connection types...",
+    "noTypes": "No connection types found.",
     "namePlaceholder": "WhatsApp",
     "descriptionPlaceholder": "Messaging app",
     "addType": "Add Type",

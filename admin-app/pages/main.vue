@@ -158,6 +158,26 @@
                             />
                         </div>
                         <div class="form-field">
+                            <label for="acc-role">{{
+                                $t("admin.createAccount.labels.role")
+                            }}</label>
+                            <select
+                                id="acc-role"
+                                v-model="createForm.role"
+                                required
+                            >
+                                <option value="client">{{
+                                    $t("admin.createAccount.roles.client")
+                                }}</option>
+                                <option value="specialist">{{
+                                    $t("admin.createAccount.roles.specialist")
+                                }}</option>
+                                <option value="admin">{{
+                                    $t("admin.createAccount.roles.admin")
+                                }}</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
                             <label for="acc-phone">{{
                                 $t("admin.createAccount.labels.phone")
                             }}</label>

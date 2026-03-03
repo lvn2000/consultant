@@ -6,7 +6,8 @@ import sttp.tapir.json.circe.*
 import sttp.tapir.generic.auto.*
 import com.consultant.api.dto.*
 import com.consultant.core.service.SpecialistService
-import com.consultant.api.DtoMappers.*
+import com.consultant.api.mappers.SpecialistMappers.*
+import com.consultant.api.mappers.ErrorMappers.*
 import java.util.UUID
 import java.time.Instant
 import sttp.tapir.server.http4s.Http4sServerInterpreter
@@ -14,13 +15,22 @@ import org.http4s.HttpRoutes
 
 class SpecialistRoutes(specialistService: SpecialistService):
 
-  private val baseEndpoint = endpoint
+  /**
+   * SECURITY MODEL: The X-User-Role header is set by TokenAuthMiddleware from the verified JWT token. The middleware
+   * overwrites any client-provided values for this header, ensuring the routes always receive trusted values extracted
+   * from the authenticated token.
+   *
+   * Admin authorization checks (role.equalsIgnoreCase("Admin")) are safe because:
+   *   1. The middleware verifies the JWT signature cryptographically 2. The role is extracted from the verified token
+   *      claims 3. Client-supplied X-User-Role headers are replaced with the token's actual role
+   */
 
   // Create specialist
-  val createSpecialistEndpoint = baseEndpoint.post
+  val createSpecialistEndpoint = ApiEndpoints
+    .publicEndpoint("createSpecialist", "Create a new specialist")
+    .post
     .in(jsonBody[CreateSpecialistDto])
     .out(jsonBody[SpecialistDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val createSpecialist = createSpecialistEndpoint.serverLogic { dto =>
     specialistService.createSpecialist(toCreateSpecialistRequest(dto)).map {
@@ -30,10 +40,11 @@ class SpecialistRoutes(specialistService: SpecialistService):
   }
 
   // Get specialist by ID
-  val getSpecialistEndpoint = baseEndpoint.get
+  val getSpecialistEndpoint = ApiEndpoints
+    .publicEndpoint("getSpecialist", "Get specialist by ID")
+    .get
     .in(path[UUID]("specialistId"))
     .out(jsonBody[SpecialistDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val getSpecialist = getSpecialistEndpoint.serverLogic { id =>
     specialistService.getSpecialist(id).map {
@@ -43,7 +54,9 @@ class SpecialistRoutes(specialistService: SpecialistService):
   }
 
   // Search specialists
-  val searchSpecialistsEndpoint = baseEndpoint.get
+  val searchSpecialistsEndpoint = ApiEndpoints
+    .publicEndpoint("searchSpecialists", "Search specialists")
+    .get
     .in("search")
     .in(query[Option[UUID]]("categoryId"))
     .in(query[Option[BigDecimal]]("minRating"))
@@ -67,44 +80,61 @@ class SpecialistRoutes(specialistService: SpecialistService):
   }
 
   // Update specialist
-  val updateSpecialistEndpoint = baseEndpoint.put
+  val updateSpecialistEndpoint = ApiEndpoints
+    .securedEndpoint("updateSpecialist", "Update specialist")
+    .put
+    .in(header[Option[String]]("X-Auth-User-Id"))
     .in(path[UUID]("specialistId"))
     .in(jsonBody[UpdateSpecialistDto])
     .out(jsonBody[SpecialistDto])
-    .errorOut(jsonBody[ErrorResponse])
 
-  val updateSpecialist = updateSpecialistEndpoint.serverLogic { case (id, dto) =>
-    specialistService.getSpecialist(id).flatMap {
-      case Right(existing) =>
-        val updated = existing.copy(
-          email = dto.email,
-          name = dto.name,
-          phone = dto.phone,
-          bio = dto.bio,
-          categoryRates = dto.categoryRates.map(toSpecialistCategoryRate),
-          isAvailable = dto.isAvailable,
-          updatedAt = Instant.now()
-        )
+  val updateSpecialist = updateSpecialistEndpoint.serverLogic { case (authUserIdOpt, id, dto) =>
+    (for
+      authUserId <- IO.fromOption(authUserIdOpt)(new RuntimeException("Missing authentication header"))
+      _ <-
+        if authUserId != id.toString then
+          IO.raiseError(new RuntimeException("Unauthorized: Cannot update another specialist's profile"))
+        else IO.unit
+      existingOpt <- specialistService.getSpecialist(id)
+      result <- existingOpt match
+        case Right(existing) =>
+          val updated = existing.copy(
+            email = dto.email,
+            name = dto.name,
+            phone = dto.phone,
+            bio = dto.bio,
+            categoryRates = dto.categoryRates.map(toSpecialistCategoryRate),
+            isAvailable = dto.isAvailable,
+            updatedAt = Instant.now()
+          )
 
-        specialistService.updateSpecialist(updated).map {
-          case Right(saved) => Right(toSpecialistDto(saved))
-          case Left(error)  => Left(toErrorResponse(error))
-        }
-      case Left(error) => IO.pure(Left(toErrorResponse(error)))
+          specialistService.updateSpecialist(updated).map {
+            case Right(saved) => Right(toSpecialistDto(saved))
+            case Left(error)  => Left(toErrorResponse(error))
+          }
+        case Left(error) => IO.pure(Left(toErrorResponse(error)))
+    yield result).handleErrorWith { error =>
+      IO.pure(Left(ErrorResponse("UNAUTHORIZED", error.getMessage)))
     }
   }
 
   // Delete specialist
-  val deleteSpecialistEndpoint = baseEndpoint.delete
+  val deleteSpecialistEndpoint = ApiEndpoints
+    .adminEndpoint("deleteSpecialist", "Delete specialist")
+    .delete
     .in(path[UUID]("specialistId"))
+    .in(header[Option[String]]("X-User-Role"))
     .out(stringBody)
-    .errorOut(jsonBody[ErrorResponse])
 
-  val deleteSpecialist = deleteSpecialistEndpoint.serverLogic { id =>
-    specialistService.deleteSpecialist(id).map {
-      case Right(_)    => Right("Specialist deleted")
-      case Left(error) => Left(toErrorResponse(error))
-    }
+  val deleteSpecialist = deleteSpecialistEndpoint.serverLogic { case (id, userRoleOpt) =>
+    userRoleOpt match
+      case Some(role) if role.equalsIgnoreCase("Admin") =>
+        specialistService.deleteSpecialist(id).map {
+          case Right(_)    => Right("Specialist deleted")
+          case Left(error) => Left(toErrorResponse(error))
+        }
+      case _ =>
+        IO.pure(Left(ErrorResponse("FORBIDDEN", "Admin role required")))
   }
 
   val endpoints = List(createSpecialist, searchSpecialists, getSpecialist, updateSpecialist, deleteSpecialist)

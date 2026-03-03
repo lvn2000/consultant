@@ -241,20 +241,30 @@ const loadConsultations = async () => {
             consultationsError.value = t("auth.tokenNotFound");
             return;
         }
-        const data = await $fetch(
-            `${config.public.apiBase}/consultations/user/${userId}`,
+        
+        // Calculate offset based on current page and page size
+        const offset = (consultationPagination.value.currentPage - 1) * consultationPagination.value.pageSize;
+        const limit = consultationPagination.value.pageSize;
+        
+        // Build query string with pagination parameters
+        const queryString = `?offset=${offset}&limit=${limit}`;
+        
+        const response = await $fetch(
+            `${config.public.apiBase}/consultations/user/${userId}${queryString}`,
             {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
             },
         );
-        consultations.value = data;
-        consultationPagination.value.totalCount = data.length;
+        
+        // Handle the paginated response
+        consultations.value = response.consultations || [];
+        consultationPagination.value.totalCount = response.totalCount || 0;
+        consultationPagination.value.currentPage = 1; // Reset to first page on reload
         consultationPagination.value.totalPages = Math.ceil(
-            data.length / consultationPagination.value.pageSize,
+            response.totalCount / consultationPagination.value.pageSize,
         );
-        consultationPagination.value.currentPage = 1;
     } catch (error: any) {
         console.error("Consultations load error:", error);
         consultationsError.value =
@@ -287,9 +297,9 @@ const logout = async () => {
 
     try {
         if (sessionId) {
-            await $fetch(`${config.public.apiBase}/users/logout`, {
+            await $fetch(`${config.public.apiBase}/auth/logout`, {
                 method: "POST",
-                body: { sessionId },
+                body: { refreshToken: sessionId },
             });
         }
     } finally {

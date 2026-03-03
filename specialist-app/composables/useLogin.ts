@@ -19,7 +19,7 @@ export async function loginRequest(login: string, password: string): Promise<{ s
       return { success: false, error: 'Please enter login and password' }
     }
 
-    const data = await $fetch<LoginResponse>(`${config.public.apiBase}/users/login`, {
+    const data = await $fetch<LoginResponse>(`${config.public.apiBase}/auth/login`, {
       method: 'POST',
       body: { login: normalizedLogin, password: normalizedPassword },
     })

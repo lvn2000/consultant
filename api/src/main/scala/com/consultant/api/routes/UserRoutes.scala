@@ -7,7 +7,8 @@ import sttp.tapir.generic.auto.*
 import com.consultant.api.dto.*
 import com.consultant.core.service.UserService
 import com.consultant.infrastructure.security.JwtTokenService
-import com.consultant.api.DtoMappers.*
+import com.consultant.api.mappers.UserMappers.*
+import com.consultant.api.mappers.ErrorMappers.*
 import java.util.UUID
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 import org.http4s.HttpRoutes
@@ -15,14 +16,19 @@ import com.consultant.api.codec.SecurityCodecs.given
 
 class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] = None):
 
-  private val baseEndpoint = endpoint
+  /**
+   * SECURITY MODEL: The X-Auth-User-Id and X-User-Role headers are set by TokenAuthMiddleware from the verified JWT
+   * token. The middleware strips any client-provided values for these headers and replaces them with trusted values
+   * extracted from the authenticated token. Routes can safely rely on these headers for authorization.
+   */
 
   // Create user
-  val createUserEndpoint = baseEndpoint.post
+  val createUserEndpoint = ApiEndpoints
+    .publicEndpoint("createUser", "Register a new user")
+    .post
     .in("register")
     .in(jsonBody[CreateUserDto])
     .out(jsonBody[UserDto])
-    .errorOut(jsonBody[ErrorResponse])
 
   val createUser = createUserEndpoint.serverLogic { dto =>
     userService.createUser(toCreateUserRequest(dto)).map {
@@ -32,96 +38,84 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
   }
 
   // Get user by ID
-  val getUserEndpoint = baseEndpoint.get
+  val getUserEndpoint = ApiEndpoints
+    .securedEndpoint("getUser", "Get user by ID")
+    .get
+    .in(header[Option[String]]("X-Auth-User-Id"))
     .in(path[UUID]("userId"))
     .out(jsonBody[UserDto])
-    .errorOut(jsonBody[ErrorResponse])
 
-  val getUser = getUserEndpoint.serverLogic { id =>
-    userService.getUser(id).map {
-      case Right(user) => Right(toUserDto(user))
-      case Left(error) => Left(toErrorResponse(error))
+  val getUser = getUserEndpoint.serverLogic { case (authUserIdOpt, id) =>
+    (for
+      authUserId <- IO.fromOption(authUserIdOpt)(new RuntimeException("Missing authentication header"))
+      _ <-
+        if authUserId != id.toString then
+          IO.raiseError(new RuntimeException("Unauthorized: Cannot access another user's data"))
+        else IO.unit
+      result <- userService.getUser(id).map {
+        case Right(user) => Right(toUserDto(user))
+        case Left(error) => Left(toErrorResponse(error))
+      }
+    yield result).handleErrorWith { error =>
+      IO.pure(Left(ErrorResponse("UNAUTHORIZED", error.getMessage)))
     }
   }
 
   // Update user
-  val updateUserEndpoint = baseEndpoint.put
+  val updateUserEndpoint = ApiEndpoints
+    .securedEndpoint("updateUser", "Update user")
+    .put
+    .in(header[Option[String]]("X-Auth-User-Id"))
     .in(path[UUID]("userId"))
     .in(jsonBody[UpdateUserDto])
     .out(jsonBody[UserDto])
-    .errorOut(jsonBody[ErrorResponse])
 
-  val updateUser = updateUserEndpoint.serverLogic { case (id, dto) =>
-    userService.getUser(id).flatMap {
-      case Left(error) => IO.pure(Left(toErrorResponse(error)))
-      case Right(user) =>
-        val updated = user.copy(
-          name = dto.name,
-          email = dto.email,
-          phone = dto.phone
-        )
-        userService.updateUser(updated).map {
-          case Right(updatedUser) => Right(toUserDto(updatedUser))
-          case Left(error)        => Left(toErrorResponse(error))
-        }
+  val updateUser = updateUserEndpoint.serverLogic { case (authUserIdOpt, id, dto) =>
+    (for
+      authUserId <- IO.fromOption(authUserIdOpt)(new RuntimeException("Missing authentication header"))
+      _ <-
+        if authUserId != id.toString then
+          IO.raiseError(new RuntimeException("Unauthorized: Cannot update another user's data"))
+        else IO.unit
+      userOpt <- userService.getUser(id)
+      result <- userOpt match
+        case Right(user) =>
+          val updated = user.copy(
+            name = dto.name,
+            email = dto.email,
+            phone = dto.phone
+          )
+          userService.updateUser(updated).map {
+            case Right(updatedUser) => Right(toUserDto(updatedUser))
+            case Left(error)        => Left(toErrorResponse(error))
+          }
+        case Left(error) => IO.pure(Left(toErrorResponse(error)))
+    yield result).handleErrorWith { error =>
+      IO.pure(Left(ErrorResponse("UNAUTHORIZED", error.getMessage)))
     }
   }
 
   // List users
-  val listUsersEndpoint = baseEndpoint.get
+  val listUsersEndpoint = ApiEndpoints
+    .securedEndpoint("listUsers", "List users")
+    .get
     .in(query[Option[Int]]("offset").default(Some(0)))
     .in(query[Option[Int]]("limit").default(Some(20)))
     .out(jsonBody[List[UserDto]])
 
-  // Login user
-  val loginEndpoint = baseEndpoint.post
-    .in("login")
-    .in(jsonBody[LoginDto])
-    .out(jsonBody[LoginResponseDto])
-    .errorOut(jsonBody[ErrorResponse])
-
-  val login = loginEndpoint.serverLogic { dto =>
-    userService.login(dto.login, dto.password, "0.0.0.0", "unknown").flatMap {
-      case Right(result) =>
-        // Generate JWT access token if jwtService is available
-        jwtService match
-          case Some(service) =>
-            service.generateAccessToken(result.user.id, result.user.role, result.user.email).map { authToken =>
-              Right(
-                LoginResponseDto(
-                  result.user.id.toString,
-                  result.user.login,
-                  result.user.email,
-                  result.user.role.toString,
-                  result.session.sessionId,
-                  Some(authToken.token)
-                )
-              )
-            }
-          case None =>
-            IO.pure(
-              Right(
-                LoginResponseDto(
-                  result.user.id.toString,
-                  result.user.login,
-                  result.user.email,
-                  result.user.role.toString,
-                  result.session.sessionId,
-                  None
-                )
-              )
-            )
-
-      case Left(error) => IO.pure(Left(toErrorResponse(error)))
-    }
+  val listUsers = listUsersEndpoint.serverLogic { case (offset, limit) =>
+    userService
+      .listUsers(offset.getOrElse(0), limit.getOrElse(20))
+      .map(users => Right(users.map(toUserDto)))
   }
 
   // Logout user session
-  val logoutEndpoint = baseEndpoint.post
+  val logoutEndpoint = ApiEndpoints
+    .securedEndpoint("logout", "Logout user")
+    .post
     .in("logout")
     .in(jsonBody[LogoutDto])
     .out(stringBody)
-    .errorOut(jsonBody[ErrorResponse])
 
   val logout = logoutEndpoint.serverLogic { dto =>
     userService.logout(dto.sessionId).map { success =>
@@ -130,14 +124,10 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
     }
   }
 
-  val listUsers = listUsersEndpoint.serverLogic { case (offset, limit) =>
-    userService
-      .listUsers(offset.getOrElse(0), limit.getOrElse(20))
-      .map(users => Right(users.map(toUserDto)))
-  }
-
   // Test endpoint to verify API is working
-  val testEndpoint = baseEndpoint.get
+  val testEndpoint = ApiEndpoints
+    .publicEndpoint("testApi", "Test API endpoint")
+    .get
     .in("test-api")
     .out(stringBody)
 
@@ -145,30 +135,42 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
     IO.pure(Right("API is working!"))
   }
 
-  // Get admin count (separate path to avoid conflicts)
-  // Using empty string for path since Router provides the full path
-  val getAdminCountEndpoint = endpoint.get
-    .in("")
+  // Get admin count - requires admin role (verified by TokenAuthMiddleware)
+  val getAdminCountEndpoint = ApiEndpoints
+    .adminEndpoint("getAdminCount", "Get admin user count")
+    .get
+    .in(header[Option[String]]("X-User-Role"))
     .out(jsonBody[AdminCountDto])
-    .errorOut(jsonBody[ErrorResponse])
 
-  val getAdminCount = getAdminCountEndpoint.serverLogic { _ =>
-    userService.getAdminCount().flatMap { count =>
-      IO.println(s"[ADMIN-COUNT] Count from DB: $count").as(Right(AdminCountDto(count)))
-    }
+  val getAdminCount = getAdminCountEndpoint.serverLogic { userRoleOpt =>
+    // X-User-Role header is set by TokenAuthMiddleware from verified JWT
+    userRoleOpt match
+      case Some(role) if role.equalsIgnoreCase("Admin") =>
+        userService.getAdminCount().map { count =>
+          Right(AdminCountDto(count))
+        }
+      case _ =>
+        IO.pure(Left(ErrorResponse("FORBIDDEN", "Admin role required")))
   }
 
-  // Delete user
-  val deleteUserEndpoint = baseEndpoint.delete
+  // Delete user - requires admin role (verified by TokenAuthMiddleware)
+  val deleteUserEndpoint = ApiEndpoints
+    .adminEndpoint("deleteUser", "Delete user")
+    .delete
     .in(path[UUID]("userId"))
+    .in(header[Option[String]]("X-User-Role"))
     .out(stringBody)
-    .errorOut(jsonBody[ErrorResponse])
 
-  val deleteUser = deleteUserEndpoint.serverLogic { userId =>
-    userService.deleteUser(userId, None, None).map {
-      case Right(_)    => Right("User deleted successfully")
-      case Left(error) => Left(toErrorResponse(error))
-    }
+  val deleteUser = deleteUserEndpoint.serverLogic { case (userId, userRoleOpt) =>
+    // X-User-Role header is set by TokenAuthMiddleware from verified JWT
+    userRoleOpt match
+      case Some(role) if role.equalsIgnoreCase("Admin") =>
+        userService.deleteUser(userId, None, None).map {
+          case Right(_)    => Right("User deleted successfully")
+          case Left(error) => Left(toErrorResponse(error))
+        }
+      case _ =>
+        IO.pure(Left(ErrorResponse("FORBIDDEN", "Admin role required")))
   }
 
   val endpoints = List(
@@ -177,7 +179,6 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
     getUser,
     updateUser,
     listUsers,
-    login,
     logout,
     getAdminCount,
     deleteUser

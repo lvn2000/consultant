@@ -19,7 +19,13 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 import java.util.Base64
 
-class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
+/**
+ * PostgreSQL implementation of UserRepository with transactional support.
+ *
+ * This repository provides both standard IO-based operations and ConnectionIO-based operations for use within
+ * transactions.
+ */
+class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository with TransactionalUserRepository:
 
   // Doobie Meta instance for UserRole enum
   given userRoleMeta: Meta[UserRole] =
@@ -39,6 +45,10 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
         val computed  = Base64.getEncoder.encodeToString(factory.generateSecret(spec).getEncoded)
         computed == hash
       catch case _: Exception => false
+
+  // ============================================================================
+  // Standard IO-based operations (from UserRepository trait)
+  // ============================================================================
 
   override def login(login: String, password: String): IO[Option[User]] = {
     val userQ = sql"""
@@ -70,7 +80,14 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
     action.transact(xa)
   }
 
-  override def create(request: CreateUserRequest): IO[User] = {
+  override def create(request: CreateUserRequest): IO[User] =
+    createTransactional(request).transact(xa)
+
+  // ============================================================================
+  // Transactional ConnectionIO-based operations
+  // ============================================================================
+
+  override def createTransactional(request: CreateUserRequest): ConnectionIO[User] = {
     val id  = UUID.randomUUID()
     val now = Instant.now()
     val user = User(
@@ -85,30 +102,31 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
       now,
       now
     )
-    val action: ConnectionIO[User] = for {
+    for {
       _ <- sql"""
         INSERT INTO users (id, login, email, name, phone, role, country_id, created_at, updated_at)
         VALUES (${user.id}, ${user.login}, ${user.email}, ${user.name}, ${user.phone}, ${user.role}, ${user.countryId}, ${user.createdAt}, ${user.updatedAt})
       """.update.run
       _ <- insertUserLanguages(user.id, request.languages)
     } yield user
-    action.transact(xa)
   }
 
-  override def findById(id: UserId): IO[Option[User]] = {
+  override def findById(id: UserId): IO[Option[User]] =
+    findByIdTransactional(id).transact(xa)
+
+  override def findByIdTransactional(id: UserId): ConnectionIO[Option[User]] = {
     val userQ = sql"""
       SELECT id, login, email, name, phone, role, country_id, created_at, updated_at
       FROM users
       WHERE id = $id
     """.query[(UUID, String, String, String, Option[String], UserRole, Option[UUID], Instant, Instant)].option
     val languagesQ = sql"SELECT language_id FROM user_languages WHERE user_id = $id".query[UUID].to[List]
-    val action: ConnectionIO[Option[User]] = for {
+    for {
       userOpt <- userQ
       langs   <- languagesQ
     } yield userOpt.map { case (id, login, email, name, phone, role, countryId, created, updated) =>
       User(id, login, email, name, phone, role, countryId, langs.toSet, created, updated)
     }
-    action.transact(xa)
   }
 
   override def findByEmail(email: String): IO[Option[User]] = {
@@ -149,9 +167,12 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
     action.transact(xa)
   }
 
-  override def update(user: User): IO[User] = {
+  override def update(user: User): IO[User] =
+    updateTransactional(user).transact(xa)
+
+  override def updateTransactional(user: User): ConnectionIO[User] = {
     val updatedUser = user.copy(updatedAt = Instant.now())
-    val action: ConnectionIO[User] = for {
+    for {
       _ <- sql"""
         UPDATE users
         SET email = ${updatedUser.email},
@@ -164,7 +185,6 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
       _ <- deleteUserLanguages(updatedUser.id)
       _ <- insertUserLanguages(updatedUser.id, updatedUser.languages)
     } yield updatedUser
-    action.transact(xa)
   }
 
   override def list(offset: Int, limit: Int): IO[List[User]] = {
@@ -213,9 +233,10 @@ class PostgresUserRepository(xa: Transactor[IO]) extends UserRepository:
     sql"DELETE FROM user_languages WHERE user_id = $userId".update.run.void
 
   override def delete(id: UserId): IO[Unit] =
+    deleteTransactional(id).transact(xa).void
+
+  override def deleteTransactional(id: UserId): ConnectionIO[Int] =
     sql"DELETE FROM users WHERE id = $id".update.run
-      .transact(xa)
-      .void
 
   override def countAdmins(): IO[Int] =
     sql"SELECT COUNT(*) FROM users WHERE UPPER(role) = ${UserRole.Admin.toString.toUpperCase}"

@@ -20,7 +20,7 @@ class ConnectionServiceSpec extends AnyFlatSpec with Matchers with MockFactory {
     val req                = CreateConnectionRequest(connectionTypeId, "value")
     connectionTypeRepo.findById.expects(req.connectionTypeId).returning(IO.pure(None))
     val result = service.addConnection(specialistId, req).unsafeRunSync()
-    result.shouldBe(Left(DomainError.ValidationError("Connection type not found")))
+    result.shouldBe(Left(DomainError.ConnectionTypeNotFound(connectionTypeId)))
   }
 
   // Add more tests for duplicate connection, successful creation, etc.

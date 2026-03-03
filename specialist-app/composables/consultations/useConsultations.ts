@@ -20,13 +20,20 @@ export interface Consultation {
   review?: string;
 }
 
+export interface PaginatedConsultations {
+  consultations: Consultation[];
+  totalCount: number;
+  offset: number;
+  limit: number;
+}
+
 export function useConsultations() {
   const config = useRuntimeConfig();
   const { $fetch } = useApi();
 
   const consultations = ref<Consultation[]>([]);
   const loading = ref(false);
-  const error = ref<string | null>(null);
+  const errorMessage = ref<string | null>(null);
   const currentPage = ref(1);
   const itemsPerPage = ref(10);
 
@@ -35,22 +42,29 @@ export function useConsultations() {
    */
   async function loadConsultations() {
     loading.value = true;
-    error.value = null;
+    errorMessage.value = null;
     try {
       const specialistId = sessionStorage.getItem("userId");
       if (!specialistId) {
-        error.value = "Specialist ID not found";
+        errorMessage.value = "Specialist ID not found";
         consultations.value = [];
         return;
       }
-      const data = await $fetch<Consultation[]>(
-        `${config.public.apiBase}/consultations/specialist/${specialistId}`,
+      
+      // Calculate offset based on current page and page size
+      const offset = (currentPage.value - 1) * itemsPerPage.value;
+      const limit = itemsPerPage.value;
+      
+      const response = await $fetch<PaginatedConsultations>(
+        `${config.public.apiBase}/consultations/specialist/${specialistId}?offset=${offset}&limit=${limit}`,
       );
-      consultations.value = Array.isArray(data) ? data : [];
+      
+      // Handle the paginated response
+      consultations.value = Array.isArray(response.consultations) ? response.consultations : [];
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "Failed to load consultations";
-      error.value = message;
+      errorMessage.value = message;
       consultations.value = [];
     } finally {
       loading.value = false;
@@ -68,14 +82,14 @@ export function useConsultations() {
       await $fetch(
         `${config.public.apiBase}/consultations/${consultationId}/approve`,
         {
-          method: "POST",
+          method: "PUT",
           body: { duration },
         },
       );
       await loadConsultations();
       return true;
     } catch (error: unknown) {
-      error.value =
+      errorMessage.value =
         error instanceof Error ? error.message : "Failed to approve consultation";
       return false;
     }
@@ -87,15 +101,16 @@ export function useConsultations() {
   async function declineConsultation(consultationId: string): Promise<boolean> {
     try {
       await $fetch(
-        `${config.public.apiBase}/consultations/${consultationId}/decline`,
+        `${config.public.apiBase}/consultations/${consultationId}/status`,
         {
-          method: "POST",
+          method: "PUT",
+          body: { status: "Cancelled" },
         },
       );
       await loadConsultations();
       return true;
     } catch (error: unknown) {
-      error.value =
+      errorMessage.value =
         error instanceof Error ? error.message : "Failed to decline consultation";
       return false;
     }
@@ -107,15 +122,16 @@ export function useConsultations() {
   async function markAsMissed(consultationId: string): Promise<boolean> {
     try {
       await $fetch(
-        `${config.public.apiBase}/consultations/${consultationId}/missed`,
+        `${config.public.apiBase}/consultations/${consultationId}/status`,
         {
-          method: "POST",
+          method: "PUT",
+          body: { status: "Missed" },
         },
       );
       await loadConsultations();
       return true;
     } catch (error: unknown) {
-      error.value =
+      errorMessage.value =
         error instanceof Error ? error.message : "Failed to mark consultation as missed";
       return false;
     }
@@ -155,7 +171,7 @@ export function useConsultations() {
   return {
     consultations,
     loading,
-    error,
+    errorMessage,
     paginatedConsultations,
     pagination,
     loadConsultations,

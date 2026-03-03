@@ -433,14 +433,6 @@
                             </button>
                             <button
                                 type="button"
-                                class="btn danger"
-                                :disabled="!selectedConnectionId"
-                                @click="deleteSelectedConnection"
-                            >
-                                🗑️ {{ $t("adminSpecialists.deleteConnection") }}
-                            </button>
-                            <button
-                                type="button"
                                 class="btn"
                                 @click="resetConnectionForm"
                             >
@@ -547,14 +539,6 @@
                     @click="updateCategoryRates"
                 >
                     💾 {{ $t("adminSpecialists.saveCategoryRates") }}
-                </button>
-                <button
-                    type="button"
-                    class="btn danger"
-                    :disabled="!selectedSpecialistId"
-                    @click="deleteSelectedSpecialist"
-                >
-                    🗑️ {{ $t("adminSpecialists.deleteSpecialist") }}
                 </button>
                 <button type="button" class="btn" @click="resetSpecialistForm">
                     ❌ {{ $t("common.clear") }}
@@ -842,13 +826,7 @@ const loadSpecialistNotifications = async () => {
             return;
         }
         const data = await $fetch<any>(
-            `${config.public.apiBase}/notification-preferences`,
-            {
-                method: "GET",
-                headers: {
-                    "X-User-Id": selectedSpecialistId.value,
-                },
-            },
+            `${config.public.apiBase}/notification-preferences/${selectedSpecialistId.value}`,
         );
         // Extract preferences array from response object
         specialistNotifications.value = data.preferences || [];
@@ -899,15 +877,12 @@ const updateNotificationPreference = async (pref: any) => {
             return;
         }
         await $fetch(
-            `${config.public.apiBase}/notification-preferences/${pref.notificationType}`,
+            `${config.public.apiBase}/notification-preferences/${selectedSpecialistId.value}/${pref.notificationType}`,
             {
                 method: "PUT",
                 body: {
                     emailEnabled: pref.emailEnabled,
                     smsEnabled: pref.smsEnabled || false,
-                },
-                headers: {
-                    "X-User-Id": selectedSpecialistId.value,
                 },
             },
         );
@@ -1254,6 +1229,12 @@ const addConnection = async () => {
 
 const updateConnection = async () => {
     connectionActionMessage.value = "";
+    if (!selectedSpecialistId.value) {
+        connectionActionMessage.value = t(
+            "adminSpecialists.selectToAddConnection",
+        );
+        return;
+    }
     if (!selectedConnectionId.value) {
         connectionActionMessage.value = t(
             "adminSpecialists.selectConnectionToUpdate",
@@ -1267,7 +1248,7 @@ const updateConnection = async () => {
     if (!confirmed) return;
     try {
         await $fetch(
-            `${config.public.apiBase}/specialists/connections/${selectedConnectionId.value}`,
+            `${config.public.apiBase}/specialists/${selectedSpecialistId.value}/connections/${selectedConnectionId.value}`,
             {
                 method: "PUT",
                 body: {
@@ -1287,6 +1268,12 @@ const updateConnection = async () => {
 };
 
 const deleteSelectedConnection = async () => {
+    if (!selectedSpecialistId.value) {
+        connectionActionMessage.value = t(
+            "adminSpecialists.selectToAddConnection",
+        );
+        return;
+    }
     if (!selectedConnectionId.value) {
         connectionActionMessage.value = t(
             "adminSpecialists.selectConnectionToDelete",
@@ -1300,7 +1287,7 @@ const deleteSelectedConnection = async () => {
     if (!confirmed) return;
     try {
         await $fetch(
-            `${config.public.apiBase}/specialists/connections/${selectedConnectionId.value}`,
+            `${config.public.apiBase}/specialists/${selectedSpecialistId.value}/connections/${selectedConnectionId.value}`,
             {
                 method: "DELETE",
             },
@@ -1316,13 +1303,19 @@ const deleteSelectedConnection = async () => {
 };
 
 const removeConnection = async (id: string) => {
+    if (!selectedSpecialistId.value) {
+        connectionActionMessage.value = t(
+            "adminSpecialists.selectToAddConnection",
+        );
+        return;
+    }
     const confirmed = await confirmAction(
         t("adminSpecialists.deleteConnection"),
         t("adminSpecialists.deleteConnectionConfirm"),
     );
     if (!confirmed) return;
     try {
-        await $fetch(`${config.public.apiBase}/specialists/connections/${id}`, {
+        await $fetch(`${config.public.apiBase}/specialists/${selectedSpecialistId.value}/connections/${id}`, {
             method: "DELETE",
         });
         await loadSpecialistConnections();

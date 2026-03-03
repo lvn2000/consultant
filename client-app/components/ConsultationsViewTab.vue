@@ -64,7 +64,8 @@
         <div v-if="loading" class="list-state">
             {{ $t("consultations.loading") }}
         </div>
-        <div v-else-if="error" class="list-state error">{{ error }}</div>
+        <div v-if="actionMessage" class="action-message" :class="{ success: actionSuccess, error: !actionSuccess }">{{ actionMessage }}</div>
+        <div v-if="error && !actionMessage" class="list-state error">{{ error }}</div>
         <div v-else-if="consultations.length === 0" class="empty-state">
             <div class="empty-icon">📋</div>
             <h3>{{ $t("consultations.noConsultations") }}</h3>
@@ -115,6 +116,16 @@
                                     : `$${consultation.price}`
                             }}
                         </div>
+                    </div>
+                    <div class="consultation-actions">
+                        <button
+                            v-if="canCancel(consultation.status)"
+                            class="btn btn-danger btn-sm"
+                            @click="cancelConsultation(consultation.id)"
+                            :disabled="cancellingId === consultation.id"
+                        >
+                            {{ cancellingId === consultation.id ? $t('consultations.cancelling') : $t('consultations.cancel') }}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -175,7 +186,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const emit = defineEmits(["load-consultations", "go-to-page", "clear-filters"]);
+const emit = defineEmits(["load-consultations", "go-to-page", "clear-filters", "filters-changed"]);
 
 const { t } = useI18n();
 const config = useRuntimeConfig();
@@ -184,6 +195,43 @@ const { $fetch } = useApi();
 const filters = ref(props.filters);
 const specialists = ref<any[]>([]);
 const specialistMap = ref<Record<string, string>>({});
+const cancellingId = ref<string | null>(null);
+const actionMessage = ref("");
+const actionSuccess = ref(false);
+
+// Statuses that allow cancellation
+const CANCELLABLE_STATUSES = ["Requested", "Scheduled"];
+
+function canCancel(status: string): boolean {
+    return CANCELLABLE_STATUSES.includes(status);
+}
+
+async function cancelConsultation(consultationId: string) {
+    if (!confirm(t("consultations.confirmCancel"))) return;
+    cancellingId.value = consultationId;
+    actionMessage.value = "";
+    try {
+        await $fetch(
+            `${config.public.apiBase}/consultations/${consultationId}/status`,
+            {
+                method: "PUT",
+                body: { status: "Cancelled" },
+            },
+        );
+        actionMessage.value = t("consultations.cancelSuccess");
+        actionSuccess.value = true;
+        emit("load-consultations");
+    } catch (err: any) {
+        actionMessage.value =
+            err.data?.message || err.message || t("consultations.cancelFailed");
+        actionSuccess.value = false;
+    } finally {
+        cancellingId.value = null;
+        setTimeout(() => {
+            actionMessage.value = "";
+        }, 3000);
+    }
+}
 
 // Load specialists for name lookup
 onMounted(async () => {
@@ -255,12 +303,11 @@ const filteredConsultations = computed(() => {
 });
 
 const paginationInfo = computed(() => {
-    const totalFiltered = filteredConsultations.value.length;
-    const totalPages = Math.ceil(totalFiltered / props.pagination.pageSize);
+    // Use server-provided pagination information
     return {
         currentPage: props.pagination.currentPage,
-        totalPages: totalPages || 1,
-        totalCount: totalFiltered,
+        totalPages: props.pagination.totalPages || 1,
+        totalCount: props.pagination.totalCount,
     };
 });
 
@@ -506,5 +553,55 @@ defineExpose({
 .pagination-info {
     color: #666;
     font-size: 0.9rem;
+}
+
+.consultation-actions {
+    margin-top: 1rem;
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-sm {
+    padding: 0.375rem 0.875rem;
+    font-size: 0.85rem;
+}
+
+.btn-danger {
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.15s;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: #b91c1c;
+}
+
+.btn-danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.action-message {
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.action-message.success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+.action-message.error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
 }
 </style>

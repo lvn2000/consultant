@@ -54,7 +54,6 @@ class SystemSettingRoutes(settingService: SystemSettingService):
     .description("Get idle timeout configuration")
 
   def getIdleTimeoutRoute = getIdleTimeoutEndpoint.serverLogic { _ =>
-    println("[DEBUG] getIdleTimeoutRoute called")
     for
       timeout <- settingService.getIdleTimeoutMinutes
       warning <- settingService.getIdleWarningMinutes
@@ -64,65 +63,84 @@ class SystemSettingRoutes(settingService: SystemSettingService):
   // PUT /api/settings/idle-timeout - Update idle timeout configuration (admin only)
   val updateIdleTimeoutEndpoint = baseEndpoint.put
     .in("idle-timeout")
+    .in(header[Option[String]]("X-User-Role"))
     .in(jsonBody[UpdateIdleTimeoutDto])
     .out(jsonBody[IdleTimeoutConfigDto])
     .description("Update idle timeout configuration (admin only)")
 
-  def updateIdleTimeoutRoute = updateIdleTimeoutEndpoint.serverLogic { dto =>
-    for
-      _       <- dto.idleTimeoutMinutes.traverse(mins => settingService.setIdleTimeout(mins))
-      _       <- dto.idleWarningMinutes.traverse(mins => settingService.setIdleWarning(mins))
-      timeout <- settingService.getIdleTimeoutMinutes
-      warning <- settingService.getIdleWarningMinutes
-    yield Right(IdleTimeoutConfigDto(timeout, warning))
+  def updateIdleTimeoutRoute = updateIdleTimeoutEndpoint.serverLogic { case (userRoleOpt, dto) =>
+    import com.consultant.api.mappers.ErrorMappers.toErrorResponse
+    // X-User-Role header is set by TokenAuthMiddleware from verified JWT
+    if userRoleOpt.exists(_.equalsIgnoreCase("Admin")) then
+      for
+        timeoutResult <- dto.idleTimeoutMinutes.traverse(mins => settingService.setIdleTimeout(mins))
+        warningResult <- dto.idleWarningMinutes.traverse(mins => settingService.setIdleWarning(mins))
+        timeout       <- settingService.getIdleTimeoutMinutes
+        warning       <- settingService.getIdleWarningMinutes
+      yield (timeoutResult, warningResult) match
+        case (Some(Left(error)), _) => Left(toErrorResponse(error))
+        case (_, Some(Left(error))) => Left(toErrorResponse(error))
+        case _                      => Right(IdleTimeoutConfigDto(timeout, warning))
+    else IO.pure(Left(ErrorResponse("FORBIDDEN", "Admin role required")))
   }
 
   // GET /api/settings/admin - Get all settings (admin only)
   val getAllSettingsEndpoint = baseEndpoint.get
     .in("admin")
+    .in(header[Option[String]]("X-User-Role"))
     .out(jsonBody[List[SystemSettingDto]])
     .description("Get all system settings including private ones (admin only)")
 
-  def getAllSettingsRoute = getAllSettingsEndpoint.serverLogic { _ =>
-    settingService.getAllSettings.map { settings =>
-      Right(
-        settings.map(s =>
-          SystemSettingDto(
-            id = s.id,
-            key = s.key,
-            value = s.value,
-            settingType = s.settingType.toString,
-            description = s.description,
-            isPublic = s.isPublic
+  def getAllSettingsRoute = getAllSettingsEndpoint.serverLogic { userRoleOpt =>
+    // X-User-Role header is set by TokenAuthMiddleware from verified JWT
+    if userRoleOpt.exists(_.equalsIgnoreCase("Admin")) then
+      settingService.getAllSettings.map { settings =>
+        Right(
+          settings.map(s =>
+            SystemSettingDto(
+              id = s.id,
+              key = s.key,
+              value = s.value,
+              settingType = s.settingType.toString,
+              description = s.description,
+              isPublic = s.isPublic
+            )
           )
         )
-      )
-    }
+      }
+    else IO.pure(Left(ErrorResponse("FORBIDDEN", "Admin role required")))
   }
 
   // PUT /api/settings/admin/:key - Update a specific setting (admin only)
   val updateSettingEndpoint = baseEndpoint.put
     .in("admin" / path[String]("key"))
+    .in(header[Option[String]]("X-User-Role"))
     .in(jsonBody[UpdateSettingDto])
     .out(jsonBody[SystemSettingDto])
     .description("Update a specific system setting (admin only)")
 
-  def updateSettingRoute = updateSettingEndpoint.serverLogic { case (key, dto) =>
-    settingService.updateSetting(key, dto.value).map {
-      case Some(setting) =>
-        Right(
-          SystemSettingDto(
-            id = setting.id,
-            key = setting.key,
-            value = setting.value,
-            settingType = setting.settingType.toString,
-            description = setting.description,
-            isPublic = setting.isPublic
+  def updateSettingRoute = updateSettingEndpoint.serverLogic { case (key, userRoleOpt, dto) =>
+    import com.consultant.api.mappers.ErrorMappers.toErrorResponse
+    // X-User-Role header is set by TokenAuthMiddleware from verified JWT
+    if userRoleOpt.exists(_.equalsIgnoreCase("Admin")) then
+      settingService.updateSetting(key, dto.value).map {
+        case Right(Some(setting)) =>
+          Right(
+            SystemSettingDto(
+              id = setting.id,
+              key = setting.key,
+              value = setting.value,
+              settingType = setting.settingType.toString,
+              description = setting.description,
+              isPublic = setting.isPublic
+            )
           )
-        )
-      case None =>
-        Left(ErrorResponse("SETTING_NOT_FOUND", s"Setting with key '$key' not found"))
-    }
+        case Right(None) =>
+          Left(ErrorResponse("SETTING_NOT_FOUND", s"Setting with key '$key' not found"))
+        case Left(error) =>
+          Left(toErrorResponse(error))
+      }
+    else IO.pure(Left(ErrorResponse("FORBIDDEN", "Admin role required")))
   }
 
   private val endpoints = List(

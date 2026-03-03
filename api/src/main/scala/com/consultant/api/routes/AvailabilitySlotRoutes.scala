@@ -8,7 +8,7 @@ import com.consultant.api.dto.*
 import com.consultant.core.service.ConsultationService
 import com.consultant.core.service.AvailabilityService
 import com.consultant.core.ports.AvailabilityRepository
-import com.consultant.api.DtoMappers.*
+import com.consultant.api.mappers.ErrorMappers.*
 import java.util.UUID
 import java.time.LocalDate
 import sttp.tapir.server.http4s.Http4sServerInterpreter

@@ -6,7 +6,8 @@ import sttp.tapir.json.circe.*
 import sttp.tapir.generic.auto.*
 import com.consultant.api.dto.*
 import com.consultant.core.service.ConnectionService
-import com.consultant.api.DtoMappers.*
+import com.consultant.api.mappers.ConnectionMappers.*
+import com.consultant.api.mappers.ErrorMappers.*
 import java.util.UUID
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 import org.http4s.HttpRoutes

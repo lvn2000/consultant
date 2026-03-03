@@ -4,6 +4,8 @@ import cats.effect.IO
 import cats.syntax.all.*
 import com.consultant.core.domain.*
 import com.consultant.core.ports.*
+import com.consultant.core.validation.AvailabilityValidator
+import com.consultant.core.validation.ValidationResult.*
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -19,15 +21,13 @@ class AvailabilityService(
     specialistId: SpecialistId,
     request: CreateAvailabilityRequest
   ): IO[Either[DomainError, SpecialistAvailability]] =
-    validateTimeRange(request.startTime, request.endTime) match
+    AvailabilityValidator.validateCreate(request).toEither match
       case Left(error) => IO.pure(Left(error))
       case Right(_) =>
         availabilityRepo
           .create(specialistId, request)
           .map(Right(_))
-          .handleError { error =>
-            Left(DomainError.DatabaseError(s"Failed to create availability: ${error.getMessage}"))
-          }
+          .handleError(parseError)
 
   def getAvailability(id: UUID): IO[Either[DomainError, SpecialistAvailability]] =
     availabilityRepo.findById(id).map {
@@ -50,31 +50,25 @@ class AvailabilityService(
     id: UUID,
     availability: SpecialistAvailability
   ): IO[Either[DomainError, SpecialistAvailability]] =
-    validateTimeRange(availability.startTime, availability.endTime) match
+    AvailabilityValidator.validateUpdate(availability).toEither match
       case Left(error) => IO.pure(Left(error))
       case Right(_) =>
         availabilityRepo
           .update(availability)
           .map(Right(_))
-          .handleError { error =>
-            Left(DomainError.DatabaseError(s"Failed to update availability: ${error.getMessage}"))
-          }
+          .handleError(parseError)
 
   def deleteAvailability(id: UUID): IO[Either[DomainError, Unit]] =
     availabilityRepo
       .delete(id)
       .map(Right(_))
-      .handleError { error =>
-        Left(DomainError.DatabaseError(s"Failed to delete availability: ${error.getMessage}"))
-      }
+      .handleError(parseError)
 
   def deleteSpecialistAvailability(specialistId: SpecialistId): IO[Either[DomainError, Unit]] =
     availabilityRepo
       .deleteBySpecialist(specialistId)
       .map(Right(_))
-      .handleError { error =>
-        Left(DomainError.DatabaseError(s"Failed to delete specialist availability: ${error.getMessage}"))
-      }
+      .handleError(parseError)
 
   // Check if a specific time slot is available (considering existing consultations)
   def isTimeSlotAvailable(
@@ -183,7 +177,9 @@ class AvailabilityService(
 
       gaps.toList
 
-  private def validateTimeRange(startTime: LocalTime, endTime: LocalTime): Either[DomainError, Unit] =
-    if startTime.isAfter(endTime) || startTime.equals(endTime) then
-      Left(DomainError.ValidationError("Start time must be before end time"))
-    else Right(())
+  // Validation is now handled by AvailabilityValidator
+
+  /** Parses database errors into structured domain errors */
+  private def parseError(error: Throwable): Either[DomainError, Nothing] =
+    import com.consultant.core.error.PostgresErrorParser
+    Left(PostgresErrorParser.parseError(error))

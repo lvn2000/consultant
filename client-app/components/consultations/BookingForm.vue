@@ -29,23 +29,21 @@ import { ref } from "vue";
 const emit = defineEmits(["submit"]);
 
 const description = ref("");
-const creating = ref(false);
-const message = ref("");
-const success = ref(false);
+
+// Props passed from parent to show booking status
+const props = defineProps<{
+    creating: boolean;
+    message: string;
+    success: boolean;
+}>();
 
 async function onSubmit() {
     console.log("[BookingForm] Submit button clicked");
-    creating.value = true;
-    message.value = "";
-    success.value = false;
-    // Emit form data to parent for booking logic
     console.log(
         "[BookingForm] Emitting submit event with description:",
         description.value,
     );
     emit("submit", { description: description.value });
-    // Booking logic should be handled in parent/composable
-    creating.value = false;
 }
 </script>
 

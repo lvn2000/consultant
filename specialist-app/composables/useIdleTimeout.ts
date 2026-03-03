@@ -123,15 +123,17 @@ export const useIdleTimeout = () => {
       logoutTimeout.value = null;
     }
 
-    // Clear session and redirect to login
-    sessionStorage.removeItem("accessToken");
-    sessionStorage.removeItem("sessionId");
-    sessionStorage.removeItem("userId");
-    sessionStorage.removeItem("specialistId");
-    sessionStorage.removeItem("login");
-    sessionStorage.removeItem("email");
-    sessionStorage.removeItem("role");
-    localStorage.removeItem("specialist_session");
+    // Clear session and redirect to login (only on client side)
+    if (process.client) {
+      sessionStorage.removeItem("accessToken");
+      sessionStorage.removeItem("sessionId");
+      sessionStorage.removeItem("userId");
+      sessionStorage.removeItem("specialistId");
+      sessionStorage.removeItem("login");
+      sessionStorage.removeItem("email");
+      sessionStorage.removeItem("role");
+      localStorage.removeItem("specialist_session");
+    }
 
     router.push("/login");
   };
@@ -149,6 +151,11 @@ export const useIdleTimeout = () => {
    * Start tracking idle timeout
    */
   const start = async () => {
+    // Guard: Only run on client side
+    if (!process.client) {
+      return;
+    }
+
     // Only track if user is logged in
     const token = sessionStorage.getItem("accessToken");
     if (!token) {

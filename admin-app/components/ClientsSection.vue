@@ -283,14 +283,6 @@
                 >
                     ✏️ {{ $t("adminClients.updateClient") }}
                 </button>
-                <button
-                    type="button"
-                    class="btn danger"
-                    :disabled="!selectedClientId"
-                    @click="deleteSelectedClient"
-                >
-                    🗑️ {{ $t("adminClients.deleteClient") }}
-                </button>
                 <button type="button" class="btn" @click="resetClientForm">
                     ❌ Clear
                 </button>
@@ -524,13 +516,7 @@ const loadClientNotifications = async () => {
             return;
         }
         const data = await $fetch<any>(
-            `${config.public.apiBase}/notification-preferences`,
-            {
-                method: "GET",
-                headers: {
-                    "X-User-Id": selectedClientId.value,
-                },
-            },
+            `${config.public.apiBase}/notification-preferences/${selectedClientId.value}`,
         );
         clientNotifications.value = data.preferences || [];
     } catch (error: any) {
@@ -579,15 +565,12 @@ const updateNotificationPreference = async (pref: any) => {
             return;
         }
         await $fetch(
-            `${config.public.apiBase}/notification-preferences/${pref.notificationType}`,
+            `${config.public.apiBase}/notification-preferences/${selectedClientId.value}/${pref.notificationType}`,
             {
                 method: "PUT",
                 body: {
                     emailEnabled: pref.emailEnabled,
                     smsEnabled: pref.smsEnabled || false,
-                },
-                headers: {
-                    "X-User-Id": selectedClientId.value,
                 },
             },
         );
