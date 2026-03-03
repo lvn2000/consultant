@@ -217,9 +217,9 @@ class PostgresConsultationRepository(xa: Transactor[IO])
     """.update.run.map(_ => updated)
 
   override def updateStatus(id: ConsultationId, status: ConsultationStatus): IO[Unit] =
-    updateStatusTransactional(id, status.toString).transact(xa).void
+    updateStatusTransactional(id, status).transact(xa).void
 
-  override def updateStatusTransactional(id: ConsultationId, status: String): ConnectionIO[Int] =
+  override def updateStatusTransactional(id: ConsultationId, status: ConsultationStatus): ConnectionIO[Int] =
     sql"""
       UPDATE consultations
       SET status = $status, updated_at = ${Instant.now()}

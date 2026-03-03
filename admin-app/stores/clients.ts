@@ -109,18 +109,18 @@ export const useClientsStore = defineStore("clients", {
       const { $fetch } = useApi();
 
       try {
-        await $fetch<Client>(`${config.public.apiBase}/auth/register-by-admin`, {
-          method: "POST",
-          headers: {
-            "X-User-Role": "Admin",
+        await $fetch<Client>(
+          `${config.public.apiBase}/auth/register-by-admin`,
+          {
+            method: "POST",
+            body: {
+              ...data,
+              role: "Client",
+              login: data.email?.split("@")[0] || "",
+              password: "DefaultPassword123!",
+            },
           },
-          body: {
-            ...data,
-            role: "Client",
-            login: data.email?.split("@")[0] || "",
-            password: "DefaultPassword123!",
-          },
-        });
+        );
 
         await this.fetchClients();
         return { success: true };

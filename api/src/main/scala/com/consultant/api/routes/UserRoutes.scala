@@ -135,7 +135,7 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
     IO.pure(Right("API is working!"))
   }
 
-  // Get admin count (separate path to avoid conflicts)
+  // Get admin count - requires admin role (verified by TokenAuthMiddleware)
   val getAdminCountEndpoint = ApiEndpoints
     .adminEndpoint("getAdminCount", "Get admin user count")
     .get
@@ -143,6 +143,7 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
     .out(jsonBody[AdminCountDto])
 
   val getAdminCount = getAdminCountEndpoint.serverLogic { userRoleOpt =>
+    // X-User-Role header is set by TokenAuthMiddleware from verified JWT
     userRoleOpt match
       case Some(role) if role.equalsIgnoreCase("Admin") =>
         userService.getAdminCount().map { count =>
@@ -152,7 +153,7 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
         IO.pure(Left(ErrorResponse("FORBIDDEN", "Admin role required")))
   }
 
-  // Delete user
+  // Delete user - requires admin role (verified by TokenAuthMiddleware)
   val deleteUserEndpoint = ApiEndpoints
     .adminEndpoint("deleteUser", "Delete user")
     .delete
@@ -161,6 +162,7 @@ class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] =
     .out(stringBody)
 
   val deleteUser = deleteUserEndpoint.serverLogic { case (userId, userRoleOpt) =>
+    // X-User-Role header is set by TokenAuthMiddleware from verified JWT
     userRoleOpt match
       case Some(role) if role.equalsIgnoreCase("Admin") =>
         userService.deleteUser(userId, None, None).map {

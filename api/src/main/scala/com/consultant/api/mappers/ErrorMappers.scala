@@ -60,13 +60,13 @@ object ErrorMappers:
       case DomainError.Unauthorized(msg) =>
         ErrorResponse("UNAUTHORIZED", msg)
 
-      // Database errors - return error response without side effects
+      // Database errors
       case DomainError.DatabaseError(msg) =>
         ErrorResponse("DATABASE_ERROR", "A database error occurred. Please try again later.")
       case DomainError.ConstraintViolation(constraint, msg) =>
         ErrorResponse("CONFLICT", "A database constraint was violated.")
 
-      // System errors - return error response without side effects
+      // System errors
       case DomainError.UnexpectedError(msg) =>
         ErrorResponse("INTERNAL_ERROR", "An unexpected error occurred. Please try again later.")
       case DomainError.ExternalServiceError(service, msg) =>
@@ -75,75 +75,25 @@ object ErrorMappers:
   /** Maps DomainError to ErrorResponse for API responses with logging. */
   def toErrorResponseWithLogging(error: DomainError)(using logger: SelfAwareStructuredLogger[IO]): IO[ErrorResponse] =
     error match
-      // Not found errors - no logging needed for expected not-found cases
-      case DomainError.UserNotFound(id) =>
-        IO.pure(ErrorResponse("NOT_FOUND", s"User not found: $id"))
-      case DomainError.SpecialistNotFound(id) =>
-        IO.pure(ErrorResponse("NOT_FOUND", s"Specialist not found: $id"))
-      case DomainError.CategoryNotFound(id) =>
-        IO.pure(ErrorResponse("NOT_FOUND", s"Category not found: $id"))
-      case DomainError.ConsultationNotFound(id) =>
-        IO.pure(ErrorResponse("NOT_FOUND", s"Consultation not found: $id"))
-      case DomainError.ConnectionTypeNotFound(id) =>
-        IO.pure(ErrorResponse("NOT_FOUND", s"Connection type not found: $id"))
-      case DomainError.ConnectionNotFound(id) =>
-        IO.pure(ErrorResponse("NOT_FOUND", s"Connection not found: $id"))
-
-      // Conflict errors - no logging needed for expected conflicts
-      case DomainError.EmailAlreadyExists(email) =>
-        IO.pure(ErrorResponse("CONFLICT", s"Email already exists: $email"))
-      case DomainError.LoginAlreadyExists(login) =>
-        IO.pure(ErrorResponse("CONFLICT", s"Login already exists: $login"))
-      case DomainError.DuplicateCategoryRate(catId) =>
-        IO.pure(
-          ErrorResponse(
-            "CONFLICT",
-            s"This category has already been added for this specialist (Category: $catId). Each specialist can only have one rate per category."
-          )
-        )
-      case DomainError.DuplicateEntry(msg) =>
-        IO.pure(ErrorResponse("CONFLICT", msg))
-      case DomainError.ReferencedRecordNotFound(msg) =>
-        IO.pure(ErrorResponse("CONFLICT", s"Referenced record not found: $msg"))
-
-      // Validation errors - no logging needed for expected validation errors
-      case DomainError.InvalidEmail(email) =>
-        IO.pure(ErrorResponse("VALIDATION_ERROR", s"Invalid email: $email"))
-      case DomainError.InvalidPhoneNumber(phone) =>
-        IO.pure(ErrorResponse("VALIDATION_ERROR", s"Invalid phone: $phone"))
-      case DomainError.InvalidPrice(price) =>
-        IO.pure(ErrorResponse("VALIDATION_ERROR", s"Invalid price: $price"))
-      case DomainError.ValidationError(msg) =>
-        IO.pure(ErrorResponse("VALIDATION_ERROR", msg))
-      case DomainError.InvalidCredentials =>
-        IO.pure(ErrorResponse("UNAUTHORIZED", "Invalid credentials"))
-
-      // State errors - no logging needed for expected state errors
-      case DomainError.SpecialistNotAvailable(id) =>
-        IO.pure(ErrorResponse("UNAVAILABLE", s"Specialist not available: $id"))
-      case DomainError.Forbidden(msg) =>
-        IO.pure(ErrorResponse("FORBIDDEN", msg))
-      case DomainError.Unauthorized(msg) =>
-        IO.pure(ErrorResponse("UNAUTHORIZED", msg))
-
-      // Database errors - log the actual error details
+      // Database and system errors need logging - handle them specially
       case DomainError.DatabaseError(msg) =>
         logger
           .error(s"Database error: $msg")
-          .as(ErrorResponse("DATABASE_ERROR", "A database error occurred. Please try again later."))
+          .as(toErrorResponse(error))
       case DomainError.ConstraintViolation(constraint, msg) =>
         logger
           .error(s"Constraint violation [$constraint]")
-          .as(ErrorResponse("CONFLICT", "A database constraint was violated."))
-
-      // System errors - log the actual error details
+          .as(toErrorResponse(error))
       case DomainError.UnexpectedError(msg) =>
         logger
           .error(s"Unexpected error: $msg")
-          .as(ErrorResponse("INTERNAL_ERROR", "An unexpected error occurred. Please try again later."))
+          .as(toErrorResponse(error))
       case DomainError.ExternalServiceError(service, msg) =>
         logger
           .error(s"External service error [$service]: $msg")
-          .as(ErrorResponse("SERVICE_UNAVAILABLE", s"External service error: $service"))
+          .as(toErrorResponse(error))
+
+      // All other errors are expected business errors - no logging needed
+      case _ => IO.pure(toErrorResponse(error))
 
 end ErrorMappers

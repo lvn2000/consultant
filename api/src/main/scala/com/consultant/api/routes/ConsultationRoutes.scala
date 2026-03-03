@@ -106,32 +106,34 @@ class ConsultationRoutes(consultationService: ConsultationService):
     .in(jsonBody[UpdateConsultationStatusDto])
     .out(jsonBody[ConsultationDto])
 
-  val updateConsultationStatus = updateConsultationStatusEndpoint.serverLogic { (id, authUserIdOpt, userRoleOpt, dto) =>
-    (authUserIdOpt, userRoleOpt) match
-      case (None, _) | (_, None) =>
-        IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing authentication headers")))
-      case (Some(authUserId), Some(userRole)) =>
-        // Authorization check: verify user has permission to update this consultation
-        try
-          val status = ConsultationStatus.valueOf(dto.status)
-          for
-            consultationOpt <- consultationService.getConsultation(id)
-            result <- consultationOpt match
-              case Right(consultation) =>
-                // Authorization: user must be the client OR the assigned specialist OR an admin
-                val isClient             = consultation.userId.toString == authUserId
-                val isAssignedSpecialist = consultation.specialistId.toString == authUserId
-                val isAdmin              = userRole.equalsIgnoreCase("Admin")
+  val updateConsultationStatus = updateConsultationStatusEndpoint.serverLogic {
+    case (id, authUserIdOpt, userRoleOpt, dto) =>
+      (authUserIdOpt, userRoleOpt) match
+        case (Some(authUserId), Some(userRole)) =>
+          // Authorization check: verify user has permission to update this consultation
+          try
+            val status = ConsultationStatus.valueOf(dto.status)
+            for
+              consultationResult <- consultationService.getConsultation(id)
+              response <- consultationResult match
+                case Right(consultation) =>
+                  // Authorization: user must be the client OR the assigned specialist OR an admin
+                  val isClient             = consultation.userId.toString == authUserId
+                  val isAssignedSpecialist = consultation.specialistId.toString == authUserId
+                  val isAdmin              = userRole.equalsIgnoreCase("Admin")
 
-                if isClient || isAssignedSpecialist || isAdmin then
-                  consultationService.updateConsultationStatus(id, status).map {
-                    case Right(())   => Right(toConsultationDto(consultation.copy(status = status)))
-                    case Left(error) => Left(toErrorResponse(error))
-                  }
-                else IO.pure(Left(ErrorResponse("FORBIDDEN", "You don't have permission to update this consultation")))
-              case Left(error) => IO.pure(Left(toErrorResponse(error)))
-          yield result
-        catch case _: IllegalArgumentException => IO.pure(Left(ErrorResponse("VALIDATION_ERROR", "Invalid status")))
+                  if isClient || isAssignedSpecialist || isAdmin then
+                    consultationService.updateConsultationStatus(id, status).map {
+                      case Right(())   => Right(toConsultationDto(consultation.copy(status = status)))
+                      case Left(error) => Left(toErrorResponse(error))
+                    }
+                  else
+                    IO.pure(Left(ErrorResponse("FORBIDDEN", "You don't have permission to update this consultation")))
+                case Left(error) => IO.pure(Left(toErrorResponse(error)))
+            yield response
+          catch case _: IllegalArgumentException => IO.pure(Left(ErrorResponse("VALIDATION_ERROR", "Invalid status")))
+        case _ =>
+          IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing authentication headers")))
   }
 
   // Approve consultation with duration
@@ -144,18 +146,16 @@ class ConsultationRoutes(consultationService: ConsultationService):
     .in(jsonBody[ApproveConsultationDto])
     .out(jsonBody[ConsultationDto])
 
-  val approveConsultation = approveConsultationEndpoint.serverLogic { (id, authUserIdOpt, userRoleOpt, dto) =>
+  val approveConsultation = approveConsultationEndpoint.serverLogic { case (id, authUserIdOpt, userRoleOpt, dto) =>
     (authUserIdOpt, userRoleOpt) match
-      case (None, _) | (_, None) =>
-        IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing authentication headers")))
       case (Some(authUserId), Some(userRole)) =>
         // Authorization check: only the assigned specialist or admin can approve consultations
         if !userRole.equalsIgnoreCase("Specialist") && !userRole.equalsIgnoreCase("Admin") then
           IO.pure(Left(ErrorResponse("FORBIDDEN", "Only specialists and admins can approve consultations")))
         else
           for
-            consultationOpt <- consultationService.getConsultation(id)
-            response <- consultationOpt match
+            consultationResult <- consultationService.getConsultation(id)
+            response <- consultationResult match
               case Right(consultation) =>
                 // Authorization: Only the assigned specialist or admin can approve
                 val isAssignedSpecialist = consultation.specialistId.toString == authUserId
@@ -174,6 +174,8 @@ class ConsultationRoutes(consultationService: ConsultationService):
                 else IO.pure(Left(ErrorResponse("FORBIDDEN", "You are not assigned to this consultation")))
               case Left(error) => IO.pure(Left(toErrorResponse(error)))
           yield response
+      case _ =>
+        IO.pure(Left(ErrorResponse("UNAUTHORIZED", "Missing authentication headers")))
   }
 
   // Add review

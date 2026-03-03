@@ -14,10 +14,12 @@ Database configuration is handled through environment variables in the `.env` fi
 # Database configuration
 DB_DRIVER=org.postgresql.Driver
 DB_URL=jdbc:postgresql://localhost:5432/consultant
-DB_USER=consultant_user
-DB_PASSWORD=consultant_pass
+DB_USER=<your-db-user>
+DB_PASSWORD=<your-strong-password>
 DB_POOL_SIZE=32
 ```
+
+🔒 **Security Note**: Never commit actual credentials to version control. Use `.env.example` as a template and create a local `.env` file (which should be gitignored).
 
 ### Automatic Initialization
 
@@ -48,8 +50,8 @@ If you prefer to set up the database manually:
 # Start PostgreSQL in Docker
 docker-compose up -d db
 
-# Connect to the database
-PGPASSWORD=consultant_pass psql -h localhost -U consultant_user -d consultant
+# Connect to the database (replace with your credentials)
+PGPASSWORD=<your-db-password> psql -h localhost -U <your-db-user> -d consultant
 ```
 
 ## Migration Strategy
@@ -98,13 +100,19 @@ The database includes optimized indexes:
 
 ### Default Accounts
 
-The system includes default test credentials for development:
+⚠️ **DEVELOPMENT ONLY**: The following test accounts are seeded by Flyway migration `V002__seed_data.sql` for development convenience. **NEVER use these in production!**
 
 | Account | Email | Password | Role | Phone |
 |---------|-------|----------|------|-------|
-| **Admin** | admin@admin.com | admin | Admin | N/A |
-| **User** | user@example.com | user | Client | +1234567890 |
-| **Specialist** | spec@example.com | spec | Specialist | +9876543210 |
+| **Admin** | admin@admin.com | `admin` | Admin | N/A |
+| **User** | user@example.com | `user` | Client | +1234567890 |
+| **Specialist** | spec@example.com | `spec` | Specialist | +9876543210 |
+
+🔒 **Production Deployment**: 
+- Disable test data seeding in production builds
+- Create admin users through secure registration processes
+- Use strong, unique passwords (minimum 12 characters with complexity requirements)
+- See `WIKI_QUICK_START.md` for production security checklist
 
 ### Default UUIDs
 
@@ -118,6 +126,17 @@ For testing purposes:
 ### Security Warning
 
 ⚠️ **CRITICAL**: Change default passwords immediately after deploying to production!
+
+**Default Database Credentials (Development Only):**
+- Database User: `consultant_user`
+- Database Password: `consultant_pass`
+
+🔒 **Production Requirements:**
+- Use strong, unique database passwords (minimum 16 characters)
+- Store credentials in secure secret management (e.g., AWS Secrets Manager, HashiCorp Vault)
+- Never commit actual credentials to version control
+- Use environment-specific configuration (`.env.production`, `.env.staging`)
+- Implement database access logging and monitoring
 
 ### Connection Pooling
 
@@ -164,8 +183,8 @@ SELECT * FROM flyway_schema_history ORDER BY installed_on DESC;
 
 **Connection issues:**
 ```bash
-# Test direct database connection
-PGPASSWORD=consultant_pass psql -h localhost -U consultant_user -d consultant -c "SELECT 1;"
+# Test direct database connection (replace with your credentials)
+PGPASSWORD=<your-db-password> psql -h localhost -U <your-db-user> -d consultant -c "SELECT 1;"
 ```
 
 ### Cleaning Up

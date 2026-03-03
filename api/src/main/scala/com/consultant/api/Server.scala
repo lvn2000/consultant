@@ -46,7 +46,8 @@ object Server extends IOApp:
       val isPublic: Request[IO] => Boolean = { req =>
         val path   = req.uri.path.renderString
         val method = req.method
-        path == "/api/settings/idle-timeout" ||
+        // Only GET requests to idle-timeout are public; PUT requires admin auth
+        (path == "/api/settings/idle-timeout" && method == Method.GET) ||
         // Allow OPTIONS preflight for COR requests on all API endpoints
         (method == Method.OPTIONS && path.startsWith("/api")) ||
         method == Method.OPTIONS ||
@@ -61,6 +62,9 @@ object Server extends IOApp:
       }
 
       val protectedApiRoutes = TokenAuthMiddleware.protect(tokenVerifier, isPublic)(apiRoutes)
+
+      // Admin routes also need protection - they require admin role verification
+      val protectedAdminRoutes = TokenAuthMiddleware.protect(tokenVerifier, isPublic)(adminRoutes)
 
       // Add a preflight handler for CORS OPTIONS requests
       val preflightHandler: HttpRoutes[IO] = HttpRoutes.of[IO] {
@@ -94,10 +98,10 @@ object Server extends IOApp:
       // - healthHttpRoutes: serves /health endpoint (public, no auth required)
       // - swaggerRoutes: serves /docs/* (public Swagger UI)
       // - protectedApiRoutes: serves /api/* endpoints (auth required, with public exceptions)
-      // - adminRoutes: serves /api/admin-count (auth required)
+      // - protectedAdminRoutes: serves /api/admin-count (auth required, admin role required)
       // - apiRootRoute: serves /api (simple health/info message)
       val routes = Router(
-        "/" -> (preflightHandler <+> rootRedirect <+> healthHttpRoutes <+> swaggerRoutes <+> protectedApiRoutes <+> adminRoutes <+> apiRootRoute)
+        "/" -> (preflightHandler <+> rootRedirect <+> healthHttpRoutes <+> swaggerRoutes <+> protectedApiRoutes <+> protectedAdminRoutes <+> apiRootRoute)
       ).orNotFound
 
       val corsRoutes = CORS.policy.withAllowOriginAll

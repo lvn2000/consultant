@@ -105,12 +105,12 @@ open http://localhost:8090/docs
 ```bash
 curl -X POST http://localhost:8090/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"login":"user","password":"user"}'
+  -d '{"login":"<your-login>","password":"<your-password>"}'
 ```
 
-⚠️ **SECURITY WARNING**: The test credentials below are for **development and testing only**. Never use these credentials in production. Always change default passwords immediately after deploying to production!
+⚠️ **SECURITY WARNING**: Default test credentials should **NEVER** be used in production. Always use strong, unique passwords and change default credentials immediately after deploying to production!
 
-**Test Users Available:**
+**Default Test Users (Development Only):**
 
 | Login | Password | Role | Email |
 |-------|----------|------|-------|
@@ -118,13 +118,16 @@ curl -X POST http://localhost:8090/api/auth/login \
 | `admin` | `admin` | Admin | admin@admin.com |
 | `spec` | `spec` | Specialist | spec@example.com |
 
+🔒 **IMPORTANT**: These credentials are automatically seeded by Flyway migration `V002__seed_data.sql` for development convenience. See `WIKI_DATABASE.md` for details on customizing or disabling test data.
+
 🔒 **Production Security Checklist:**
-- Change all default passwords before going live
-- Use strong, unique passwords for each user
-- Implement password complexity requirements
-- Enable multi-factor authentication (if available)
-- Regularly rotate credentials
-- Monitor for unauthorized access attempts
+- ❌ **NEVER** use default credentials in production
+- ✅ Use strong, unique passwords for each user (minimum 12 characters)
+- ✅ Implement password complexity requirements
+- ✅ Enable multi-factor authentication (if available)
+- ✅ Regularly rotate credentials
+- ✅ Monitor for unauthorized access attempts
+- ✅ Remove or disable test data seeding in production builds
 
 ### Step 5: Setup Frontend Apps (Optional)
 
@@ -149,9 +152,9 @@ cd specialist-app && npm install && npm run dev
 | Application | URL | Login | Password |
 |-------------|-----|-------|----------|
 | **API Documentation** | `http://localhost:8090/docs` | N/A | N/A |
-| **Client App** | `http://localhost:3000` | user | user |
-| **Admin App** | `http://localhost:3001` | admin | admin |
-| **Specialist App** | `http://localhost:3002` | spec | spec |
+| **Client App** | `http://localhost:3000` | user | `<see-test-users-above>` |
+| **Admin App** | `http://localhost:3001` | admin | `<see-test-users-above>` |
+| **Specialist App** | `http://localhost:3002` | spec | `<see-test-users-above>` |
 
 ## Testing the API
 
