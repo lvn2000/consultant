@@ -53,6 +53,10 @@ trait InfrastructureModule extends RepositoryModule:
       com.consultant.infrastructure.security.CompositeTokenVerifier(Some(oidcVerifier), legacyVerifier)
     else if config.oidc.enabled then oidcVerifier
     else if config.legacyAuthEnabled then legacyVerifier
-    else throw new RuntimeException("Both OIDC and legacy auth are disabled")
+    else
+      throw new IllegalStateException(
+        "Invalid authentication configuration: both OIDC and legacy authentication are disabled. " +
+          "At least one must be enabled. Set either OIDC_ENABLED=true or LEGACY_AUTH_ENABLED=true in your environment."
+      )
 
 end InfrastructureModule

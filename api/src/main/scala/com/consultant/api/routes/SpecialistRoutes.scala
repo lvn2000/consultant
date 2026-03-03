@@ -15,6 +15,16 @@ import org.http4s.HttpRoutes
 
 class SpecialistRoutes(specialistService: SpecialistService):
 
+  /**
+   * SECURITY MODEL: The X-User-Role header is set by TokenAuthMiddleware from the verified JWT token. The middleware
+   * overwrites any client-provided values for this header, ensuring the routes always receive trusted values extracted
+   * from the authenticated token.
+   *
+   * Admin authorization checks (role.equalsIgnoreCase("Admin")) are safe because:
+   *   1. The middleware verifies the JWT signature cryptographically 2. The role is extracted from the verified token
+   *      claims 3. Client-supplied X-User-Role headers are replaced with the token's actual role
+   */
+
   // Create specialist
   val createSpecialistEndpoint = ApiEndpoints
     .publicEndpoint("createSpecialist", "Create a new specialist")

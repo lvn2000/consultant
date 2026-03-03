@@ -40,6 +40,9 @@ object TokenAuthMiddleware:
 
   private def attachHeaders(req: Request[IO], authToken: AuthToken): Request[IO] =
     req.putHeaders(
+      // SECURITY: These headers are set from the verified JWT token, NOT from the client request.
+      // putHeaders() overwrites any client-provided headers with these names, ensuring the routes
+      // always receive trusted values extracted from the authenticated token.
       // X-Auth-User-Id contains the authenticated principal (from token)
       Header.Raw(CIString("X-Auth-User-Id"), authToken.userId.toString),
       // X-User-Role contains the authenticated user's role for authorization checks

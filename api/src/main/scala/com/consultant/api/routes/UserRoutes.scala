@@ -16,6 +16,12 @@ import com.consultant.api.codec.SecurityCodecs.given
 
 class UserRoutes(userService: UserService, jwtService: Option[JwtTokenService] = None):
 
+  /**
+   * SECURITY MODEL: The X-Auth-User-Id and X-User-Role headers are set by TokenAuthMiddleware from the verified JWT
+   * token. The middleware strips any client-provided values for these headers and replaces them with trusted values
+   * extracted from the authenticated token. Routes can safely rely on these headers for authorization.
+   */
+
   // Create user
   val createUserEndpoint = ApiEndpoints
     .publicEndpoint("createUser", "Register a new user")

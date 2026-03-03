@@ -103,10 +103,12 @@ open http://localhost:8090/docs
 ### Step 4: Test Login
 
 ```bash
-curl -X POST http://localhost:8090/api/users/login \
+curl -X POST http://localhost:8090/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"login":"user","password":"user"}'
 ```
+
+⚠️ **SECURITY WARNING**: The test credentials below are for **development and testing only**. Never use these credentials in production. Always change default passwords immediately after deploying to production!
 
 **Test Users Available:**
 
@@ -115,6 +117,14 @@ curl -X POST http://localhost:8090/api/users/login \
 | `user` | `user` | Client | user@example.com |
 | `admin` | `admin` | Admin | admin@admin.com |
 | `spec` | `spec` | Specialist | spec@example.com |
+
+🔒 **Production Security Checklist:**
+- Change all default passwords before going live
+- Use strong, unique passwords for each user
+- Implement password complexity requirements
+- Enable multi-factor authentication (if available)
+- Regularly rotate credentials
+- Monitor for unauthorized access attempts
 
 ### Step 5: Setup Frontend Apps (Optional)
 

@@ -125,7 +125,19 @@ The application uses connection pooling with a default size of 32 connections. A
 
 ```bash
 DB_POOL_SIZE=64  # For higher traffic environments
+DB_POOL_SIZE=100 # For high-traffic production deployments
+DB_POOL_SIZE=200 # For very large deployments (use with caution)
 ```
+
+**Recommended Values:**
+- **Development**: 10-20 connections
+- **Staging**: 20-32 connections  
+- **Production (small)**: 32-64 connections
+- **Production (medium)**: 64-100 connections
+- **Production (large)**: 100-200 connections
+- **Enterprise**: 200-500 connections (maximum allowed)
+
+⚠️ **Important**: The maximum allowed pool size is 500. Values above this will be rejected at startup. Setting pool sizes too high can exhaust database resources and cause performance degradation.
 
 ### Backup Strategy
 

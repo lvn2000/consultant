@@ -153,8 +153,6 @@ class PostgresConsultationRepository(xa: Transactor[IO])
         // All entries will have the same count value due to the window function
         (results.map(_.consultation), results.head.count)
       } else {
-        // When no results, we still need to return a count, so we make a separate query for count
-        // Or we could return (Nil, 0) if there are no results
         (Nil, 0L)
       }
     }

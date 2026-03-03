@@ -45,13 +45,4 @@ class CategoryService(categoryRepo: CategoryRepository):
     import com.consultant.core.error.PostgresErrorParser
     Left(PostgresErrorParser.parseError(error))
 
-  /** Checks if exception is a PostgreSQL PSQLException using reflection */
-  private def isPostgresException(ex: Throwable): Boolean =
-    ex.getClass.getName == "org.postgresql.util.PSQLException"
-
-  /** Gets SQLState from PostgreSQL exception using reflection */
-  private def getSqlState(ex: Throwable): Option[String] =
-    try
-      val method = ex.getClass.getMethod("getSQLState")
-      Option(method.invoke(ex).asInstanceOf[String])
-    catch case _: Exception => None
+end CategoryService

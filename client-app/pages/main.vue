@@ -261,6 +261,7 @@ const loadConsultations = async () => {
         // Handle the paginated response
         consultations.value = response.consultations || [];
         consultationPagination.value.totalCount = response.totalCount || 0;
+        consultationPagination.value.currentPage = 1; // Reset to first page on reload
         consultationPagination.value.totalPages = Math.ceil(
             response.totalCount / consultationPagination.value.pageSize,
         );

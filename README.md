@@ -200,7 +200,7 @@ open http://localhost:8090/docs
 #### Step 4: Test Login
 
 ```bash
-curl -X POST http://localhost:8090/api/users/login \
+curl -X POST http://localhost:8090/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"login":"user","password":"user"}'
 ```

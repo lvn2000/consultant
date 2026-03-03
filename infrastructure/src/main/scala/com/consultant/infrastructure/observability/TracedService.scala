@@ -41,7 +41,6 @@ trait TracedService:
               .withKeyValue("duration_ms", duration.toString)
               .withKeyValue("status", "success")
             logger.infoWithContext(successCtx)(s"Completed operation: $name in ${duration}ms")
-            IO.unit
           }
         }.handleErrorWith { error =>
           IO.monotonic.flatMap { endTime =>
@@ -83,7 +82,6 @@ trait TracedService:
                 .withKeyValue("duration_ms", duration.toString)
                 .withKeyValue("status", "success")
               logger.infoWithContext(successCtx)(s"Completed operation: $name in ${duration}ms")
-              IO.unit
             }
           case Left(error) =>
             IO.monotonic.flatMap { endTime =>
@@ -93,7 +91,6 @@ trait TracedService:
                 .withKeyValue("status", "failure")
                 .withKeyValue("error_type", error.getClass.getSimpleName)
               logger.warnWithContext(errorCtx)(s"Operation $name returned error after ${duration}ms")
-              IO.unit
             }
         }.handleErrorWith { error =>
           IO.monotonic.flatMap { endTime =>

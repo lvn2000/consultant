@@ -44,8 +44,8 @@ object ConfigValidation:
 
   /** Validates that a pool size is reasonable. */
   def validPoolSize(size: Int, field: String): Validated[ConfigError, Int] =
-    if size >= 1 && size <= 100 then Valid(size)
-    else Invalid(ConfigError.InvalidValue(field, size.toString, "Must be between 1 and 100"))
+    if size >= 1 && size <= 500 then Valid(size)
+    else Invalid(ConfigError.InvalidValue(field, size.toString, "Must be between 1 and 500"))
 
   /** Validates that a duration is positive. */
   def positiveDuration(

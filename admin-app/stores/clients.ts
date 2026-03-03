@@ -109,8 +109,11 @@ export const useClientsStore = defineStore("clients", {
       const { $fetch } = useApi();
 
       try {
-        await $fetch<Client>(`${config.public.apiBase}/auth/register`, {
+        await $fetch<Client>(`${config.public.apiBase}/auth/register-by-admin`, {
           method: "POST",
+          headers: {
+            "X-User-Role": "Admin",
+          },
           body: {
             ...data,
             role: "Client",

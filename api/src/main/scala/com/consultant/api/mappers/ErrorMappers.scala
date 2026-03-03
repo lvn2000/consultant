@@ -64,7 +64,7 @@ object ErrorMappers:
       case DomainError.DatabaseError(msg) =>
         ErrorResponse("DATABASE_ERROR", "A database error occurred. Please try again later.")
       case DomainError.ConstraintViolation(constraint, msg) =>
-        ErrorResponse("CONFLICT", s"Constraint violation: $msg")
+        ErrorResponse("CONFLICT", "A database constraint was violated.")
 
       // System errors - return error response without side effects
       case DomainError.UnexpectedError(msg) =>
@@ -133,8 +133,8 @@ object ErrorMappers:
           .as(ErrorResponse("DATABASE_ERROR", "A database error occurred. Please try again later."))
       case DomainError.ConstraintViolation(constraint, msg) =>
         logger
-          .error(s"Constraint violation [$constraint]: $msg")
-          .as(ErrorResponse("CONFLICT", s"Constraint violation: $msg"))
+          .error(s"Constraint violation [$constraint]")
+          .as(ErrorResponse("CONFLICT", "A database constraint was violated."))
 
       // System errors - log the actual error details
       case DomainError.UnexpectedError(msg) =>

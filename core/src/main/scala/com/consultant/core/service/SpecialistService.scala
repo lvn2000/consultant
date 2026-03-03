@@ -59,10 +59,8 @@ class SpecialistService(
    * Parses database errors into structured domain errors. This uses SQLState codes instead of string parsing for
    * reliability. Uses reflection to avoid direct PostgreSQL dependency in core module.
    */
-  private def parseError(error: Throwable): Either[DomainError, Specialist] =
+  private def parseError(error: Throwable): Either[DomainError, Nothing] =
     import com.consultant.core.error.PostgresErrorParser
     Left(PostgresErrorParser.parseError(error))
 
-  private def parseConstraintName(message: String): Option[String] =
-    val pattern = """violates unique constraint "([^"]+)"""".r
-    pattern.findFirstMatchIn(message).map(_.group(1))
+end SpecialistService

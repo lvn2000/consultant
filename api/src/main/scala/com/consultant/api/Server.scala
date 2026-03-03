@@ -57,8 +57,7 @@ object Server extends IOApp:
         path.startsWith("/api/auth/register") ||
         path == "/api/auth/login" ||
         path == "/api/auth/refresh" ||
-        path == "/api/users/register" ||
-        path == "/api/users/login"
+        path == "/api/users/register"
       }
 
       val protectedApiRoutes = TokenAuthMiddleware.protect(tokenVerifier, isPublic)(apiRoutes)

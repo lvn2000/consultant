@@ -239,7 +239,7 @@ FCM_SERVER_KEY=your-fcm-server-key
 
 ### Rate Limiting
 
-```scala
+```bash
 # Notification rate limits
 NOTIFICATION_RATE_LIMIT_PER_HOUR=100
 NOTIFICATION_BURST_SIZE=10
