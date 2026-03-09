@@ -35,6 +35,9 @@ metals.sbt
 # VS Code
 .vscode/
 
+# Zed Editor
+.zed/
+
 # Local History (VSCode plugin)
 .lh/
 

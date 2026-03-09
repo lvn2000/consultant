@@ -17,7 +17,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "audit": "npm audit --audit-level=moderate",
-    "audit:fix": "npm audit fix"
+    "audit:fix": "npm audit fix",
+    "license:check": "node ../scripts/add-license-headers.js --check .",
+    "license:add": "node ../scripts/add-license-headers.js --add ."
   },
   "dependencies": {
     "@nuxt/icon": "^1.10.0",
