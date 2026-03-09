@@ -2,6 +2,7 @@
 Compile / mainClass := Some("com.consultant.api.Server")
 import sbt._
 import sbt.Keys._
+import de.heikoseeberger.sbtheader.HeaderPlugin.autoImport._
 
 ThisBuild / organization := "com.consultant"
 ThisBuild / version      := "0.1.0-SNAPSHOT"
@@ -35,13 +36,15 @@ lazy val commonSettings = Seq(
     "-Ykind-projector"
   ),
   libraryDependencies ++= Seq(
-    "org.typelevel" %% "cats-core"   % catsVersion,
-    "org.typelevel" %% "cats-effect" % catsEffectVersion,
-    "org.typelevel" %% "log4cats-core"    % log4catsVersion,
-    "org.typelevel" %% "log4cats-slf4j"   % log4catsVersion,
-    "org.scalatest" %% "scalatest"   % "3.2.17" % Test,
-    "org.scalamock" %% "scalamock"   % "7.5.4"  % Test
-  )
+    "org.typelevel" %% "cats-core"      % catsVersion,
+    "org.typelevel" %% "cats-effect"    % catsEffectVersion,
+    "org.typelevel" %% "log4cats-core"  % log4catsVersion,
+    "org.typelevel" %% "log4cats-slf4j" % log4catsVersion,
+    "org.scalatest" %% "scalatest"      % "3.2.17" % Test,
+    "org.scalamock" %% "scalamock"      % "7.5.4"  % Test
+  ),
+  headerLicense   := Some(HeaderLicense.MIT("2026", "Volodymyr Lubenchenko")),
+  headerEmptyLine := false
 )
 
 lazy val root = (project in file("."))
@@ -49,6 +52,7 @@ lazy val root = (project in file("."))
     name := "consultant-backend"
   )
   .aggregate(core, data, infrastructure, api)
+  .disablePlugins(HeaderPlugin)
 
 lazy val core = (project in file("core"))
   .settings(commonSettings)
