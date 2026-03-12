@@ -544,4 +544,4 @@ The infrastructure layer will automatically use AWS services instead of local im
 
 ## License
 
-TBD
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
