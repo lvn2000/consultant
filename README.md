@@ -139,16 +139,11 @@ No manual database setup required! ✅
 ### Running
 
 ```bash
-# Start API server
+# Start API server (recommended - loads .env automatically)
 ./run.sh
-
-# Or use sbt directly
-sbt compile
-sbt api/run
-
-# With auto-reload on code changes
-sbt api/reRun
 ```
+
+> **Note:** Always use `./run.sh` instead of running sbt directly. The script loads required environment variables from `.env` file. Running `sbt` directly will not load these variables and the application will fail to start.
 
 API will start on `http://localhost:8090` with Swagger docs at `http://localhost:8090/docs`
 
