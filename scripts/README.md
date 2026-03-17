@@ -74,6 +74,44 @@ These scripts remain in the root folder for easy access:
 | [`run.sh`](../run.sh) | **Main startup script** - Starts API with PostgreSQL |
 | [`start-https.sh`](../start-https.sh) | Start full stack with HTTPS enabled |
 
+## 🚀 GCP Deployment Scripts
+
+These scripts are for deploying the Consultant Platform to Google Cloud Platform with automatic HTTPS, managed database, and auto-scaling.
+
+| Script | Description |
+|--------|-------------|
+| [`deploy-gcp.sh`](../deploy-gcp.sh) | **Main deployment script** - Deploys full stack to GCP |
+| [`test-gcp-https.sh`](../test-gcp-https.sh) | **HTTPS verification** - Tests SSL certificates and security headers |
+| [`GCP_DEPLOYMENT.md`](../GCP_DEPLOYMENT.md) | **Documentation** - Complete GCP deployment guide |
+
+### Usage
+
+```bash
+# Deploy to development environment
+./deploy-gcp.sh dev
+
+# Deploy to production with custom domain
+./deploy-gcp.sh prod --domain=yourdomain.com
+
+# Test HTTPS configuration
+./test-gcp-https.sh prod --project=PROJECT_ID --verbose
+```
+
+### Features
+
+✅ **Automatic HTTPS**: Google-managed SSL certificates with auto-renewal  
+✅ **Auto-scaling**: Cloud Run services scale based on demand  
+✅ **Managed Database**: Cloud SQL PostgreSQL 16 with backups  
+✅ **Secret Management**: Secure credentials in Secret Manager  
+✅ **Custom Domains**: Support for custom domains with automatic SSL  
+✅ **Private Networking**: VPC Connector for secure database access  
+
+### Documentation
+
+- Complete guide: [GCP_DEPLOYMENT.md](../GCP_DEPLOYMENT.md)
+- Script options: `./deploy-gcp.sh --help`
+- HTTPS testing: `./test-gcp-https.sh --help`
+
 ## 📝 Adding New Scripts
 
 When adding new development scripts:
