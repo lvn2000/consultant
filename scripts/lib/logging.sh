@@ -7,19 +7,19 @@
 # Usage: source ./lib/logging.sh
 
 # Color codes for output
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly CYAN='\033[0;36m'
-readonly MAGENTA='\033[0;35m'
-readonly NC='\033[0m' # No Color
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
+NC='\033[0m' # No Color
 
 # Log levels
-readonly LOG_LEVEL_DEBUG=0
-readonly LOG_LEVEL_INFO=1
-readonly LOG_LEVEL_WARNING=2
-readonly LOG_LEVEL_ERROR=3
+LOG_LEVEL_DEBUG=0
+LOG_LEVEL_INFO=1
+LOG_LEVEL_WARNING=2
+LOG_LEVEL_ERROR=3
 
 # Default log level
 LOG_LEVEL=${LOG_LEVEL:-$LOG_LEVEL_INFO}

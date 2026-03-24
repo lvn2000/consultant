@@ -6,19 +6,16 @@
 # Manages configuration for GCP deployment
 # Usage: source ./lib/config.sh
 
-# Source logging module if available
-if [[ -f "$(dirname "${BASH_SOURCE[0]}")/logging.sh" ]]; then
-    source "$(dirname "${BASH_SOURCE[0]}")/logging.sh"
-fi
+
 
 # ============================================
 # Default Configuration
 # ============================================
 
 # Application settings
-readonly DEFAULT_APP_NAME="consultant"
-readonly DEFAULT_REGION="us-central1"
-readonly DEFAULT_ARTIFACT_REGISTRY_REGION="us-central1"
+DEFAULT_APP_NAME="consultant"
+DEFAULT_REGION="us-central1"
+DEFAULT_ARTIFACT_REGISTRY_REGION="us-central1"
 
 # Environment-specific defaults
 declare -A ENV_CONFIGS=(
@@ -53,25 +50,25 @@ declare -A SERVICE_NAMES=(
 )
 
 # Database settings
-readonly DEFAULT_DATABASE_NAME="consultant"
-readonly DEFAULT_DATABASE_USER="consultant_user"
-readonly DEFAULT_DATABASE_CONNECTION_LIMIT=5
+DEFAULT_DATABASE_NAME="consultant"
+DEFAULT_DATABASE_USER="consultant_user"
+DEFAULT_DATABASE_CONNECTION_LIMIT=5
 
 # Cloud SQL settings
-readonly DEFAULT_CLOUDSQL_VERSION="POSTGRES_15"
-readonly DEFAULT_CLOUDSQL_AVAILABILITY_TYPE="ZONAL"
+DEFAULT_CLOUDSQL_VERSION="POSTGRES_15"
+DEFAULT_CLOUDSQL_AVAILABILITY_TYPE="ZONAL"
 
 # Cloud Run settings
-readonly DEFAULT_CLOUD_RUN_MEMORY="2Gi"
-readonly DEFAULT_CLOUD_RUN_TIMEOUT="3600"
-readonly DEFAULT_CLOUD_RUN_CONCURRENCY="100"
-readonly DEFAULT_CLOUD_RUN_MIN_INSTANCES="0"
-readonly DEFAULT_CLOUD_RUN_MAX_INSTANCES="100"
+DEFAULT_CLOUD_RUN_MEMORY="2Gi"
+DEFAULT_CLOUD_RUN_TIMEOUT="3600"
+DEFAULT_CLOUD_RUN_CONCURRENCY="100"
+DEFAULT_CLOUD_RUN_MIN_INSTANCES="0"
+DEFAULT_CLOUD_RUN_MAX_INSTANCES="100"
 
 # VPC Connector settings
-readonly DEFAULT_VPC_CONNECTOR_MACHINE_TYPE="e2-micro"
-readonly DEFAULT_VPC_CONNECTOR_MIN_THROUGHPUT="200"
-readonly DEFAULT_VPC_CONNECTOR_MAX_THROUGHPUT="300"
+DEFAULT_VPC_CONNECTOR_MACHINE_TYPE="e2-micro"
+DEFAULT_VPC_CONNECTOR_MIN_THROUGHPUT="200"
+DEFAULT_VPC_CONNECTOR_MAX_THROUGHPUT="300"
 
 # ============================================
 # Configuration Variables (can be overridden)

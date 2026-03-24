@@ -6,10 +6,8 @@
 # Provides utility functions for interacting with Google Cloud Platform
 # Usage: source ./lib/gcp.sh
 
-# Source required modules
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/logging.sh"
-source "${SCRIPT_DIR}/config.sh"
+# Note: This module should be sourced after logging.sh and config.sh
+# Source order in main script: logging.sh -> config.sh -> gcp.sh -> deployment.sh
 
 # ============================================
 # GCP Authentication & Project Setup

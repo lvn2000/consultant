@@ -6,11 +6,8 @@
 # Orchestrates the deployment of Consultant Platform to GCP
 # Usage: source ./lib/deployment.sh
 
-# Source required modules
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/logging.sh"
-source "${SCRIPT_DIR}/config.sh"
-source "${SCRIPT_DIR}/gcp.sh"
+# Note: This module should be sourced after logging.sh, config.sh, and gcp.sh
+# Source order in main script: logging.sh -> config.sh -> gcp.sh -> deployment.sh
 
 # ============================================
 # Prerequisites Check
