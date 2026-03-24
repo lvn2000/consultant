@@ -1,0 +1,431 @@
+# Deployment Script Refactoring Guide
+
+## Overview
+
+The `deploy-gcp.sh` script has been refactored from a monolithic 876-line script into a modular, maintainable system with clear separation of concerns. This document outlines the refactoring approach, new structure, and migration path.
+
+## Refactoring Objectives
+
+1. **Modularity**: Break down the script into focused, reusable modules
+2. **Security**: Improve handling of sensitive information
+3. **Maintainability**: Make the code easier to understand and modify
+4. **Testability**: Enable unit testing of individual components
+5. **Reusability**: Allow modules to be used in other deployment scripts
+6. **Documentation**: Provide clear documentation for each module
+
+## New Architecture
+
+### Directory Structure
+
+```
+backend/
+├── deploy-gcp.sh                          (original, kept for backward compatibility)
+├── scripts/
+│   ├── deploy-gcp-refactored.sh          (new main deployment script)
+│   ├── lib/
+│   │   ├── logging.sh                    (logging utilities)
+│   │   ├── config.sh                     (configuration management)
+│   │   ├── gcp.sh                        (GCP utilities)
+│   │   └── deployment.sh                 (deployment orchestration)
+│   └── config/
+│       ├── dev.env                       (development environment)
+│       ├── staging.env                   (staging environment)
+│       └── prod.env                      (production environment)
+```
+
+## Module Descriptions
+
+### 1. logging.sh
+**Purpose**: Centralized logging with configurable levels and formatting
+
+**Key Features**:
+- Multiple log levels: DEBUG, INFO, WARNING, ERROR
+- Colored output for different log types
+- Optional timestamp support
+- Standardized formatting with `log_section()` and `log_step()` utilities
+
+**Key Functions**:
+- `log_debug()` - Output debug messages
+- `log_info()` - Output informational messages
+- `log_success()` - Output success messages (green)
+- `log_warning()` - Output warning messages (yellow)
+- `log_error()` - Output error and exit
+- `log_error_continue()` - Output error without exiting
+- `log_section()` - Output section headers
+- `log_step()` - Output numbered steps
+- `log_variable()` - Output variable values with formatting
+
+**Configuration**:
+```bash
+export LOG_LEVEL=1              # 0=DEBUG, 1=INFO, 2=WARNING, 3=ERROR
+export LOG_WITH_TIMESTAMPS=true # Enable/disable timestamps
+```
+
+### 2. config.sh
+**Purpose**: Configuration management and environment-specific settings
+
+**Key Features**:
+- Environment-agnostic configuration defaults
+- Easy environment-specific overrides
+- Validation of configuration values
+- Configuration file loading support
+- Service naming conventions
+
+**Key Functions**:
+- `get_env_config()` - Get environment-specific config value
+- `get_service_name()` - Get standardized service names
+- `validate_environment()` - Validate environment selection
+- `load_config_file()` - Load configuration from external file
+- `validate_gcp_project_id()` - Validate GCP project ID format
+- `get_cloud_run_service_name()` - Get Cloud Run service names
+- `get_database_instance_name()` - Get database instance name
+- `get_artifact_registry_path()` - Get artifact registry paths
+- `get_vpc_connector_name()` - Get VPC connector names
+- `print_configuration()` - Display current configuration
+- `init_config()` - Initialize and validate configuration
+
+**Configuration Variables**:
+```bash
+ENVIRONMENT=dev|staging|prod
+GCP_PROJECT_ID="your-project-id"
+FORCE_HTTPS=true|false
+ENABLE_CUSTOM_DOMAINS=true|false
+SKIP_DOMAINS=true|false
+SKIP_DATABASE_SETUP=true|false
+SKIP_BUILDS=true|false
+DRY_RUN=true|false
+```
+
+### 3. gcp.sh
+**Purpose**: Utilities for interacting with Google Cloud Platform services
+
+**Key Features**:
+- Comprehensive gcloud CLI wrappers
+- Error handling and validation
+- Dry-run support for all operations
+- Support for both existing and new resources
+
+**Key Function Groups**:
+
+#### Authentication & Project Setup
+- `check_gcloud_auth()` - Verify gcloud authentication
+- `set_gcp_project()` - Set active GCP project
+- `get_active_project()` - Get current active project
+- `enable_gcp_apis()` - Enable required GCP APIs
+
+#### Service Account Management
+- `create_service_account()` - Create service account
+- `grant_iam_role()` - Grant IAM roles to service account
+
+#### Artifact Registry
+- `create_artifact_registry()` - Create docker repository
+- `push_docker_image()` - Push images to artifact registry
+
+#### Cloud SQL Operations
+- `create_cloud_sql_instance()` - Create PostgreSQL instance
+- `create_cloud_sql_database()` - Create database
+- `create_cloud_sql_user()` - Create database user
+
+#### Cloud Run Operations
+- `deploy_cloud_run_service()` - Deploy service to Cloud Run
+- `set_cloud_run_env_vars()` - Set environment variables
+- `get_service_url()` - Get service URL
+
+#### VPC & Networking
+- `create_vpc_connector()` - Create VPC connector
+- `map_custom_domain()` - Map domain to service
+
+#### Utilities
+- `wait_for_operation()` - Wait for GCP operations
+- `display_gcp_resources()` - List deployed resources
+
+### 4. deployment.sh
+**Purpose**: High-level deployment orchestration
+
+**Key Features**:
+- Step-by-step deployment process
+- Prerequisite validation
+- Comprehensive error handling
+- Deployment summary reporting
+
+**Key Functions**:
+
+#### Prerequisites & Validation
+- `check_prerequisites()` - Verify required tools
+- `setup_database()` - Setup Cloud SQL
+- `run_database_migrations()` - Execute database migrations
+
+#### Image Building & Publishing
+- `build_backend_image()` - Build backend Docker image
+- `build_frontend_images()` - Build frontend Docker images
+- `push_images_to_registry()` - Push all images to registry
+
+#### Service Deployment
+- `deploy_backend_service()` - Deploy backend to Cloud Run
+- `deploy_frontend_services()` - Deploy frontend apps to Cloud Run
+
+#### Infrastructure Setup
+- `setup_networking()` - Configure VPC and networking
+
+#### Deployment Execution
+- `execute_deployment()` - Main deployment orchestration
+- `display_deployment_summary()` - Show deployment results
+
+## Usage
+
+### Basic Usage
+
+```bash
+# Deploy to development
+./scripts/deploy-gcp-refactored.sh dev
+
+# Deploy to staging with custom domain
+./scripts/deploy-gcp-refactored.sh staging --domain=staging.myapp.com
+
+# Deploy to production
+./scripts/deploy-gcp-refactored.sh prod
+```
+
+### Advanced Usage
+
+```bash
+# Dry run to see what would happen
+./scripts/deploy-gcp-refactored.sh prod --dry-run
+
+# Skip builds if images already exist
+./scripts/deploy-gcp-refactored.sh dev --skip-builds
+
+# Skip database setup if already configured
+./scripts/deploy-gcp-refactored.sh dev --skip-database
+
+# Custom domains for individual services
+./scripts/deploy-gcp-refactored.sh prod \
+  --backend-domain=api.myapp.com \
+  --client-domain=app.myapp.com \
+  --admin-domain=admin.myapp.com
+
+# Debug mode with timestamps
+./scripts/deploy-gcp-refactored.sh dev --log-level=DEBUG --with-timestamps
+```
+
+### Environment Configuration
+
+```bash
+# Set environment variables
+export GCP_PROJECT_ID="my-project-prod"
+export ENVIRONMENT="prod"
+export DRY_RUN="true"
+
+# Run deployment
+./scripts/deploy-gcp-refactored.sh
+```
+
+## Migration from Old Script
+
+### Backward Compatibility
+
+The original `deploy-gcp.sh` script is retained for backward compatibility. To migrate:
+
+1. **Phase 1**: Keep both scripts, test refactored version in dev/staging
+2. **Phase 2**: Run both scripts side-by-side to verify identical behavior
+3. **Phase 3**: Replace production deployment with refactored script
+4. **Phase 4**: Archive original script
+
+### Testing Migration
+
+```bash
+# Test with dry-run first
+./scripts/deploy-gcp-refactored.sh staging --dry-run
+
+# Compare with original (if available)
+./deploy-gcp.sh staging
+
+# Verify both produce similar logs
+```
+
+## Benefits of Refactoring
+
+### 1. Modularity
+- Each module has a single responsibility
+- Easy to understand and modify individual components
+- Can be reused in other scripts
+
+### 2. Maintainability
+- Clear separation of concerns
+- Easier to locate and fix bugs
+- Easier to add new features
+
+### 3. Testability
+- Modules can be unit tested independently
+- Easier to mock external dependencies
+- Cleaner test structure
+
+### 4. Security
+- Centralized credential handling
+- Better secret management with GCP Secret Manager
+- Validation of all inputs
+
+### 5. Flexibility
+- Environment-specific configurations
+- Skip flags for individual steps
+- Dry-run mode for validation
+
+### 6. Debugging
+- Comprehensive logging with levels
+- Error messages with context
+- Step-by-step execution visibility
+
+## Configuration Files
+
+### dev.env (Development)
+```bash
+# Development configuration
+ENVIRONMENT=dev
+DATABASE_TIER=db-f1-micro
+ENABLE_BACKUP=false
+ENABLE_MONITORING=false
+FORCE_HTTPS=true
+```
+
+### staging.env (Staging)
+```bash
+# Staging configuration
+ENVIRONMENT=staging
+DATABASE_TIER=db-g1-small
+ENABLE_BACKUP=true
+ENABLE_MONITORING=true
+FORCE_HTTPS=true
+```
+
+### prod.env (Production)
+```bash
+# Production configuration
+ENVIRONMENT=prod
+DATABASE_TIER=db-custom-2-7680
+ENABLE_BACKUP=true
+ENABLE_MONITORING=true
+FORCE_HTTPS=true
+GCP_ENABLE_VPC_CONNECTOR=true
+```
+
+## Environment Variables
+
+### Required
+- `GCP_PROJECT_ID` - GCP project identifier
+
+### Optional
+- `ENVIRONMENT` - Deployment environment (dev/staging/prod)
+- `LOG_LEVEL` - Logging level (0=DEBUG, 1=INFO, 2=WARNING, 3=ERROR)
+- `LOG_WITH_TIMESTAMPS` - Enable timestamps (true/false)
+- `DRY_RUN` - Simulate without changes (true/false)
+- `FORCE_HTTPS` - Enforce HTTPS (true/false)
+- `SKIP_DATABASE_SETUP` - Skip database creation (true/false)
+- `SKIP_BUILDS` - Skip Docker builds (true/false)
+- `CUSTOM_DOMAIN` - Domain for all services
+- `BACKEND_DOMAIN` - Custom backend domain
+- `CLIENT_DOMAIN` - Custom client app domain
+- `ADMIN_DOMAIN` - Custom admin app domain
+
+## Error Handling
+
+The refactored scripts implement comprehensive error handling:
+
+1. **Pre-flight Checks**: Verify prerequisites before deployment
+2. **Validation**: Validate all inputs before execution
+3. **Graceful Degradation**: Continue with warnings for non-critical errors
+4. **Error Recovery**: Provide recovery suggestions in error messages
+5. **Logging**: Log all errors with context for debugging
+
+## Performance Improvements
+
+1. **Parallel Operations**: Some operations can run concurrently
+2. **Early Termination**: Fail fast on critical errors
+3. **Caching**: Cache lookup results to avoid repeated calls
+4. **Conditional Execution**: Skip unnecessary steps with flags
+
+## Future Enhancements
+
+### Planned Features
+1. **Kubernetes Integration**: Support for GKE deployments
+2. **Multi-region Support**: Deploy to multiple GCP regions
+3. **Rollback Functionality**: Easy rollback to previous versions
+4. **Automated Backups**: Pre-deployment backup creation
+5. **Health Checks**: Post-deployment verification
+6. **Monitoring Integration**: Automatic monitoring setup
+7. **Cost Analysis**: Estimate deployment costs
+
+### Extensibility Points
+- Add custom modules in `lib/` directory
+- Override functions by sourcing custom scripts
+- Add environment-specific config files
+- Extend deployment steps with hooks
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue**: "gcloud CLI is not installed"
+- **Solution**: Install Google Cloud SDK
+
+**Issue**: "No active gcloud authentication"
+- **Solution**: Run `gcloud auth login`
+
+**Issue**: "Invalid GCP_PROJECT_ID format"
+- **Solution**: Use lowercase letters, numbers, and hyphens only
+
+**Issue**: "Failed to enable APIs"
+- **Solution**: Verify you have sufficient permissions in the GCP project
+
+**Issue**: "Failed to create Cloud SQL instance"
+- **Solution**: Check quota limits and billing account status
+
+## Support & Maintenance
+
+### Reporting Issues
+1. Check logs with `--log-level=DEBUG`
+2. Run in dry-run mode to verify configuration
+3. Review GCP console for resource status
+4. Consult troubleshooting section above
+
+### Version Management
+- Keep original script for rollback capability
+- Tag releases in version control
+- Maintain changelog of updates
+- Test thoroughly before production use
+
+## Appendix: Function Reference
+
+### Quick Reference
+
+```bash
+# Logging
+log_info "message"
+log_success "message"
+log_warning "message"
+log_error "message"
+log_debug "message"
+
+# Configuration
+get_env_config "key"
+validate_environment
+print_configuration
+
+# GCP Operations
+check_gcloud_auth
+set_gcp_project "$PROJECT_ID"
+enable_gcp_apis
+create_cloud_sql_instance "$NAME"
+deploy_cloud_run_service "$NAME" "$IMAGE"
+
+# Deployment
+execute_deployment
+check_prerequisites
+build_backend_image "$IMAGE_NAME"
+```
+
+## Document Information
+
+- **Version**: 2.0
+- **Last Updated**: 2024
+- **Status**: Refactoring Complete
+- **Maintainer**: DevOps Team
