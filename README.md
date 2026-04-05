@@ -537,6 +537,69 @@ The infrastructure layer will automatically use AWS services instead of local im
 - **AWS SDK 2** - AWS services integration
 - **FS2-AWS** - Reactive AWS streaming
 
+## GCP Deployment
+
+The Consultant Platform can be deployed to Google Cloud Platform using the automated deployment script. This provides a fully-managed infrastructure with automatic scaling, HTTPS, and high availability.
+
+### Quick Deployment
+
+```bash
+# Deploy to development environment
+./deploy-gcp.sh dev
+
+# Deploy to production with custom domain
+./deploy-gcp.sh prod --domain=yourdomain.com
+```
+
+### Architecture
+
+```
+Google Cloud Project
+├── Cloud Run Service: consultant-backend (Scala/Http4s API)
+├── Cloud Run Service: consultant-client-app (Nuxt.js Client App)
+├── Cloud Run Service: consultant-admin-app (Nuxt.js Admin App)
+├── Cloud Run Service: consultant-specialist-app (Nuxt.js Specialist App)
+└── Cloud SQL: consultant-postgres-[environment] (PostgreSQL 16)
+```
+
+### Features
+
+✅ **Automatic HTTPS**: Google-managed SSL certificates with auto-renewal  
+✅ **Auto-scaling**: Services scale from 1-10 instances based on demand  
+✅ **Managed Database**: Cloud SQL PostgreSQL with automated backups  
+✅ **Secret Management**: Secure storage in Secret Manager  
+✅ **Private Networking**: VPC Connector for secure database access  
+✅ **Custom Domains**: Support for custom domains with automatic SSL  
+
+### Detailed Documentation
+
+For complete deployment instructions, see:
+- [GCP Deployment Guide](GCP_DEPLOYMENT.md) - Comprehensive deployment guide
+- [deploy-gcp.sh](deploy-gcp.sh) - Automated deployment script
+- [test-gcp-https.sh](test-gcp-https.sh) - HTTPS verification script
+
+### Prerequisites
+
+- Google Cloud account with billing enabled
+- Docker installed locally
+- Google Cloud SDK (`gcloud` CLI)
+- Domain registration (for custom domains, optional)
+
+### Cost Estimation
+
+| Resource | Development | Production |
+|----------|-------------|------------|
+| Cloud SQL | ~$15/month | ~$200/month |
+| Cloud Run | ~$10-30/month | ~$50-150/month |
+| Network | ~$5/month | ~$10-20/month |
+| **Total** | **~$30-50/month** | **~$260-370/month** |
+
+### Support
+
+- Issues: GitHub repository
+- Documentation: [Consultant Wiki](https://github.com/lvn2000/consultant-wiki)
+- GCP Support: Google Cloud Console
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
