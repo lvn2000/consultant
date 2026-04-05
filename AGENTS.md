@@ -17,6 +17,7 @@
 - Commit frequently with descriptive messages
 - Ask before making changes outside scope of request
 - Never push directly to main/master
+- **Always ask for approval before committing and pushing**
 
 ## Communication
 - Be concise - avoid unnecessary preamble/explanation
